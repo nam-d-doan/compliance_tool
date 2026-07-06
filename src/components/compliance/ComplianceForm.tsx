@@ -15,17 +15,6 @@ import { AIService } from "@/services";
 import { cn } from "@/lib/utils";
 import type { Regulation, UserProfile } from "@/types";
 
-const EVIDENCE_OPTIONS = [
-  "Policy Document",
-  "Audit Report",
-  "Training Record",
-  "Risk Assessment",
-  "Transaction Log",
-  "KYC Document",
-  "License Certificate",
-  "Incident Report",
-];
-
 const FREQUENCIES = [
   "once",
   "monthly",
@@ -48,9 +37,6 @@ const schema = z.object({
   dueDate: z.string().min(1, "Due date is required"),
   criticality: z.enum(["low", "medium", "high", "critical"] as const),
   penalty: z.string().min(1, "Penalty is required"),
-  evidenceRequired: z
-    .array(z.string())
-    .min(1, "Select at least one evidence requirement"),
   tags: z.string().optional(),
 });
 
@@ -107,7 +93,6 @@ export function ComplianceForm({
       frequency: "annually",
       criticality: "medium",
       reviewerIds: [],
-      evidenceRequired: [],
       ...defaultValues,
     },
   });
@@ -442,43 +427,6 @@ export function ComplianceForm({
           />
           {errors.penalty && (
             <p className="text-xs text-destructive">{errors.penalty.message}</p>
-          )}
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label>Evidence Required</Label>
-          <Controller
-            name="evidenceRequired"
-            control={control}
-            render={({ field }) => (
-              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
-                {EVIDENCE_OPTIONS.map((item) => {
-                  const checked = field.value.includes(item);
-                  return (
-                    <label
-                      key={item}
-                      className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(checkedState) => {
-                          const next = checkedState
-                            ? [...field.value, item]
-                            : field.value.filter((i) => i !== item);
-                          field.onChange(next);
-                        }}
-                      />
-                      <span className="truncate">{item}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          />
-          {errors.evidenceRequired && (
-            <p className="text-xs text-destructive">
-              {errors.evidenceRequired.message}
-            </p>
           )}
         </div>
 

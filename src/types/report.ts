@@ -43,7 +43,6 @@ export type ReportType =
   | "checklist"
   | "aging"
   | "cap"
-  | "license"
   | "regulatory"
   | "department"
   | "executive"
@@ -64,7 +63,6 @@ export interface ReportFilter {
   criticality?: PriorityLevel | PriorityLevel[];
   riskLevel?: PriorityLevel | PriorityLevel[];
   regulation?: string;
-  licenseCategory?: string;
   capStatus?: string | string[];
   tags?: string[];
   page?: number;
@@ -94,12 +92,6 @@ export interface ExecutiveSummary {
     completed: number;
     overdue: number;
     averageResolutionDays: number;
-  };
-  licenseStatus: {
-    active: number;
-    expired: number;
-    expiringSoon: number;
-    renewed: number;
   };
   regulatoryChanges: {
     id: string;

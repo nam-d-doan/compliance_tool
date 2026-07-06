@@ -9,12 +9,6 @@ export type {
   ComplianceComment,
 } from "./compliance";
 export type {
-  Evidence,
-  EvidenceValidation,
-  EvidenceFilter,
-  EvidenceComment,
-} from "./evidence";
-export type {
   CAP,
   CAPAction,
   CAPFilter,
@@ -22,12 +16,6 @@ export type {
   CAPTimelineEvent,
   CAPComment,
 } from "./cap";
-export type {
-  License,
-  LicenseFilter,
-  LicenseCalendarEvent,
-  LicenseComment,
-} from "./license";
 export type {
   Regulation,
   RegulationFilter,
@@ -72,5 +60,4 @@ export type {
   AICopilotThread,
   AISuggestedCAP,
   AIRiskScoreResult,
-  AIEvidenceValidationResult,
 } from "./ai";

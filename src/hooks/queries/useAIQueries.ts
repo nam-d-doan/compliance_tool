@@ -30,12 +30,3 @@ export function useComplianceRiskScore(id: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
-
-export function useEvidenceValidation(id: string) {
-  return useQuery({
-    queryKey: aiKeys.evidenceValidation(id),
-    queryFn: () => AIService.validateEvidence(id),
-    enabled: Boolean(id),
-    staleTime: 5 * 60 * 1000,
-  });
-}

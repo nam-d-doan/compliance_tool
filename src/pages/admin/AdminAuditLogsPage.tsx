@@ -53,9 +53,7 @@ const ACTIONS = [
 ] as const;
 const MODULES = [
   "compliance",
-  "evidence",
   "cap",
-  "license",
   "regulation",
   "report",
   "admin",

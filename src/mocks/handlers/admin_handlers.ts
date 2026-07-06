@@ -200,7 +200,6 @@ export async function handleCreateTemplate({ request }: { request: Request }) {
     ownerName: body.ownerName ?? "",
     approverId: body.approverId ?? "",
     approverName: body.approverName ?? "",
-    evidenceRequirements: body.evidenceRequirements ?? [],
     criticality: body.criticality ?? "medium",
     applicableRegulationIds: body.applicableRegulationIds ?? [],
     status: body.status ?? "draft",

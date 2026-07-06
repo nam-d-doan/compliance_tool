@@ -23,8 +23,8 @@ export default function LoginPage() {
             AI-powered compliance management for modern enterprises
           </h2>
           <p className="mt-4 text-base text-primary-foreground/80">
-            Streamline obligations, evidence, corrective actions, and regulatory
-            reporting in one intelligent platform.
+            Streamline obligations, corrective actions, and regulatory reporting
+            in one intelligent platform.
           </p>
 
           <div className="mt-10 grid gap-4">

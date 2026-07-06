@@ -97,7 +97,6 @@ const timelineTypeMap: Record<
   approved: "approval",
   rejected: "rejection",
   commented: "comment",
-  evidence_uploaded: "upload",
 };
 
 function toAIRecommendation(

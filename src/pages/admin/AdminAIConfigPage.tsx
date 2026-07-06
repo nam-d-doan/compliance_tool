@@ -115,7 +115,7 @@ export default function AdminAIConfigPage() {
       topUseCases: [
         { useCase: "Compliance Risk Scoring", queries: 342 },
         { useCase: "CAP Suggestions", queries: 215 },
-        { useCase: "Evidence Validation", queries: 189 },
+        { useCase: "Risk Scoring", queries: 189 },
         { useCase: "Regulation Summaries", queries: 156 },
         { useCase: "Executive Reports", queries: 98 },
       ],

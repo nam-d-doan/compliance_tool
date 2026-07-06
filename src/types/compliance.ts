@@ -30,7 +30,6 @@ export interface ComplianceObligation extends BaseEntity {
   lastSubmissionId?: string;
   lastSubmissionStatus?: ComplianceSubmissionStatus;
   progress: number;
-  evidenceRequired: string[];
 }
 
 export interface ComplianceSubmission extends BaseEntity {
@@ -41,7 +40,6 @@ export interface ComplianceSubmission extends BaseEntity {
   performedDate: string;
   status: ComplianceSubmissionStatus;
   comments: string;
-  evidenceIds: string[];
   additionalNotes: string;
   capRequired: boolean;
   riskRating: PriorityLevel;
@@ -81,8 +79,7 @@ export interface ComplianceTimelineEvent {
     | "rejected"
     | "cap_created"
     | "closed"
-    | "commented"
-    | "evidence_uploaded";
+    | "commented";
   title: string;
   description: string;
   userId: string;

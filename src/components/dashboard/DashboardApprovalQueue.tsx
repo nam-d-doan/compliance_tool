@@ -12,16 +12,15 @@ import {
   ArrowRight,
   FileText,
   ShieldAlert,
-  Receipt,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { ComplianceObligation, CAP, License } from "@/types";
+import type { ComplianceObligation, CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
 
 interface QueueItem {
   id: string;
-  type: "compliance" | "cap" | "license";
+  type: "compliance" | "cap";
   title: string;
   entityId: string;
   status: string;
@@ -33,7 +32,6 @@ interface QueueItem {
 interface DashboardApprovalQueueProps {
   compliance?: ComplianceObligation[];
   caps?: CAP[];
-  licenses?: License[];
   title?: string;
   maxItems?: number;
   delay?: number;
@@ -42,7 +40,6 @@ interface DashboardApprovalQueueProps {
 export function DashboardApprovalQueue({
   compliance = [],
   caps = [],
-  licenses = [],
   title = "Approval Queue",
   maxItems = 10,
   delay = 0,
@@ -72,18 +69,6 @@ export function DashboardApprovalQueue({
         dueDate: c.dueDate,
         ownerName: c.ownerName,
       })),
-    ...licenses
-      .filter((l) => ["Expiring Soon", "Active"].includes(l.status))
-      .map((l) => ({
-        id: l.id,
-        type: "license" as const,
-        title: l.licenseName,
-        entityId: l.licenseNumber,
-        status: l.status,
-        priority: l.criticality,
-        dueDate: l.expiryDate,
-        ownerName: l.ownerName,
-      })),
   ]
     .sort(
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
@@ -99,19 +84,16 @@ export function DashboardApprovalQueue({
   const typeIcons = {
     compliance: FileText,
     cap: ShieldAlert,
-    license: Receipt,
   };
 
   const typeLabels = {
     compliance: "Compliance",
     cap: "CAP",
-    license: "License",
   };
 
   const typeRoutes = {
     compliance: "compliance",
     cap: "cap",
-    license: "license",
   };
 
   return (

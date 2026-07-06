@@ -220,7 +220,7 @@ export default function ReportsExecutivePage() {
               <div>
                 <CardTitle>AI Executive Summary</CardTitle>
                 <CardDescription>
-                  Generated from live compliance, CAP, and license data
+                  Generated from live compliance and CAP data
                 </CardDescription>
               </div>
             </div>

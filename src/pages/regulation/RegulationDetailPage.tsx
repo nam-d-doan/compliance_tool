@@ -73,7 +73,6 @@ const IMPACT_AREAS = [
     label: "Compliance Obligations",
     weight: 0.3,
   },
-  { key: "affectedLicenseIds", label: "Licenses", weight: 0.15 },
   { key: "affectedControls", label: "Controls", weight: 0.1 },
 ] as const;
 

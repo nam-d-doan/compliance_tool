@@ -40,8 +40,8 @@ const SUGGESTED_PROMPTS = [
     prompt: "What is our overall compliance status?",
   },
   {
-    label: "Which regulations expire soon?",
-    prompt: "Which regulations or licenses expire soon?",
+    label: "Which regulations are effective soon?",
+    prompt: "Which regulations are becoming effective soon?",
   },
   {
     label: "Summarize open CAPs",

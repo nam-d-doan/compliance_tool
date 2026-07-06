@@ -4,7 +4,6 @@ import type {
   AICopilotMessage,
   AISuggestedCAP,
   AIRiskScoreResult,
-  AIEvidenceValidationResult,
   RegulationImpact,
   AIExplanation,
 } from "@/types";
@@ -49,13 +48,6 @@ export const AIService = {
     return apiPost<{ summary: string; explanation: AIExplanation }>(
       API_ENDPOINTS.AI_EXECUTIVE_SUMMARY,
       {},
-    );
-  },
-
-  validateEvidence(evidenceId?: string) {
-    return apiPost<AIEvidenceValidationResult>(
-      API_ENDPOINTS.AI_EVIDENCE_VALIDATE,
-      { evidenceId },
     );
   },
 };

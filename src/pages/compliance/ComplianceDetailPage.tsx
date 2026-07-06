@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   Trash2,
   Pencil,
-  FileText,
   ExternalLink,
   Loader2,
 } from "lucide-react";
@@ -51,7 +50,6 @@ import {
   useComplianceTimeline,
   useComplianceComments,
 } from "@/hooks/queries/useComplianceQueries";
-import { useEvidenceList } from "@/hooks/queries/useEvidenceQueries";
 import { useCAPList } from "@/hooks/queries/useCAPQueries";
 import {
   useUpdateCompliance,
@@ -61,7 +59,6 @@ import {
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import type {
   ComplianceObligation,
   ComplianceTimelineEvent,
@@ -72,7 +69,6 @@ import type {
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "timeline", label: "Timeline" },
-  { id: "evidence", label: "Evidence" },
   { id: "comments", label: "Comments" },
   { id: "approvals", label: "Approvals" },
 ] as const;
@@ -92,7 +88,6 @@ const timelineTypeMap: Record<
   cap_created: "cap_created",
   closed: "approval",
   commented: "comment",
-  evidence_uploaded: "upload",
 };
 
 function buildInsight(item: ComplianceObligation): AIInsight {
@@ -104,7 +99,7 @@ function buildInsight(item: ComplianceObligation): AIInsight {
     confidence: Math.min(item.aiRiskScore / 100, 0.98),
     recommendation:
       item.aiRecommendation ??
-      "Review this obligation before the due date and ensure all required evidence is collected.",
+      "Review this obligation before the due date and ensure all required documentation is collected.",
     reasoning: [
       `Risk score of ${item.aiRiskScore} derived from obligation criticality (${item.criticality}) and due date proximity.`,
       "Cross-referenced with similar historical obligations and submission outcomes.",
@@ -134,7 +129,6 @@ export default function ComplianceDetailPage() {
   const detail = useComplianceDetail(id);
   const timeline = useComplianceTimeline(id);
   const comments = useComplianceComments(id);
-  const evidence = useEvidenceList({ compliance: id }, 1, 50);
   const caps = useCAPList({ compliance: id }, 1, 20);
   const update = useUpdateCompliance(id);
   const remove = useDeleteCompliance();
@@ -245,7 +239,6 @@ export default function ComplianceDetailPage() {
         dueDate: new Date(values.dueDate).toISOString(),
         criticality: values.criticality,
         penalty: values.penalty,
-        evidenceRequired: values.evidenceRequired,
         tags: values.tags
           ? values.tags
               .split(",")
@@ -292,7 +285,6 @@ export default function ComplianceDetailPage() {
     dueDate: item.dueDate.slice(0, 10),
     criticality: item.criticality,
     penalty: item.penalty,
-    evidenceRequired: item.evidenceRequired,
     tags: item.tags.join(", "),
   };
 
@@ -342,12 +334,7 @@ export default function ComplianceDetailPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "relative px-3 py-2 text-sm font-medium transition-colors",
-                  activeTab === tab.id
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                className="relative px-3 py-2 text-sm font-medium transition-colors"
               >
                 {tab.label}
                 {activeTab === tab.id && (
@@ -535,58 +522,6 @@ export default function ComplianceDetailPage() {
                     ))}
                   </CardContent>
                 </Card>
-              )}
-            </motion.div>
-          )}
-
-          {activeTab === "evidence" && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-            >
-              {evidence.isPending ? (
-                <div className="flex justify-center py-8">
-                  <Loader2
-                    className="size-8 animate-spin text-primary"
-                    aria-hidden="true"
-                  />
-                </div>
-              ) : evidence.isError ? (
-                <ErrorState onRetry={() => evidence.refetch()} />
-              ) : evidence.data?.items.length === 0 ? (
-                <EmptyState
-                  title="No evidence linked"
-                  description="Upload evidence to support this compliance obligation."
-                />
-              ) : (
-                <div className="grid gap-3">
-                  {evidence.data?.items.map((ev) => (
-                    <Card
-                      key={ev.id}
-                      className="cursor-pointer transition-shadow hover:shadow-md"
-                      onClick={() => navigate(`/evidence/${ev.id}`)}
-                    >
-                      <CardContent className="flex items-center justify-between gap-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                            <FileText className="size-5" aria-hidden="true" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {ev.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {ev.category} ·{" "}
-                              {format(new Date(ev.uploadDate), "MMM d, yyyy")}
-                            </p>
-                          </div>
-                        </div>
-                        <StatusBadge status={ev.status} size="sm" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
               )}
             </motion.div>
           )}

@@ -28,12 +28,7 @@ import {
   ListSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import {
-  useDashboard,
-  useComplianceList,
-  useCAPList,
-  useLicenseList,
-} from "@/hooks/queries";
+import { useDashboard, useComplianceList, useCAPList } from "@/hooks/queries";
 import { useExecutiveSummary } from "@/hooks/queries/useAIQueries";
 import { EmptyState } from "@/components/common/EmptyState";
 
@@ -44,23 +39,18 @@ function useExecutiveData() {
   const dashboard = useDashboard("executive");
   const compliance = useComplianceList({ page: 1, pageSize: 500 });
   const caps = useCAPList({ page: 1, pageSize: 500 });
-  const licenses = useLicenseList({ page: 1, pageSize: 500 });
   const aiSummary = useExecutiveSummary();
 
   const isLoading =
-    dashboard.isPending ||
-    compliance.isPending ||
-    caps.isPending ||
-    licenses.isPending;
+    dashboard.isPending || compliance.isPending || caps.isPending;
 
-  const error =
-    dashboard.error ?? compliance.error ?? caps.error ?? licenses.error;
+  const error = dashboard.error ?? compliance.error ?? caps.error;
 
-  return { dashboard, compliance, caps, licenses, aiSummary, isLoading, error };
+  return { dashboard, compliance, caps, aiSummary, isLoading, error };
 }
 
 export default function ExecutiveDashboardPage() {
-  const { dashboard, compliance, caps, licenses, aiSummary, isLoading, error } =
+  const { dashboard, compliance, caps, aiSummary, isLoading, error } =
     useExecutiveData();
 
   const complianceItems = useMemo(
@@ -148,7 +138,6 @@ export default function ExecutiveDashboardPage() {
           dashboard.refetch();
           compliance.refetch();
           caps.refetch();
-          licenses.refetch();
         }}
       />
     );

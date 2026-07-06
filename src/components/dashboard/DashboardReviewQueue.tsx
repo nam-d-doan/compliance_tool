@@ -48,9 +48,6 @@ export function DashboardReviewQueue({
       priority: c.criticality,
       dueDate: c.dueDate,
       ownerName: c.ownerName,
-      evidenceScore: c.aiRiskScore
-        ? Math.max(0, Math.min(100, 100 - c.aiRiskScore))
-        : undefined,
     }))
     .sort(
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
@@ -101,11 +98,6 @@ export function DashboardReviewQueue({
                         <Clock className="size-3" aria-hidden="true" />
                         {format(new Date(item.dueDate), "MMM d")}
                       </span>
-                      {item.evidenceScore !== undefined && (
-                        <Badge variant="outline" className="h-4 text-[10px]">
-                          Evidence {item.evidenceScore}%
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <Button

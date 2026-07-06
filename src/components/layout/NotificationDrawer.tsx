@@ -35,15 +35,6 @@ interface Notification {
 const INITIAL_NOTIFICATIONS: Notification[] = [
   {
     id: "1",
-    icon: FileCheck,
-    title: "Evidence approval requested",
-    description: "AML-2024-003 evidence pack is pending your review.",
-    timestamp: "10 min ago",
-    read: false,
-    category: "Approvals",
-  },
-  {
-    id: "2",
     icon: AlertTriangle,
     title: "Overdue compliance filing",
     description: "GDPR Article 30 registration is 3 days overdue.",
@@ -52,16 +43,7 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
     category: "Compliance",
   },
   {
-    id: "3",
-    icon: CalendarClock,
-    title: "License expires soon",
-    description: "New York MTL license expires in 14 days.",
-    timestamp: "3 hr ago",
-    read: true,
-    category: "Licenses",
-  },
-  {
-    id: "4",
+    id: "2",
     icon: Sparkles,
     title: "AI recommendation",
     description: "AI detected 12 likely overdue submissions in Retail Banking.",

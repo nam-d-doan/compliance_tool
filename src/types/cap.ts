@@ -44,7 +44,6 @@ export interface CAP extends BaseEntity {
   rootCause: string;
   complianceId?: string;
   complianceTitle?: string;
-  evidenceIds: string[];
   actions: CAPAction[];
   aiSuggestions: CAPAISuggestion[];
   progress: number;
@@ -79,8 +78,7 @@ export interface CAPTimelineEvent {
     | "completed"
     | "approved"
     | "rejected"
-    | "commented"
-    | "evidence_uploaded";
+    | "commented";
   title: string;
   description: string;
   userId: string;

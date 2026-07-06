@@ -284,9 +284,6 @@ export async function handleRegulationImpact({
     affectedComplianceIds: db.compliance
       .filter((c) => c.regulationId === regulation.id)
       .map((c) => c.id),
-    affectedLicenseIds: db.licenses
-      .filter((l) => l.regulationId === regulation.id)
-      .map((l) => l.id),
     affectedPolicies: ["Policy A", "Policy B"],
     affectedBusinessUnits: regulation.affectedBusinessUnits,
     affectedRisks: ["Operational Risk", "Compliance Risk", "Reputational Risk"],

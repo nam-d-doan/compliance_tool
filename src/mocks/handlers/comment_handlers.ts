@@ -16,8 +16,7 @@ export async function handleGetComments({
   const url = new URL(request.url);
   const q = parseQuery(url);
   const db = getDb();
-  const entityType = params.entityType as
-    "compliance" | "cap" | "evidence" | "license" | "regulation";
+  const entityType = params.entityType as "compliance" | "cap" | "regulation";
   const entityId = params.entityId as string;
   const comments = db.generateCommentsFor(entityId, entityType);
   const page = parseNumber(q.page, 1);

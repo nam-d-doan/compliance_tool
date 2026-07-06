@@ -5,14 +5,12 @@ import {
   Archive,
   ArrowDown,
   ArrowUp,
-  Ban,
   CheckCircle,
   CheckCircle2,
   Circle,
   Clock,
   Eye,
   FileEdit,
-  FileX,
   Globe,
   HelpCircle,
   Hourglass,
@@ -21,9 +19,7 @@ import {
   MinusCircle,
   PlayCircle,
   RefreshCw,
-  Scan,
   ShieldAlert,
-  Sparkles,
   UploadCloud,
   UserCheck,
   UserMinus,
@@ -170,38 +166,6 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
   },
   closed: { label: "Closed", icon: CheckCircle2, ...emerald },
 
-  // License
-  active: { label: "Active", icon: CheckCircle, ...emerald },
-  "expiring soon": {
-    label: "Expiring Soon",
-    icon: AlertTriangle,
-    ...amber,
-  },
-  expired: { label: "Expired", icon: XCircle, ...red },
-  suspended: { label: "Suspended", icon: Ban, ...rose },
-  renewed: { label: "Renewed", icon: RefreshCw, ...teal },
-
-  // Evidence
-  uploading: { label: "Uploading", icon: UploadCloud, ...blue },
-  scanning: { label: "Scanning", icon: Scan, ...amber },
-  "ai validation": { label: "AI Validation", icon: Sparkles, ...violet },
-  "suitable evidence": {
-    label: "Suitable Evidence",
-    icon: CheckCircle,
-    ...emerald,
-  },
-  "questionable evidence": {
-    label: "Questionable Evidence",
-    icon: HelpCircle,
-    ...amber,
-  },
-  "insufficient evidence": {
-    label: "Insufficient Evidence",
-    icon: AlertTriangle,
-    ...orange,
-  },
-  "wrong document": { label: "Wrong Document", icon: FileX, ...red },
-
   // Regulation / content
   published: { label: "Published", icon: Globe, ...emerald },
   updated: { label: "Updated", icon: RefreshCw, ...blue },
@@ -271,26 +235,6 @@ export const CAP_STATUSES = [
   "Overdue",
 ] as const;
 
-export const LICENSE_STATUSES = [
-  "Draft",
-  "Active",
-  "Expiring Soon",
-  "Expired",
-  "Suspended",
-  "Renewed",
-] as const;
-
-export const EVIDENCE_STATUSES = [
-  "Uploading",
-  "Scanning",
-  "AI Validation",
-  "Completed",
-  "Suitable Evidence",
-  "Questionable Evidence",
-  "Insufficient Evidence",
-  "Wrong Document",
-] as const;
-
 export const REGULATION_STATUSES = [
   "Published",
   "Updated",
@@ -310,8 +254,6 @@ export type ComplianceStatus = (typeof COMPLIANCE_STATUSES)[number];
 export type ComplianceSubmissionStatus =
   (typeof COMPLIANCE_SUBMISSION_STATUSES)[number];
 export type CAPStatus = (typeof CAP_STATUSES)[number];
-export type LicenseStatus = (typeof LICENSE_STATUSES)[number];
-export type EvidenceStatus = (typeof EVIDENCE_STATUSES)[number];
 export type RegulationStatus = (typeof REGULATION_STATUSES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
 export type PriorityLevel = (typeof PRIORITY_LEVELS)[number];

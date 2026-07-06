@@ -1,8 +1,6 @@
 import type {
   ComplianceFilter,
-  EvidenceFilter,
   CAPFilter,
-  LicenseFilter,
   RegulationFilter,
   ReportFilter,
 } from "@/types";
@@ -20,17 +18,6 @@ export const complianceKeys = {
     [...complianceKeys.all, "history", filters] as const,
 };
 
-export const evidenceKeys = {
-  all: ["evidence"] as const,
-  lists: () => [...evidenceKeys.all, "list"] as const,
-  list: (filters: EvidenceFilter) =>
-    [...evidenceKeys.lists(), filters] as const,
-  details: () => [...evidenceKeys.all, "detail"] as const,
-  detail: (id: string) => [...evidenceKeys.details(), id] as const,
-  timeline: (id: string) => [...evidenceKeys.detail(id), "timeline"] as const,
-  comments: (id: string) => [...evidenceKeys.detail(id), "comments"] as const,
-};
-
 export const capKeys = {
   all: ["cap"] as const,
   lists: () => [...capKeys.all, "list"] as const,
@@ -39,15 +26,6 @@ export const capKeys = {
   detail: (id: string) => [...capKeys.details(), id] as const,
   timeline: (id: string) => [...capKeys.detail(id), "timeline"] as const,
   comments: (id: string) => [...capKeys.detail(id), "comments"] as const,
-};
-
-export const licenseKeys = {
-  all: ["license"] as const,
-  lists: () => [...licenseKeys.all, "list"] as const,
-  list: (filters: LicenseFilter) => [...licenseKeys.lists(), filters] as const,
-  details: () => [...licenseKeys.all, "detail"] as const,
-  detail: (id: string) => [...licenseKeys.details(), id] as const,
-  calendar: () => [...licenseKeys.all, "calendar"] as const,
 };
 
 export const regulationKeys = {
@@ -95,7 +73,5 @@ export const aiKeys = {
   capSuggestion: (id?: string) =>
     [...aiKeys.all, "cap-suggestion", id ?? "new"] as const,
   riskScore: (id: string) => [...aiKeys.all, "risk-score", id] as const,
-  evidenceValidation: (id: string) =>
-    [...aiKeys.all, "evidence-validation", id] as const,
   executiveSummary: () => [...aiKeys.all, "executive-summary"] as const,
 };

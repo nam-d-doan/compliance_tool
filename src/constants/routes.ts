@@ -7,12 +7,7 @@ import {
   List,
   PlusCircle,
   History,
-  FileText,
-  Library,
-  Upload,
   ClipboardList,
-  Award,
-  Calendar,
   BookOpen,
   BarChart3,
   Settings2,
@@ -51,28 +46,12 @@ export const ROUTES = {
     HISTORY: "/compliance/history",
   },
 
-  // Evidence routes
-  EVIDENCE: {
-    LIBRARY: "/evidence",
-    UPLOAD: "/evidence/upload",
-    DETAIL: "/evidence/:id",
-  },
-
   // CAP routes
   CAP: {
     DASHBOARD: "/cap",
     LIST: "/cap/list",
     DETAIL: "/cap/:id",
     CREATE: "/cap/create",
-  },
-
-  // License routes
-  LICENSE: {
-    DASHBOARD: "/license",
-    LIST: "/license/list",
-    DETAIL: "/license/:id",
-    CALENDAR: "/license/calendar",
-    ADD: "/license/add",
   },
 
   // Regulation routes
@@ -88,7 +67,6 @@ export const ROUTES = {
     STATUS: "/reports/status",
     CALENDAR: "/reports/calendar",
     CAP: "/reports/cap",
-    LICENSE: "/reports/license",
     EXECUTIVE: "/reports/executive",
   },
 
@@ -133,15 +111,6 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
     "admin",
   ],
 
-  [ROUTES.EVIDENCE.UPLOAD]: ["owner", "executive", "admin"],
-  [ROUTES.EVIDENCE.LIBRARY]: [
-    "reviewer",
-    "approver",
-    "owner",
-    "executive",
-    "admin",
-  ],
-
   [ROUTES.CAP.CREATE]: ["owner", "executive", "admin"],
   [ROUTES.CAP.DASHBOARD]: [
     "reviewer",
@@ -151,15 +120,6 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
     "admin",
   ],
   [ROUTES.CAP.LIST]: ["reviewer", "approver", "owner", "executive", "admin"],
-
-  [ROUTES.LICENSE.ADD]: ["owner", "executive", "admin"],
-  [ROUTES.LICENSE.LIST]: [
-    "reviewer",
-    "approver",
-    "owner",
-    "executive",
-    "admin",
-  ],
 
   [ROUTES.ADMIN.USERS]: ["admin"],
   [ROUTES.ADMIN.ROLES]: ["admin"],
@@ -232,29 +192,6 @@ export function buildNavTree(role: Role | null): NavSection[] {
           ],
         },
         {
-          label: "Evidence",
-          icon: FileText,
-          path: ROUTES.EVIDENCE.LIBRARY,
-          section: "Compliance",
-          requiredPermission: "evidence:read",
-          children: [
-            {
-              label: "Library",
-              icon: Library,
-              path: ROUTES.EVIDENCE.LIBRARY,
-              section: "Compliance",
-              requiredPermission: "evidence:read",
-            },
-            {
-              label: "Upload",
-              icon: Upload,
-              path: ROUTES.EVIDENCE.UPLOAD,
-              section: "Compliance",
-              requiredPermission: "evidence:create",
-            },
-          ],
-        },
-        {
           label: "Corrective Actions",
           icon: ClipboardList,
           path: ROUTES.CAP.DASHBOARD,
@@ -274,36 +211,6 @@ export function buildNavTree(role: Role | null): NavSection[] {
               path: ROUTES.CAP.CREATE,
               section: "Compliance",
               requiredPermission: "cap:create",
-            },
-          ],
-        },
-        {
-          label: "Licenses",
-          icon: Award,
-          path: ROUTES.LICENSE.LIST,
-          section: "Compliance",
-          requiredPermission: "license:read",
-          children: [
-            {
-              label: "All Licenses",
-              icon: List,
-              path: ROUTES.LICENSE.LIST,
-              section: "Compliance",
-              requiredPermission: "license:read",
-            },
-            {
-              label: "Add License",
-              icon: PlusCircle,
-              path: ROUTES.LICENSE.ADD,
-              section: "Compliance",
-              requiredPermission: "license:create",
-            },
-            {
-              label: "Calendar",
-              icon: Calendar,
-              path: ROUTES.LICENSE.CALENDAR,
-              section: "Compliance",
-              requiredPermission: "license:read",
             },
           ],
         },

@@ -16,7 +16,6 @@ import type {
 function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
   const compliance = db.compliance;
   const caps = db.caps;
-  const licenses = db.licenses;
 
   const overdue = compliance.filter((i) => i.status === "Overdue").length;
   const pendingApproval = compliance.filter((i) =>
@@ -32,9 +31,6 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
     : 0;
   const openCaps = caps.filter((i) =>
     ["Open", "In Progress"].includes(i.status),
-  ).length;
-  const expiringLicenses = licenses.filter(
-    (i) => i.status === "Expiring Soon",
   ).length;
 
   const common: DashboardKPI[] = [
@@ -70,14 +66,6 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
       trend: "down",
       trendPercent: 3,
     },
-    {
-      id: "expiring-licenses",
-      title: "Expiring Licenses",
-      value: expiringLicenses,
-      previousPeriod: expiringLicenses + 1,
-      trend: "down",
-      trendPercent: 5,
-    },
   ];
 
   switch (role) {
@@ -108,14 +96,6 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           previousPeriod: openCaps + 2,
           trend: "down",
           trendPercent: 6,
-        },
-        {
-          id: "license-expiry",
-          title: "License Expiry",
-          value: expiringLicenses,
-          previousPeriod: expiringLicenses + 3,
-          trend: "down",
-          trendPercent: 12,
         },
         ...common.slice(0, 2),
       ];
@@ -173,7 +153,6 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           value: `${complianceRate}%`,
         },
         { id: "overdue-stats", title: "Overdue Stats", value: overdue },
-        { id: "evidence-quality", title: "Evidence Quality", value: "87%" },
         {
           id: "audit-findings",
           title: "Audit Findings",

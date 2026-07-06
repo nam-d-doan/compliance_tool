@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AIService } from "@/services";
-import { aiKeys, evidenceKeys } from "@/hooks/query-keys";
+import { aiKeys } from "@/hooks/query-keys";
 
 export function useCopilotMessage() {
   return useMutation({
@@ -34,22 +34,5 @@ export function useRegulationImpact() {
   return useMutation({
     mutationFn: (regulationId: string) =>
       AIService.regulationImpact(regulationId),
-  });
-}
-
-export function useValidateEvidence(evidenceId?: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => AIService.validateEvidence(evidenceId),
-    onSuccess: () => {
-      if (evidenceId) {
-        queryClient.invalidateQueries({
-          queryKey: evidenceKeys.detail(evidenceId),
-        });
-        queryClient.invalidateQueries({
-          queryKey: aiKeys.evidenceValidation(evidenceId),
-        });
-      }
-    },
   });
 }

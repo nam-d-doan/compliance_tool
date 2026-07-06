@@ -58,7 +58,6 @@ export interface Template extends BaseEntity {
   ownerName: string;
   approverId: string;
   approverName: string;
-  evidenceRequirements: string[];
   criticality: string;
   applicableRegulationIds: string[];
   status: "draft" | "published" | "archived";

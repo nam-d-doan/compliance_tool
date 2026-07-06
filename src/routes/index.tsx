@@ -51,27 +51,10 @@ const ComplianceSubmitPage = lazy(
 const ComplianceHistoryPage = lazy(
   () => import("@/pages/compliance/ComplianceHistoryPage"),
 );
-const EvidenceLibraryPage = lazy(
-  () => import("@/pages/evidence/EvidenceLibraryPage"),
-);
-const EvidenceUploadPage = lazy(
-  () => import("@/pages/evidence/EvidenceUploadPage"),
-);
-const EvidenceDetailPage = lazy(
-  () => import("@/pages/evidence/EvidenceDetailPage"),
-);
 const CAPDashboardPage = lazy(() => import("@/pages/cap/CAPDashboardPage"));
 const CAPListPage = lazy(() => import("@/pages/cap/CAPListPage"));
 const CAPDetailPage = lazy(() => import("@/pages/cap/CAPDetailPage"));
 const CAPCreatePage = lazy(() => import("@/pages/cap/CAPCreatePage"));
-const LicenseListPage = lazy(() => import("@/pages/license/LicenseListPage"));
-const LicenseAddPage = lazy(() => import("@/pages/license/LicenseAddPage"));
-const LicenseCalendarPage = lazy(
-  () => import("@/pages/license/LicenseCalendarPage"),
-);
-const LicenseDetailPage = lazy(
-  () => import("@/pages/license/LicenseDetailPage"),
-);
 const RegulationLibraryPage = lazy(
   () => import("@/pages/regulation/RegulationLibraryPage"),
 );
@@ -92,9 +75,6 @@ const ReportsCalendarPage = lazy(
   () => import("@/pages/reports/ReportsCalendarPage"),
 );
 const ReportsCAPPage = lazy(() => import("@/pages/reports/ReportsCAPPage"));
-const ReportsLicensePage = lazy(
-  () => import("@/pages/reports/ReportsLicensePage"),
-);
 const ReportsExecutivePage = lazy(
   () => import("@/pages/reports/ReportsExecutivePage"),
 );
@@ -165,20 +145,10 @@ export const router = createBrowserRouter([
           route("/compliance/history", <ComplianceHistoryPage />, "History"),
           route("/compliance/:id", <ComplianceDetailPage />, "Detail"),
 
-          route("/evidence", <EvidenceLibraryPage />, "Evidence"),
-          route("/evidence/upload", <EvidenceUploadPage />, "Upload"),
-          route("/evidence/:id", <EvidenceDetailPage />, "Detail"),
-
           route("/cap", <CAPDashboardPage />, "Corrective Actions"),
           route("/cap/list", <CAPListPage />, "All CAPs"),
           route("/cap/create", <CAPCreatePage />, "Create CAP"),
           route("/cap/:id", <CAPDetailPage />, "Detail"),
-
-          route("/license", <LicenseListPage />, "Licenses"),
-          route("/license/list", <LicenseListPage />, "All Licenses"),
-          route("/license/add", <LicenseAddPage />, "Add License"),
-          route("/license/calendar", <LicenseCalendarPage />, "Calendar"),
-          route("/license/:id", <LicenseDetailPage />, "Detail"),
 
           route("/regulation", <RegulationLibraryPage />, "Regulations"),
           route("/regulation/compare", <RegulationComparisonPage />, "Compare"),
@@ -189,7 +159,6 @@ export const router = createBrowserRouter([
           route("/reports/status", <ReportsStatusPage />, "Status"),
           route("/reports/calendar", <ReportsCalendarPage />, "Calendar"),
           route("/reports/cap", <ReportsCAPPage />, "CAP Reports"),
-          route("/reports/license", <ReportsLicensePage />, "License Reports"),
           route(
             "/reports/executive",
             <ReportsExecutivePage />,

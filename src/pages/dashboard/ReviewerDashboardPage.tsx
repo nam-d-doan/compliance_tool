@@ -23,34 +23,23 @@ import {
   ListSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import {
-  useDashboard,
-  useComplianceList,
-  useEvidenceList,
-} from "@/hooks/queries";
+import { useDashboard, useComplianceList } from "@/hooks/queries";
 
 function useReviewerData() {
   const dashboard = useDashboard("reviewer");
   const compliance = useComplianceList({ page: 1, pageSize: 500 }, 1, 500);
-  const evidence = useEvidenceList({ page: 1, pageSize: 500 }, 1, 500);
 
-  const isLoading =
-    dashboard.isPending || compliance.isPending || evidence.isPending;
-  const error = dashboard.error ?? compliance.error ?? evidence.error;
+  const isLoading = dashboard.isPending || compliance.isPending;
+  const error = dashboard.error ?? compliance.error;
 
-  return { dashboard, compliance, evidence, isLoading, error };
+  return { dashboard, compliance, isLoading, error };
 }
 
 export default function ReviewerDashboardPage() {
-  const { dashboard, compliance, evidence, isLoading, error } =
-    useReviewerData();
+  const { dashboard, compliance, isLoading, error } = useReviewerData();
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
     [compliance.data],
-  );
-  const evidenceItems = useMemo(
-    () => evidence.data?.items ?? [],
-    [evidence.data],
   );
 
   const reviewThroughput = useMemo(
@@ -63,32 +52,6 @@ export default function ReviewerDashboardPage() {
     ],
     [],
   );
-
-  const evidenceQuality = useMemo(() => {
-    const buckets = [
-      { name: "90-100%", count: 0 },
-      { name: "80-89%", count: 0 },
-      { name: "70-79%", count: 0 },
-      { name: "< 70%", count: 0 },
-    ];
-
-    evidenceItems.forEach((item) => {
-      const score = item.aiValidation?.score ?? 85;
-      if (score >= 90) buckets[0].count++;
-      else if (score >= 80) buckets[1].count++;
-      else if (score >= 70) buckets[2].count++;
-      else buckets[3].count++;
-    });
-
-    if (evidenceItems.length === 0) {
-      buckets[0].count = 14;
-      buckets[1].count = 8;
-      buckets[2].count = 4;
-      buckets[3].count = 2;
-    }
-
-    return buckets;
-  }, [evidenceItems]);
 
   if (isLoading) {
     return (
@@ -114,7 +77,6 @@ export default function ReviewerDashboardPage() {
         onRetry={() => {
           dashboard.refetch();
           compliance.refetch();
-          evidence.refetch();
         }}
       />
     );
@@ -157,25 +119,6 @@ export default function ReviewerDashboardPage() {
                   strokeWidth={2}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </DashboardChartCard>
-      </div>
-
-      <div className="md:col-span-1">
-        <DashboardChartCard title="Evidence Quality (AI Scores)" delay={0.2}>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={evidenceQuality}
-                margin={{ top: 8, right: 16, bottom: 0, left: -16 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-              </BarChart>
             </ResponsiveContainer>
           </div>
         </DashboardChartCard>

@@ -19,16 +19,6 @@ export const API_ENDPOINTS = {
   COMPLIANCE_TIMELINE: (id: string) => `/api/compliance/${id}/timeline`,
   COMPLIANCE_COMMENTS: (id: string) => `/api/compliance/${id}/comments`,
 
-  // Evidence endpoints
-  EVIDENCE_LIST: "/api/evidence",
-  EVIDENCE_CREATE: "/api/evidence",
-  EVIDENCE_UPLOAD: "/api/evidence/upload",
-  EVIDENCE_GET: (id: string) => `/api/evidence/${id}`,
-  EVIDENCE_UPDATE: (id: string) => `/api/evidence/${id}`,
-  EVIDENCE_DELETE: (id: string) => `/api/evidence/${id}`,
-  EVIDENCE_TIMELINE: (id: string) => `/api/evidence/${id}/timeline`,
-  EVIDENCE_COMMENTS: (id: string) => `/api/evidence/${id}/comments`,
-
   // CAP (Corrective Action Plan) endpoints
   CAP_LIST: "/api/cap",
   CAP_CREATE: "/api/cap",
@@ -38,17 +28,6 @@ export const API_ENDPOINTS = {
   CAP_DASHBOARD: "/api/cap/dashboard",
   CAP_TIMELINE: (id: string) => `/api/cap/${id}/timeline`,
   CAP_COMMENTS: (id: string) => `/api/cap/${id}/comments`,
-
-  // License endpoints
-  LICENSE_LIST: "/api/license",
-  LICENSE_CREATE: "/api/license",
-  LICENSE_GET: (id: string) => `/api/license/${id}`,
-  LICENSE_UPDATE: (id: string) => `/api/license/${id}`,
-  LICENSE_DELETE: (id: string) => `/api/license/${id}`,
-  LICENSE_DASHBOARD: "/api/license/dashboard",
-  LICENSE_CALENDAR: "/api/license/calendar",
-  LICENSE_TIMELINE: (id: string) => `/api/license/${id}/timeline`,
-  LICENSE_COMMENTS: (id: string) => `/api/license/${id}/comments`,
 
   // Regulation endpoints
   REGULATION_LIST: "/api/regulation",
@@ -65,7 +44,6 @@ export const API_ENDPOINTS = {
   REPORT_STATUS: "/api/reports/status",
   REPORT_CALENDAR: "/api/reports/calendar",
   REPORT_CAP: "/api/reports/cap",
-  REPORT_LICENSE: "/api/reports/license",
   REPORT_EXECUTIVE: "/api/reports/executive",
   REPORT_CREATE: "/api/reports",
   REPORT_GET: (id: string) => `/api/reports/${id}`,
@@ -101,5 +79,4 @@ export const API_ENDPOINTS = {
   AI_COMPLIANCE_RISK_SCORE: "/api/ai/compliance/risk-score",
   AI_REGULATION_IMPACT: "/api/ai/regulation/impact",
   AI_EXECUTIVE_SUMMARY: "/api/ai/executive-summary",
-  AI_EVIDENCE_VALIDATE: "/api/ai/evidence/validate",
 } as const;

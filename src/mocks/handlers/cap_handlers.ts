@@ -103,7 +103,6 @@ export async function handleCreateCap({ request }: { request: Request }) {
     rootCause: body.rootCause ?? "",
     complianceId: body.complianceId,
     complianceTitle: body.complianceTitle,
-    evidenceIds: body.evidenceIds ?? [],
     actions: body.actions ?? [],
     aiSuggestions: body.aiSuggestions ?? [],
     progress: body.progress ?? 0,

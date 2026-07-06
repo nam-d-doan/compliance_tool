@@ -66,7 +66,6 @@ export default function ComplianceSubmitPage() {
       dueDate: new Date(values.dueDate).toISOString(),
       criticality: values.criticality,
       penalty: values.penalty,
-      evidenceRequired: values.evidenceRequired,
       tags: values.tags
         ? values.tags
             .split(",")
@@ -115,7 +114,6 @@ export default function ComplianceSubmitPage() {
         : new Date().toISOString(),
       criticality: values.criticality,
       penalty: values.penalty,
-      evidenceRequired: values.evidenceRequired,
       tags: values.tags
         ? values.tags
             .split(",")

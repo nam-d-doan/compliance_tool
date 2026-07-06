@@ -41,7 +41,7 @@ const RECOMMENDED_ACTIONS = [
     dueOffset: "2 weeks",
   },
   {
-    action: "Assess license implications with Legal and Operations.",
+    action: "Assess regulatory implications with Legal and Operations.",
     priority: "medium",
     owner: "Legal Counsel",
     dueOffset: "4 weeks",
@@ -106,24 +106,17 @@ function ImpactGauge({ value, size = 120 }: { value: number; size?: number }) {
 function DependencyGraph({
   regulation,
   obligations,
-  licenses,
   departments,
 }: {
   regulation: string;
   obligations: string[];
-  licenses: string[];
   departments: string[];
 }) {
   const nodeHeight = 36;
   const colGap = 180;
   const rowGap = 48;
   const padding = 24;
-  const maxRows = Math.max(
-    obligations.length,
-    licenses.length,
-    departments.length,
-    1,
-  );
+  const maxRows = Math.max(obligations.length, departments.length, 1);
   const height = padding * 2 + maxRows * rowGap + nodeHeight;
   const width = padding * 2 + colGap * 3;
 
@@ -161,24 +154,6 @@ function DependencyGraph({
             />
           );
         })}
-        {obligations.slice(0, 4).flatMap((_, oi) =>
-          licenses.slice(0, 2).map((_, li) => {
-            const y1 = padding + oi * rowGap + nodeHeight / 2;
-            const y2 = padding + (oi * 2 + li) * rowGap + nodeHeight / 2;
-            return (
-              <line
-                key={`obl-lic-${oi}-${li}`}
-                x1={colX[1] + 60}
-                y1={y1}
-                x2={colX[2] - 60}
-                y2={y2}
-                className="stroke-border"
-                strokeWidth={1.5}
-              />
-            );
-          }),
-        )}
-
         <g transform={`translate(${colX[0] - 80}, ${rootY - nodeHeight / 2})`}>
           <rect
             width={160}
@@ -253,7 +228,7 @@ function DependencyGraph({
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="size-3 rounded-full bg-emerald-500" />
-          Department / License
+          Department
         </span>
       </div>
     </div>
@@ -539,7 +514,6 @@ export default function RegulationImpactPage() {
               <DependencyGraph
                 regulation={item.reference}
                 obligations={obligationItems.map((o) => o.complianceId)}
-                licenses={impactResult.impact.affectedLicenseIds}
                 departments={impactResult.impact.affectedDepartments}
               />
             </CardContent>

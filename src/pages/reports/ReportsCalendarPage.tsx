@@ -30,7 +30,7 @@ import { PageHero } from "@/components/common";
 import { ReportKPIs } from "./components/ReportKPIs";
 import { cn } from "@/lib/utils";
 
-type EventType = "compliance" | "license" | "cap";
+type EventType = "compliance" | "cap";
 
 interface CalendarEvent {
   id: string;
@@ -51,12 +51,6 @@ const EVENT_STYLES: Record<
     label: "Compliance",
     border: "border-blue-200 dark:border-blue-900/40",
     bg: "bg-blue-50/50 dark:bg-blue-900/10",
-  },
-  license: {
-    dot: "bg-teal-500",
-    label: "License",
-    border: "border-teal-200 dark:border-teal-900/40",
-    bg: "bg-teal-50/50 dark:bg-teal-900/10",
   },
   cap: {
     dot: "bg-purple-500",
@@ -138,7 +132,7 @@ export default function ReportsCalendarPage() {
       <div className="space-y-6">
         <PageHero
           title="Calendar Report"
-          subtitle="Compliance due dates, license expiries, and CAP deadlines in one view."
+          subtitle="Compliance due dates and CAP deadlines in one view."
         />
         <LoadingState message="Loading calendar..." />
       </div>
@@ -150,7 +144,7 @@ export default function ReportsCalendarPage() {
       <div className="space-y-6">
         <PageHero
           title="Calendar Report"
-          subtitle="Compliance due dates, license expiries, and CAP deadlines in one view."
+          subtitle="Compliance due dates and CAP deadlines in one view."
         />
         <ErrorState
           title="Could not load calendar"
@@ -165,7 +159,7 @@ export default function ReportsCalendarPage() {
     <div className="space-y-6">
       <PageHero
         title="Calendar Report"
-        subtitle="Compliance due dates, license expiries, and CAP deadlines in one view."
+        subtitle="Compliance due dates and CAP deadlines in one view."
       />
 
       {report && <ReportKPIs kpis={report.kpis} columns={4} />}
@@ -212,32 +206,30 @@ export default function ReportsCalendarPage() {
                 className="size-3.5 text-muted-foreground"
                 aria-hidden="true"
               />
-              {(["all", "compliance", "license", "cap"] as const).map(
-                (type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setSelectedType(type)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                      selectedType === type
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted",
-                    )}
-                  >
-                    {type !== "all" && (
-                      <span
-                        className={cn(
-                          "size-2 rounded-full",
-                          EVENT_STYLES[type].dot,
-                        )}
-                        aria-hidden="true"
-                      />
-                    )}
-                    {type === "all" ? "All events" : EVENT_STYLES[type].label}
-                  </button>
-                ),
-              )}
+              {(["all", "compliance", "cap"] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setSelectedType(type)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                    selectedType === type
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {type !== "all" && (
+                    <span
+                      className={cn(
+                        "size-2 rounded-full",
+                        EVENT_STYLES[type].dot,
+                      )}
+                      aria-hidden="true"
+                    />
+                  )}
+                  {type === "all" ? "All events" : EVENT_STYLES[type].label}
+                </button>
+              ))}
             </div>
 
             <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border bg-border">

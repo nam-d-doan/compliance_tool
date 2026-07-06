@@ -1,13 +1,7 @@
 import type { BaseEntity } from "./base";
 
 export type AIAssistantMode =
-  | "compliance"
-  | "evidence"
-  | "cap"
-  | "regulation"
-  | "policy"
-  | "executive"
-  | "system";
+  "compliance" | "cap" | "regulation" | "policy" | "executive" | "system";
 
 export interface AIReference {
   title: string;
@@ -86,21 +80,5 @@ export interface AISuggestedCAP {
 export interface AIRiskScoreResult {
   score: number;
   factors: { label: string; impact: number }[];
-  explanation: AIExplanation;
-}
-
-export interface AIEvidenceValidationResult {
-  status:
-    | "suitable"
-    | "questionable"
-    | "insufficient"
-    | "wrong_document"
-    | "pending"
-    | "completed";
-  score: number;
-  issues: string[];
-  missingItems: string[];
-  recommendations: string[];
-  extractedMetadata: Record<string, string>;
   explanation: AIExplanation;
 }

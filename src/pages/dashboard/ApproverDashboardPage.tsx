@@ -25,43 +25,28 @@ import {
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import { EmptyState } from "@/components/common/EmptyState";
-import {
-  useDashboard,
-  useComplianceList,
-  useCAPList,
-  useLicenseList,
-} from "@/hooks/queries";
+import { useDashboard, useComplianceList, useCAPList } from "@/hooks/queries";
 
 function useApproverData() {
   const dashboard = useDashboard("approver");
   const compliance = useComplianceList({ page: 1, pageSize: 500 }, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 }, 1, 500);
-  const licenses = useLicenseList({ page: 1, pageSize: 500 }, 1, 500);
 
   const isLoading =
-    dashboard.isPending ||
-    compliance.isPending ||
-    caps.isPending ||
-    licenses.isPending;
-  const error =
-    dashboard.error ?? compliance.error ?? caps.error ?? licenses.error;
+    dashboard.isPending || compliance.isPending || caps.isPending;
+  const error = dashboard.error ?? compliance.error ?? caps.error;
 
-  return { dashboard, compliance, caps, licenses, isLoading, error };
+  return { dashboard, compliance, caps, isLoading, error };
 }
 
 export default function ApproverDashboardPage() {
-  const { dashboard, compliance, caps, licenses, isLoading, error } =
-    useApproverData();
+  const { dashboard, compliance, caps, isLoading, error } = useApproverData();
 
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
     [compliance.data],
   );
   const capItems = useMemo(() => caps.data?.items ?? [], [caps.data]);
-  const licenseItems = useMemo(
-    () => licenses.data?.items ?? [],
-    [licenses.data],
-  );
 
   const approvalStatusData = useMemo(() => {
     const counts = new Map<string, number>();
@@ -114,7 +99,6 @@ export default function ApproverDashboardPage() {
           dashboard.refetch();
           compliance.refetch();
           caps.refetch();
-          licenses.refetch();
         }}
       />
     );
@@ -132,7 +116,6 @@ export default function ApproverDashboardPage() {
         <DashboardApprovalQueue
           compliance={complianceItems}
           caps={capItems}
-          licenses={licenseItems}
           delay={0.1}
         />
       </div>

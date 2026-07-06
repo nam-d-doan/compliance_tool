@@ -58,14 +58,7 @@ export interface ActivityFeedItem extends BaseEntity {
   description: string;
   userId: string;
   userName: string;
-  entityType:
-    | "compliance"
-    | "evidence"
-    | "cap"
-    | "license"
-    | "regulation"
-    | "report"
-    | "user";
+  entityType: "compliance" | "cap" | "regulation" | "report" | "user";
   entityId: string;
   timestamp: string;
 }
@@ -74,7 +67,7 @@ export interface Notification extends BaseEntity {
   userId: string;
   title: string;
   description: string;
-  type: "approval" | "compliance" | "license" | "cap" | "ai" | "system";
+  type: "approval" | "compliance" | "cap" | "ai" | "system";
   read: boolean;
   entityType?: string;
   entityId?: string;

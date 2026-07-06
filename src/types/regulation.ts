@@ -45,7 +45,6 @@ export interface RegulationImpact {
   regulationTitle: string;
   affectedDepartments: string[];
   affectedComplianceIds: string[];
-  affectedLicenseIds: string[];
   affectedPolicies: string[];
   affectedBusinessUnits: string[];
   affectedRisks: string[];

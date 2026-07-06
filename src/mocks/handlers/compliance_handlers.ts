@@ -177,7 +177,6 @@ export async function handleCreateCompliance({
     aiRiskScore: body.aiRiskScore ?? 50,
     tags: body.tags ?? [],
     progress: body.progress ?? 0,
-    evidenceRequired: body.evidenceRequired ?? [],
     createdAt: now,
     updatedAt: now,
   };

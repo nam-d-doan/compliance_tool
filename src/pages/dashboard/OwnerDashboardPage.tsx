@@ -111,55 +111,6 @@ function TaskList({
   );
 }
 
-function EvidenceNeededList({ items }: { items: ComplianceObligation[] }) {
-  const needsEvidence = items.filter(
-    (item) =>
-      item.evidenceRequired.length > 0 &&
-      ["Draft", "Assigned", "Pending Information"].includes(item.status),
-  );
-
-  return (
-    <div className="h-full rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium">Evidence Needed</h3>
-        <Badge variant="secondary" className="h-5">
-          {needsEvidence.length}
-        </Badge>
-      </div>
-      {needsEvidence.length === 0 ? (
-        <EmptyState
-          title="All caught up"
-          description="No items are missing evidence."
-          className="h-64 border-0 bg-transparent"
-        />
-      ) : (
-        <ScrollArea className="h-64 pr-3">
-          <ul className="space-y-2">
-            {needsEvidence.slice(0, 10).map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background p-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{item.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.evidenceRequired.length} required
-                  </p>
-                </div>
-                <Button variant="ghost" size="icon-xs" asChild>
-                  <Link to={`/evidence/upload?compliance=${item.id}`}>
-                    <UploadCloud className="size-3.5" aria-hidden="true" />
-                  </Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </ScrollArea>
-      )}
-    </div>
-  );
-}
-
 export default function OwnerDashboardPage() {
   const { user, dashboard, compliance, caps, isLoading, error } =
     useOwnerData();
@@ -365,10 +316,6 @@ export default function OwnerDashboardPage() {
           title="My Tasks"
           emptyText="No active tasks"
         />
-      </div>
-
-      <div className="md:col-span-1">
-        <EvidenceNeededList items={complianceItems} />
       </div>
 
       <div className="md:col-span-1">

@@ -202,9 +202,6 @@ export default function ComplianceHistoryPage() {
                       <th className="px-4 py-3 text-left font-medium">
                         Submitted By
                       </th>
-                      <th className="px-4 py-3 text-left font-medium">
-                        Evidence
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -228,9 +225,6 @@ export default function ComplianceHistoryPage() {
                           <StatusBadge status={sub.status} size="sm" />
                         </td>
                         <td className="px-4 py-3">{sub.ownerName}</td>
-                        <td className="px-4 py-3">
-                          {sub.evidenceIds.length} files
-                        </td>
                       </tr>
                     ))}
                   </tbody>

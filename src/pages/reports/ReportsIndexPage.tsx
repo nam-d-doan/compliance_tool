@@ -39,8 +39,7 @@ const REPORT_TYPES: ReportTypeCard[] = [
   {
     id: "calendar",
     title: "Calendar Report",
-    description:
-      "Unified view of compliance due dates, license expiries, and CAP deadlines.",
+    description: "Unified view of compliance due dates and CAP deadlines.",
     path: "/reports/calendar",
     icon: Calendar,
     color: "text-teal-600 dark:text-teal-400",
@@ -55,16 +54,6 @@ const REPORT_TYPES: ReportTypeCard[] = [
     icon: ClipboardList,
     color: "text-purple-600 dark:text-purple-400",
     bg: "bg-purple-100 dark:bg-purple-900/30",
-  },
-  {
-    id: "license",
-    title: "License Report",
-    description:
-      "License status, expiry timelines, renewal rates, and criticality breakdown.",
-    path: "/reports/license",
-    icon: FileCheck,
-    color: "text-amber-600 dark:text-amber-400",
-    bg: "bg-amber-100 dark:bg-amber-900/30",
   },
   {
     id: "executive",

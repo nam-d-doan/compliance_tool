@@ -31,17 +31,6 @@ import { useCreateTemplate } from "@/hooks/mutations/useAdminMutations";
 import { toast } from "sonner";
 import type { Template } from "@/types";
 
-const EVIDENCE_OPTIONS = [
-  "Policy Document",
-  "Audit Report",
-  "Training Record",
-  "Risk Assessment",
-  "Transaction Log",
-  "KYC Document",
-  "License Certificate",
-  "Incident Report",
-];
-
 const CATEGORIES = [
   "AML/KYC",
   "Data Privacy",
@@ -73,9 +62,6 @@ const templateSchema = z.object({
   frequency: z.enum(FREQUENCIES),
   ownerId: z.string().min(1, "Owner is required"),
   approverId: z.string().min(1, "Approver is required"),
-  evidenceRequirements: z
-    .array(z.string())
-    .min(1, "Select at least one evidence requirement"),
   criticality: z.enum(CRITICALITY),
   applicableRegulationIds: z.array(z.string()).default([]),
   status: z.enum(STATUSES),
@@ -107,7 +93,6 @@ function TemplateForm({
       frequency: "annually",
       criticality: "medium",
       status: "draft",
-      evidenceRequirements: [],
       applicableRegulationIds: [],
     },
   });
@@ -253,44 +238,6 @@ function TemplateForm({
             </p>
           )}
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Evidence Requirements</Label>
-        <Controller
-          name="evidenceRequirements"
-          control={control}
-          render={({ field }) => (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {EVIDENCE_OPTIONS.map((item) => {
-                const checked = field.value.includes(item);
-                return (
-                  <label
-                    key={item}
-                    className="flex items-center gap-2 rounded-lg border border-border bg-card p-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-input"
-                      checked={checked}
-                      onChange={(e) => {
-                        const next = e.target.checked
-                          ? [...field.value, item]
-                          : field.value.filter((i) => i !== item);
-                        field.onChange(next);
-                      }}
-                    />
-                    <span className="truncate">{item}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        />
-        {errors.evidenceRequirements && (
-          <p className="text-xs text-destructive">
-            {errors.evidenceRequirements.message}
-          </p>
-        )}
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
@@ -699,14 +646,6 @@ export default function AdminTemplatesPage() {
                   value={selectedTemplate.criticality}
                 />
                 <Fact label="Status" value={selectedTemplate.status} />
-              </div>
-              <div>
-                <h4 className="mb-2 font-medium">Evidence Requirements</h4>
-                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                  {selectedTemplate.evidenceRequirements.map((req) => (
-                    <li key={req}>{req}</li>
-                  ))}
-                </ul>
               </div>
               <div>
                 <h4 className="mb-2 font-medium">Applicable Regulations</h4>

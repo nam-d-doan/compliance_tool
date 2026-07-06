@@ -175,7 +175,7 @@ interface CalendarEventRow {
   id: string;
   title: string;
   date: string;
-  type: "compliance" | "license" | "cap";
+  type: "compliance" | "cap";
   status: string;
   entityId: string;
   owner?: string;
@@ -194,18 +194,6 @@ function calendarReport(db: ReturnType<typeof getDb>): Report {
       owner: i.ownerName,
     }));
 
-  const licenseEvents: CalendarEventRow[] = db.licenses
-    .filter((i) => i.expiryDate)
-    .map((i) => ({
-      id: `evt-lic-${i.id}`,
-      title: i.licenseName,
-      date: i.expiryDate,
-      type: "license",
-      status: i.status,
-      entityId: i.licenseNumber,
-      owner: i.ownerName,
-    }));
-
   const capEvents: CalendarEventRow[] = db.caps
     .filter((i) => i.dueDate)
     .map((i) => ({
@@ -218,7 +206,7 @@ function calendarReport(db: ReturnType<typeof getDb>): Report {
       owner: i.ownerName,
     }));
 
-  const events = [...complianceEvents, ...licenseEvents, ...capEvents];
+  const events = [...complianceEvents, ...capEvents];
 
   return {
     id: "report-calendar",
@@ -227,7 +215,6 @@ function calendarReport(db: ReturnType<typeof getDb>): Report {
     filters: {},
     kpis: [
       { label: "Compliance Due", value: complianceEvents.length },
-      { label: "License Expiries", value: licenseEvents.length },
       { label: "CAP Deadlines", value: capEvents.length },
       {
         label: "Next 30 Days",
@@ -242,9 +229,8 @@ function calendarReport(db: ReturnType<typeof getDb>): Report {
     ],
     charts: [],
     tableData: events as unknown as Record<string, unknown>[],
-    summary: `Calendar shows ${events.length} upcoming events including ${licenseEvents.length} license expiries and ${capEvents.length} CAP deadlines.`,
+    summary: `Calendar shows ${events.length} upcoming events including ${capEvents.length} CAP deadlines.`,
     aiInsights: [
-      "Concentration of license renewals in APAC during the next quarter.",
       "5 CAP deadlines fall within the same week as regulatory submissions.",
     ],
     createdAt: new Date().toISOString(),
@@ -411,149 +397,11 @@ function capReport(db: ReturnType<typeof getDb>): Report {
   };
 }
 
-function licenseReport(db: ReturnType<typeof getDb>): Report {
-  const items = db.licenses;
-  const active = items.filter((i) => i.status === "Active").length;
-  const expired = items.filter((i) => i.status === "Expired").length;
-  const expiring = items.filter((i) => i.status === "Expiring Soon").length;
-  const renewed = items.filter((i) => i.status === "Renewed").length;
-  const suspended = items.filter((i) => i.status === "Suspended").length;
-  const expiring30 = items.filter(
-    (i) => i.remainingDays >= 0 && i.remainingDays <= 30,
-  ).length;
-  const expiring60 = items.filter(
-    (i) => i.remainingDays > 30 && i.remainingDays <= 60,
-  ).length;
-  const expiring90 = items.filter(
-    (i) => i.remainingDays > 60 && i.remainingDays <= 90,
-  ).length;
-  const renewalRate =
-    active + renewed > 0
-      ? Math.round(((active + renewed) / (active + renewed + expired)) * 1000) /
-        10
-      : 0;
-
-  const kpis: ReportKPI[] = [
-    { label: "Active", value: active },
-    {
-      label: "Expiring 30 Days",
-      value: expiring30,
-      trend: "up",
-      trendPercent: 3.2,
-    },
-    { label: "Expiring 60 Days", value: expiring60 },
-    { label: "Expiring 90 Days", value: expiring90 },
-    { label: "Expired", value: expired },
-    { label: "Suspended", value: suspended },
-    {
-      label: "Renewal Rate",
-      value: `${renewalRate}%`,
-      trend: "up",
-      trendPercent: 1.5,
-    },
-  ];
-
-  const next6Months = Array.from({ length: 6 }, (_, i) =>
-    format(addDays(today, i * 30), "MMM yyyy"),
-  );
-  const expiryByMonth = next6Months.map((_, i) => {
-    const start = addDays(today, i * 30);
-    const end = addDays(start, 30);
-    return items.filter((l) => {
-      const expiry = new Date(l.expiryDate);
-      return expiry >= start && expiry < end;
-    }).length;
-  });
-
-  const byStatus: Record<string, number> = {};
-  items.forEach((i) => {
-    byStatus[i.status] = (byStatus[i.status] ?? 0) + 1;
-  });
-
-  const byCriticality: Record<string, number> = {};
-  items.forEach((i) => {
-    byCriticality[i.criticality] = (byCriticality[i.criticality] ?? 0) + 1;
-  });
-
-  const departments = [...new Set(items.map((i) => i.department))].slice(0, 8);
-
-  const charts: ReportChart[] = [
-    {
-      id: "license-expiry-timeline",
-      type: "bar",
-      title: "Expiry Timeline",
-      labels: next6Months,
-      datasets: [{ label: "Expiring", data: expiryByMonth, color: "#3b82f6" }],
-    },
-    {
-      id: "license-status",
-      type: "pie",
-      title: "By Status",
-      labels: Object.keys(byStatus),
-      datasets: [{ label: "Licenses", data: Object.values(byStatus) }],
-    },
-    {
-      id: "license-department",
-      type: "bar",
-      title: "By Department",
-      labels: departments,
-      datasets: [
-        {
-          label: "Licenses",
-          data: departments.map(
-            (d) => items.filter((i) => i.department === d).length,
-          ),
-          color: "#0b8c8e",
-        },
-      ],
-    },
-    {
-      id: "license-criticality",
-      type: "bar",
-      title: "By Criticality",
-      labels: Object.keys(byCriticality),
-      datasets: [
-        {
-          label: "Licenses",
-          data: Object.values(byCriticality),
-          color: "#f59e0b",
-        },
-      ],
-    },
-  ];
-
-  return {
-    id: "report-license",
-    type: "license",
-    title: "License Management Report",
-    filters: {},
-    kpis,
-    charts,
-    tableData: items.slice(0, 20).map((i) => ({
-      number: i.licenseNumber,
-      name: i.licenseName,
-      owner: i.ownerName,
-      expiry: i.expiryDate,
-      status: i.status,
-      remainingDays: i.remainingDays,
-      criticality: i.criticality,
-    })) as unknown as Record<string, unknown>[],
-    summary: `${expiring} licenses require renewal attention within 60 days.`,
-    aiInsights: [
-      "Retail Banking licenses concentrated in APAC are expiring soon.",
-      "3 suspended licenses may impact new product launches.",
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-}
-
 function executiveReport(
   db: ReturnType<typeof getDb>,
 ): Report & { data: ExecutiveSummary } {
   const compliance = db.compliance;
   const caps = db.caps;
-  const licenses = db.licenses;
   const total = compliance.length;
   const completed = compliance.filter((i) =>
     ["Completed", "Approved"].includes(i.status),
@@ -562,9 +410,6 @@ function executiveReport(
     ? Math.round((completed / total) * 1000) / 10
     : 0;
   const overdue = compliance.filter((i) => i.status === "Overdue").length;
-  const activeLicenses = licenses.filter((i) =>
-    ["Active", "Renewed"].includes(i.status),
-  ).length;
   const riskScore = Math.round(
     compliance.reduce((sum, i) => sum + i.aiRiskScore, 0) / (total || 1),
   );
@@ -596,12 +441,6 @@ function executiveReport(
       overdue: caps.filter((i) => i.status === "Overdue").length,
       averageResolutionDays: caps.length ? 42 : 0,
     },
-    licenseStatus: {
-      active: licenses.filter((i) => i.status === "Active").length,
-      expired: licenses.filter((i) => i.status === "Expired").length,
-      expiringSoon: licenses.filter((i) => i.status === "Expiring Soon").length,
-      renewed: licenses.filter((i) => i.status === "Renewed").length,
-    },
     regulatoryChanges: db.regulations.slice(0, 5).map((r) => ({
       id: r.id,
       title: r.title,
@@ -625,11 +464,10 @@ function executiveReport(
         };
       }),
     aiSummary:
-      "Overall compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 critical items. License renewals require attention in APAC.",
+      "Overall compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 critical items.",
     recommendedActions: [
       "Review workload allocation in Treasury — owner capacity is below target.",
       "Escalate 5 overdue critical obligations to the regional risk committee.",
-      "Start renewal workflow for 8 APAC licenses expiring in the next 60 days.",
       "Add reviewer capacity to Retail Banking CAPs to reduce closure time.",
     ],
   };
@@ -673,11 +511,6 @@ function executiveReport(
     capStatus[i.status] = (capStatus[i.status] ?? 0) + 1;
   });
 
-  const licenseStatus: Record<string, number> = {};
-  licenses.forEach((i) => {
-    licenseStatus[i.status] = (licenseStatus[i.status] ?? 0) + 1;
-  });
-
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
   const heatmapData = {
     rows: summary.departmentRanking.map((d) => d.department),
@@ -718,7 +551,6 @@ function executiveReport(
       },
       { label: "Risk Score", value: riskScore },
       { label: "Open CAPs", value: summary.capOverview.open },
-      { label: "Active Licenses", value: activeLicenses },
       {
         label: "Overdue Items",
         value: overdue,
@@ -767,13 +599,6 @@ function executiveReport(
         labels: Object.keys(capStatus),
         datasets: [{ label: "CAPs", data: Object.values(capStatus) }],
       },
-      {
-        id: "license-status-pie",
-        type: "pie",
-        title: "License Status",
-        labels: Object.keys(licenseStatus),
-        datasets: [{ label: "Licenses", data: Object.values(licenseStatus) }],
-      },
     ],
     tableData: summary.departmentRanking as unknown as Record<
       string,
@@ -803,9 +628,6 @@ export async function handleGetReport({
       break;
     case "cap":
       report = capReport(db);
-      break;
-    case "license":
-      report = licenseReport(db);
       break;
     case "executive":
       report = executiveReport(db);

@@ -6,7 +6,6 @@ import type {
   AICopilotMessage,
   AISuggestedCAP,
   AIRiskScoreResult,
-  AIEvidenceValidationResult,
   RegulationImpact,
   AIExplanation,
 } from "@/types";
@@ -17,7 +16,7 @@ function createExplanation(recommendation: string): AIExplanation {
     confidence: faker.number.float({ min: 0.72, max: 0.95 }),
     reasoning: [
       "Analyzed historical patterns and current data context.",
-      "Cross-referenced related obligations, evidence, and regulatory requirements.",
+      "Cross-referenced related obligations and regulatory requirements.",
       "Weighted risk factors including due date proximity and criticality.",
       "Compared against similar resolved cases in the knowledge base.",
     ],
@@ -46,10 +45,10 @@ const COPILOT_RESPONSES = [
   {
     keywords: ["prioritize", "week", "focus"],
     content:
-      "This week, prioritize the 12 overdue AML obligations in Retail Banking and the 5 expiring licenses in APAC. These items have the highest combined risk score and regulatory visibility.",
+      "This week, prioritize the 12 overdue AML obligations in Retail Banking. These items have the highest combined risk score and regulatory visibility.",
     followups: [
       "Show me the overdue AML obligations",
-      "Which licenses expire in APAC?",
+      "Which obligations are due this week?",
     ],
   },
   {
@@ -62,7 +61,7 @@ const COPILOT_RESPONSES = [
     keywords: ["summarize", "regulation"],
     content:
       "The new regulation introduces 3 additional reporting obligations for consumer protection, removes the legacy quarterly filing, and extends data retention requirements from 5 to 7 years.",
-    followups: ["Which departments are affected?", "What evidence do we need?"],
+    followups: ["Which departments are affected?", "What do we need to do?"],
   },
   {
     keywords: ["generate", "cap"],
@@ -73,26 +72,14 @@ const COPILOT_RESPONSES = [
   {
     keywords: ["status", "recommend"],
     content:
-      'Based on the uploaded evidence and historical approvals, I recommend marking this obligation as "Complied". Evidence completeness is 94% and no missing documents were detected.',
-    followups: ["What evidence is attached?", "Show similar approvals"],
+      'Based on the submitted documentation and historical approvals, I recommend marking this obligation as "Complied".',
+    followups: ["Show attached documents", "Show similar approvals"],
   },
   {
     keywords: ["explain", "obligation"],
     content:
-      "This obligation requires the business unit to conduct monthly transaction monitoring reviews, document findings, and retain evidence for at least 5 years for audit purposes.",
-    followups: ["What evidence is required?", "Who owns this obligation?"],
-  },
-  {
-    keywords: ["license", "expire"],
-    content:
-      "There are 8 licenses expiring in the next 60 days. I recommend starting renewal now for the 3 critical licenses to avoid operational disruption.",
-    followups: ["Which licenses are critical?", "Show renewal calendar"],
-  },
-  {
-    keywords: ["evidence", "missing"],
-    content:
-      "The evidence package is missing the signed attestation page and the latest policy version. Upload these two documents to reach a completeness score above 90%.",
-    followups: ["Upload evidence", "Validate current evidence"],
+      "This obligation requires the business unit to conduct monthly transaction monitoring reviews, document findings, and retain records for at least 5 years for audit purposes.",
+    followups: ["What is required?", "Who owns this obligation?"],
   },
   {
     keywords: ["dashboard", "executive"],
@@ -109,8 +96,8 @@ const COPILOT_RESPONSES = [
   {
     keywords: ["approval", "approve"],
     content:
-      "You have 4 items awaiting approval: 2 compliance submissions, 1 CAP closure, and 1 license renewal. All submissions have evidence completeness above 90% and are ready for review.",
-    followups: ["Review compliance submissions", "Review license renewal"],
+      "You have 3 items awaiting approval: 2 compliance submissions and 1 CAP closure. All submissions are ready for review.",
+    followups: ["Review compliance submissions", "Review CAP closure"],
   },
   {
     keywords: ["open", "cap", "caps"],
@@ -121,7 +108,7 @@ const COPILOT_RESPONSES = [
   {
     keywords: ["help"],
     content:
-      "I can help you summarize regulations, recommend compliance status, generate CAPs, validate evidence, or prioritize your work. What would you like to focus on?",
+      "I can help you summarize regulations, recommend compliance status, generate CAPs, or prioritize your work. What would you like to focus on?",
     followups: [
       "What's our compliance status?",
       "Which regulations expire soon?",
@@ -199,10 +186,10 @@ export async function handleAiCapGenerate({ request }: { request: Request }) {
       body.description ??
       "Corrective action plan generated from non-compliance findings and historical remediation patterns.",
     rootCause:
-      "Inadequate control execution and missing evidence documentation during the review period.",
+      "Inadequate control execution and missing documentation during the review period.",
     recommendedActions: [
       "Update control procedures to clarify ownership and deadlines.",
-      "Collect and upload missing evidence to the evidence repository.",
+      "Collect and upload missing documentation.",
       "Conduct a follow-up review with the compliance owner within 14 days.",
       "Implement a recurring reminder before the next due date.",
     ],
@@ -237,7 +224,7 @@ export async function handleAiComplianceRiskScore({
         impact: faker.number.int({ min: 10, max: 30 }),
       },
       {
-        label: "Evidence completeness",
+        label: "Documentation completeness",
         impact: faker.number.int({ min: 10, max: 25 }),
       },
       {
@@ -273,9 +260,6 @@ export async function handleAiRegulationImpact({
     affectedComplianceIds: db.compliance
       .filter((c) => c.regulationId === regulation.id)
       .map((c) => c.id),
-    affectedLicenseIds: db.licenses
-      .filter((l) => l.regulationId === regulation.id)
-      .map((l) => l.id),
     affectedPolicies: [
       "Data Retention Policy",
       "Customer Onboarding Policy",
@@ -290,45 +274,15 @@ export async function handleAiRegulationImpact({
   return jsonResponse({
     impact,
     explanation: createExplanation(
-      "Review impacted compliance, licenses, and policies to plan remediation.",
+      "Review impacted compliance obligations and policies to plan remediation.",
     ),
   });
 }
 
 export async function handleAiExecutiveSummary() {
   await getDelay(500, 900);
-  const summary = `Enterprise compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 critical items. License renewals require attention in APAC.`;
+  const summary = `Enterprise compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 critical items.`;
   return jsonResponse({ summary, explanation: createExplanation(summary) });
-}
-
-export async function handleAiEvidenceValidate({
-  request,
-}: {
-  request: Request;
-}) {
-  await getDelay(400, 700);
-  const body = (await request.json()) as { evidenceId?: string };
-  const db = getDb();
-  const evidence = body.evidenceId
-    ? findById(db.evidence, body.evidenceId)
-    : undefined;
-
-  const result: AIEvidenceValidationResult = {
-    status: evidence ? evidence.aiValidation.status : "suitable",
-    score: evidence ? evidence.aiValidation.score : 92,
-    issues: evidence?.aiValidation.issues ?? [],
-    missingItems: evidence?.aiValidation.missingItems ?? [],
-    recommendations: evidence?.aiValidation.recommendations ?? [
-      "No action required",
-    ],
-    extractedMetadata: evidence?.aiValidation.extractedMetadata ?? {},
-    explanation: createExplanation(
-      evidence
-        ? `Evidence validation result: ${evidence.aiValidation.status}`
-        : "Evidence appears suitable.",
-    ),
-  };
-  return jsonResponse(result);
 }
 
 function createRecommendation(recommendation: string): AIExplanation {
@@ -341,5 +295,4 @@ export const aiHandlers = [
   http.post("/api/ai/compliance/risk-score", handleAiComplianceRiskScore),
   http.post("/api/ai/regulation/impact", handleAiRegulationImpact),
   http.post("/api/ai/executive-summary", handleAiExecutiveSummary),
-  http.post("/api/ai/evidence/validate", handleAiEvidenceValidate),
 ];

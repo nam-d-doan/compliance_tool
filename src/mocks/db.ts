@@ -19,16 +19,13 @@ import type {
   Regulation,
   ComplianceObligation,
   ComplianceSubmission,
-  Evidence,
   CAP,
   CAPAction,
-  License,
   Notification,
   ComplianceTimelineEvent,
   CAPTimelineEvent,
   ComplianceComment,
   CAPComment,
-  EvidenceComment,
 } from "@/types";
 
 faker.seed(42);
@@ -91,25 +88,6 @@ const CATEGORIES = [
   "Capital Adequacy",
   "Cybersecurity",
   "Financial Reporting",
-] as const;
-
-const LICENSE_CATEGORIES = [
-  "Banking License",
-  "Money Transmitter",
-  "Broker-Dealer",
-  "Insurance License",
-  "Payment Institution",
-  "Crypto Asset License",
-] as const;
-
-const EVIDENCE_CATEGORIES = [
-  "Policy Document",
-  "Audit Report",
-  "License Certificate",
-  "Training Record",
-  "Transaction Log",
-  "Risk Assessment",
-  "KYC Document",
 ] as const;
 
 const FREQUENCIES = [
@@ -328,7 +306,7 @@ function generateComplianceObligations(
       dueDate: iso(dueDate),
       penalty: faker.helpers.arrayElement([
         "Up to $1M fine",
-        "License suspension",
+        "Operational suspension",
         "Regulatory censure",
         "Mandatory remediation",
         "Reputational damage",
@@ -344,10 +322,6 @@ function generateComplianceObligations(
         ? faker.lorem.sentence()
         : undefined,
       progress: faker.number.int({ min: 0, max: 100 }),
-      evidenceRequired: Array.from(
-        { length: faker.number.int({ min: 1, max: 4 }) },
-        () => faker.lorem.words(2),
-      ),
       createdAt: iso(createdAt),
       updatedAt: iso(randomDate(createdAt, dueDate)),
     };
@@ -372,7 +346,6 @@ function generateSubmissions(
       performedDate: iso(performedDate),
       status: pick(COMPLIANCE_SUBMISSION_STATUSES),
       comments: faker.lorem.paragraph(),
-      evidenceIds: [],
       additionalNotes: faker.lorem.sentence(),
       capRequired: faker.datatype.boolean(0.25),
       riskRating: pick(PRIORITY_LEVELS),
@@ -381,96 +354,6 @@ function generateSubmissions(
         : undefined,
       createdAt: iso(performedDate),
       updatedAt: iso(randomDate(performedDate, today)),
-    };
-  });
-}
-
-function generateEvidence(
-  compliance: ComplianceObligation[],
-  users: UserProfile[],
-  count = 150,
-): Evidence[] {
-  return Array.from({ length: count }, () => {
-    const item = pick(compliance);
-    const owner = users.find((u) => u.id === item.ownerId) ?? pick(users);
-    const category = pick(EVIDENCE_CATEGORIES);
-    const uploadDate = randomDate(subDays(today, 180), today);
-    const status = weightedPick<Evidence["status"]>([
-      { item: "Completed", weight: 30 },
-      { item: "Suitable Evidence", weight: 25 },
-      { item: "AI Validation", weight: 10 },
-      { item: "Questionable Evidence", weight: 10 },
-      { item: "Insufficient Evidence", weight: 10 },
-      { item: "Wrong Document", weight: 5 },
-      { item: "Scanning", weight: 5 },
-      { item: "Uploading", weight: 5 },
-    ]);
-    const score = faker.number.int({ min: 45, max: 99 });
-    return {
-      id: uid("evd"),
-      name: `${category} - ${faker.system.fileName()}`,
-      fileName: faker.system.fileName(),
-      category,
-      complianceId: item.id,
-      complianceTitle: item.title,
-      ownerId: owner.id,
-      ownerName: owner.name,
-      department: item.department,
-      businessUnit: item.businessUnit,
-      uploadDate: iso(uploadDate),
-      version: faker.number.int({ min: 1, max: 4 }),
-      status,
-      aiValidation: {
-        status:
-          score > 85
-            ? "suitable"
-            : score > 70
-              ? "questionable"
-              : score > 50
-                ? "insufficient"
-                : "wrong_document",
-        score,
-        issues: faker.helpers.arrayElements(
-          [
-            "Missing signature",
-            "Unreadable page",
-            "Incorrect form version",
-            "Page missing",
-          ],
-          { min: 0, max: 2 },
-        ),
-        missingItems: faker.helpers.arrayElements(
-          ["Seal", "Date stamp", "Authorization"],
-          { min: 0, max: 2 },
-        ),
-        confidence: faker.number.float({ min: 0.7, max: 0.96 }),
-        recommendations: faker.helpers.arrayElements(
-          ["Rescan document", "Upload signed version", "Add missing pages"],
-          { min: 0, max: 2 },
-        ),
-        extractedMetadata: {
-          "Document Type": category,
-          "Reference Number": faker.string.alphanumeric(8).toUpperCase(),
-        },
-      },
-      fileSize: faker.number.int({ min: 10000, max: 10000000 }),
-      fileType: faker.helpers.arrayElement([
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "image/png",
-        "text/csv",
-      ]),
-      checksum: faker.string.alphanumeric(64),
-      tags: faker.helpers.arrayElements(["audit", "kyc", "policy", "license"], {
-        min: 1,
-        max: 3,
-      }),
-      ocrText: faker.datatype.boolean(0.5)
-        ? faker.lorem.paragraphs(2)
-        : undefined,
-      url: faker.system.filePath(),
-      createdAt: iso(uploadDate),
-      updatedAt: iso(randomDate(uploadDate, today)),
     };
   });
 }
@@ -553,7 +436,6 @@ function generateCAPs(
       rootCause: faker.lorem.sentence(),
       complianceId: item.id,
       complianceTitle: item.title,
-      evidenceIds: [],
       actions,
       aiSuggestions: [
         {
@@ -576,90 +458,11 @@ function generateCAPs(
   });
 }
 
-function generateLicenses(
-  regulations: Regulation[],
-  users: UserProfile[],
-  count = 40,
-): License[] {
-  return Array.from({ length: count }, (_, i) => {
-    const category = pick(LICENSE_CATEGORIES);
-    const owner = pick(users.filter((u) => u.role === "owner"));
-    const approver = pick(
-      users.filter((u) => u.role === "approver" || u.role === "admin"),
-    );
-    const regulation = pick(regulations);
-    const issueDate = randomDate(subDays(today, 730), subDays(today, 30));
-    const expiryDate = addDays(
-      issueDate,
-      faker.number.int({ min: 180, max: 1095 }),
-    );
-    const remainingDays = Math.floor(
-      (new Date(expiryDate).getTime() - today.getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
-    let status: License["status"] = "Active";
-    if (remainingDays < 0) status = "Expired";
-    else if (remainingDays <= 60) status = "Expiring Soon";
-    else if (faker.datatype.boolean(0.15)) status = "Renewed";
-    else if (faker.datatype.boolean(0.05)) status = "Suspended";
-    return {
-      id: uid("lic"),
-      licenseNumber: `LIC-${faker.string.alpha({ length: 3, casing: "upper" })}-${pad(i + 1, 4)}`,
-      licenseName: `${category} - ${faker.location.country()}`,
-      issuingAuthority: pick(REGULATORS),
-      department: pick(DEPARTMENTS),
-      businessUnit: pick(BUSINESS_UNITS),
-      country: faker.location.country(),
-      location: pick(LOCATIONS),
-      issueDate: iso(issueDate),
-      expiryDate: iso(expiryDate),
-      renewalCycle: pick(["Annual", "Biennial", "Triennial", "Five-Year"]),
-      ownerId: owner.id,
-      ownerName: owner.name,
-      approverId: approver.id,
-      approverName: approver.name,
-      criticality: faker.helpers.weightedArrayElement([
-        { weight: 15, value: "low" },
-        { weight: 35, value: "medium" },
-        { weight: 35, value: "high" },
-        { weight: 15, value: "critical" },
-      ]),
-      status,
-      regulationId: regulation.id,
-      regulationName: regulation.title,
-      aiRiskScore: faker.number.int({ min: 10, max: 95 }),
-      remainingDays,
-      renewalPriority:
-        remainingDays < 30
-          ? "critical"
-          : remainingDays < 60
-            ? "high"
-            : remainingDays < 120
-              ? "medium"
-              : "low",
-      supportingDocumentIds: [],
-      tags: faker.helpers.arrayElements(["license", "renewal", "regulatory"], {
-        min: 1,
-        max: 2,
-      }),
-      createdAt: iso(issueDate),
-      updatedAt: iso(randomDate(issueDate, today)),
-    };
-  });
-}
-
 function generateNotifications(
   users: UserProfile[],
   count = 30,
 ): Notification[] {
-  const types = [
-    "approval",
-    "compliance",
-    "license",
-    "cap",
-    "ai",
-    "system",
-  ] as const;
+  const types = ["approval", "compliance", "cap", "ai", "system"] as const;
   return Array.from({ length: count }, () => {
     const user = pick(users);
     const type = pick(types);
@@ -671,13 +474,7 @@ function generateNotifications(
       description: faker.lorem.sentence(),
       type,
       read: faker.datatype.boolean(0.4),
-      entityType: pick([
-        "compliance",
-        "evidence",
-        "cap",
-        "license",
-        "regulation",
-      ]),
+      entityType: pick(["compliance", "cap", "regulation"]),
       entityId: uid("ent"),
       actionUrl: "#",
       createdAt: iso(createdAt),
@@ -700,9 +497,7 @@ function generateAuditLogs(users: UserProfile[], count = 200): AuditLog[] {
   ] as const;
   const modules = [
     "compliance",
-    "evidence",
     "cap",
-    "license",
     "regulation",
     "report",
     "admin",
@@ -807,10 +602,6 @@ function generateTemplates(
       ownerName: owner.name,
       approverId: approver.id,
       approverName: approver.name,
-      evidenceRequirements: Array.from(
-        { length: faker.number.int({ min: 1, max: 4 }) },
-        () => faker.lorem.words(2),
-      ),
       criticality: pick(PRIORITY_LEVELS),
       applicableRegulationIds: [regulation.id],
       status: pick(["draft", "published", "archived"]),
@@ -924,7 +715,7 @@ function generateTimelineFor(
 ): CAPTimelineEvent[];
 function generateTimelineFor(
   entityId: string,
-  entityType: "license" | "regulation" | "evidence",
+  entityType: "regulation",
 ): TimelineEvent[];
 function generateTimelineFor(entityId: string, entityType: string): unknown[] {
   const eventTypes: Record<string, string[]> = {
@@ -938,7 +729,6 @@ function generateTimelineFor(entityId: string, entityType: string): unknown[] {
       "cap_created",
       "closed",
       "commented",
-      "evidence_uploaded",
     ],
     cap: [
       "created",
@@ -948,11 +738,8 @@ function generateTimelineFor(entityId: string, entityType: string): unknown[] {
       "approved",
       "rejected",
       "commented",
-      "evidence_uploaded",
     ],
-    license: ["created", "updated", "renewed", "expired", "approved"],
     regulation: ["published", "updated"],
-    evidence: ["uploaded", "scanning", "ai_validation", "approved", "rejected"],
   };
   const types = eventTypes[entityType];
   const count = faker.number.int({ min: 5, max: 12 });
@@ -988,10 +775,6 @@ function generateCommentsFor(
   entityType: "compliance",
 ): ComplianceComment[];
 function generateCommentsFor(entityId: string, entityType: "cap"): CAPComment[];
-function generateCommentsFor(
-  entityId: string,
-  entityType: "evidence",
-): EvidenceComment[];
 function generateCommentsFor(entityId: string, entityType: string): Comment[];
 function generateCommentsFor(entityId: string, entityType: string): unknown[] {
   const count = faker.number.int({ min: 3, max: 8 });
@@ -1010,7 +793,6 @@ function generateCommentsFor(entityId: string, entityType: string): unknown[] {
     };
     if (entityType === "compliance") comment.complianceId = entityId;
     else if (entityType === "cap") comment.capId = entityId;
-    else if (entityType === "evidence") comment.evidenceId = entityId;
     else {
       comment.entityId = entityId;
       comment.entityType = entityType;
@@ -1024,9 +806,7 @@ export interface MockDb {
   regulations: Regulation[];
   compliance: ComplianceObligation[];
   submissions: ComplianceSubmission[];
-  evidence: Evidence[];
   caps: CAP[];
-  licenses: License[];
   notifications: Notification[];
   auditLogs: AuditLog[];
   roles: RoleEntity[];
@@ -1047,9 +827,7 @@ export function getDb(): MockDb {
   const regulations = generateRegulations();
   const compliance = generateComplianceObligations(regulations, users);
   const submissions = generateSubmissions(compliance, users);
-  const evidence = generateEvidence(compliance, users);
   const caps = generateCAPs(compliance, users);
-  const licenses = generateLicenses(regulations, users);
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
@@ -1063,9 +841,7 @@ export function getDb(): MockDb {
     regulations,
     compliance,
     submissions,
-    evidence,
     caps,
-    licenses,
     notifications,
     auditLogs,
     roles,
@@ -1083,9 +859,7 @@ export function getDb(): MockDb {
       regulations: regulations.length,
       compliance: compliance.length,
       submissions: submissions.length,
-      evidence: evidence.length,
       caps: caps.length,
-      licenses: licenses.length,
       notifications: notifications.length,
       auditLogs: auditLogs.length,
       roles: roles.length,
