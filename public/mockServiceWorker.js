@@ -1,25 +1,6 @@
 /* eslint-disable */
 /* tslint:disable */
 
-// Self-unregistration: this demo no longer uses MSW's service worker.
-// Unregister this SW on activation so it stops intercepting /api/* requests
-// and returning index.html (which caused "Unexpected token '<'" JSON errors).
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    self.registration.unregister().then(() => self.skipWaiting()),
-  );
-});
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    self.clients.claim().then(() => {
-      // Force any controlled clients to navigate so the unregistration takes effect.
-      self.clients.matchAll({ type: "window" }).then((clients) => {
-        clients.forEach((client) => client.navigate(client.url));
-      });
-    }),
-  );
-});
-
 /**
  * Mock Service Worker.
  * @see https://github.com/mswjs/msw
