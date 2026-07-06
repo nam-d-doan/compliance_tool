@@ -1,0 +1,220 @@
+import {
+  createBrowserRouter,
+  Navigate,
+  type RouteObject,
+} from "react-router-dom";
+import { lazy } from "react";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { ProtectedRoute } from "@/components/navigation/ProtectedRoute";
+import {
+  AuthRouteGuard,
+  MFARouteGuard,
+} from "@/components/navigation/AuthRouteGuards";
+
+// Auth pages
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const ForgotPasswordPage = lazy(
+  () => import("@/pages/auth/ForgotPasswordPage"),
+);
+const MFAPage = lazy(() => import("@/pages/auth/MFAPage"));
+
+// Dashboard pages
+const DashboardRedirect = lazy(
+  () => import("@/pages/dashboard/DashboardRedirect"),
+);
+const ExecutiveDashboardPage = lazy(
+  () => import("@/pages/dashboard/ExecutiveDashboardPage"),
+);
+const OwnerDashboardPage = lazy(
+  () => import("@/pages/dashboard/OwnerDashboardPage"),
+);
+const ApproverDashboardPage = lazy(
+  () => import("@/pages/dashboard/ApproverDashboardPage"),
+);
+const ReviewerDashboardPage = lazy(
+  () => import("@/pages/dashboard/ReviewerDashboardPage"),
+);
+const AdminDashboardPage = lazy(
+  () => import("@/pages/dashboard/AdminDashboardPage"),
+);
+
+// Module placeholder pages
+const ComplianceListPage = lazy(
+  () => import("@/pages/compliance/ComplianceListPage"),
+);
+const ComplianceDetailPage = lazy(
+  () => import("@/pages/compliance/ComplianceDetailPage"),
+);
+const ComplianceSubmitPage = lazy(
+  () => import("@/pages/compliance/ComplianceSubmitPage"),
+);
+const ComplianceHistoryPage = lazy(
+  () => import("@/pages/compliance/ComplianceHistoryPage"),
+);
+const EvidenceLibraryPage = lazy(
+  () => import("@/pages/evidence/EvidenceLibraryPage"),
+);
+const EvidenceUploadPage = lazy(
+  () => import("@/pages/evidence/EvidenceUploadPage"),
+);
+const EvidenceDetailPage = lazy(
+  () => import("@/pages/evidence/EvidenceDetailPage"),
+);
+const CAPDashboardPage = lazy(() => import("@/pages/cap/CAPDashboardPage"));
+const CAPListPage = lazy(() => import("@/pages/cap/CAPListPage"));
+const CAPDetailPage = lazy(() => import("@/pages/cap/CAPDetailPage"));
+const CAPCreatePage = lazy(() => import("@/pages/cap/CAPCreatePage"));
+const LicenseListPage = lazy(() => import("@/pages/license/LicenseListPage"));
+const LicenseAddPage = lazy(() => import("@/pages/license/LicenseAddPage"));
+const LicenseCalendarPage = lazy(
+  () => import("@/pages/license/LicenseCalendarPage"),
+);
+const LicenseDetailPage = lazy(
+  () => import("@/pages/license/LicenseDetailPage"),
+);
+const RegulationLibraryPage = lazy(
+  () => import("@/pages/regulation/RegulationLibraryPage"),
+);
+const RegulationDetailPage = lazy(
+  () => import("@/pages/regulation/RegulationDetailPage"),
+);
+const RegulationComparisonPage = lazy(
+  () => import("@/pages/regulation/RegulationComparisonPage"),
+);
+const RegulationImpactPage = lazy(
+  () => import("@/pages/regulation/RegulationImpactPage"),
+);
+const ReportsIndexPage = lazy(() => import("@/pages/reports/ReportsIndexPage"));
+const ReportsStatusPage = lazy(
+  () => import("@/pages/reports/ReportsStatusPage"),
+);
+const ReportsCalendarPage = lazy(
+  () => import("@/pages/reports/ReportsCalendarPage"),
+);
+const ReportsCAPPage = lazy(() => import("@/pages/reports/ReportsCAPPage"));
+const ReportsLicensePage = lazy(
+  () => import("@/pages/reports/ReportsLicensePage"),
+);
+const ReportsExecutivePage = lazy(
+  () => import("@/pages/reports/ReportsExecutivePage"),
+);
+const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
+const AdminRolesPage = lazy(() => import("@/pages/admin/AdminRolesPage"));
+const AdminOrganizationPage = lazy(
+  () => import("@/pages/admin/AdminOrganizationPage"),
+);
+const AdminTemplatesPage = lazy(
+  () => import("@/pages/admin/AdminTemplatesPage"),
+);
+const AdminAuditLogsPage = lazy(
+  () => import("@/pages/admin/AdminAuditLogsPage"),
+);
+const AdminAIConfigPage = lazy(() => import("@/pages/admin/AdminAIConfigPage"));
+const SettingsPage = lazy(() => import("@/pages/settings/SettingsPage"));
+const ProfilePage = lazy(() => import("@/pages/profile/ProfilePage"));
+const UnauthorizedPage = lazy(
+  () => import("@/pages/unauthorized/UnauthorizedPage"),
+);
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+
+const route = (
+  path: string,
+  element: React.ReactNode,
+  crumb?: string,
+): RouteObject => ({
+  path,
+  element,
+  handle: crumb ? { crumb } : undefined,
+});
+
+export const router = createBrowserRouter([
+  // Public routes
+  {
+    element: <AuthRouteGuard />,
+    children: [
+      route("/login", <LoginPage />, "Login"),
+      route("/forgot-password", <ForgotPasswordPage />, "Forgot Password"),
+    ],
+  },
+  {
+    element: <MFARouteGuard />,
+    children: [route("/mfa", <MFAPage />, "MFA")],
+  },
+
+  // Protected routes with layout
+  {
+    path: "/",
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <MainLayout />,
+        children: [
+          route("/dashboard", <DashboardRedirect />, "Dashboard"),
+          route(
+            "/dashboard/executive",
+            <ExecutiveDashboardPage />,
+            "Executive",
+          ),
+          route("/dashboard/owner", <OwnerDashboardPage />, "Owner"),
+          route("/dashboard/approver", <ApproverDashboardPage />, "Approver"),
+          route("/dashboard/reviewer", <ReviewerDashboardPage />, "Reviewer"),
+          route("/dashboard/admin", <AdminDashboardPage />, "Admin"),
+
+          route("/compliance", <ComplianceListPage />, "Compliance"),
+          route("/compliance/submit", <ComplianceSubmitPage />, "Submit"),
+          route("/compliance/history", <ComplianceHistoryPage />, "History"),
+          route("/compliance/:id", <ComplianceDetailPage />, "Detail"),
+
+          route("/evidence", <EvidenceLibraryPage />, "Evidence"),
+          route("/evidence/upload", <EvidenceUploadPage />, "Upload"),
+          route("/evidence/:id", <EvidenceDetailPage />, "Detail"),
+
+          route("/cap", <CAPDashboardPage />, "Corrective Actions"),
+          route("/cap/list", <CAPListPage />, "All CAPs"),
+          route("/cap/create", <CAPCreatePage />, "Create CAP"),
+          route("/cap/:id", <CAPDetailPage />, "Detail"),
+
+          route("/license", <LicenseListPage />, "Licenses"),
+          route("/license/list", <LicenseListPage />, "All Licenses"),
+          route("/license/add", <LicenseAddPage />, "Add License"),
+          route("/license/calendar", <LicenseCalendarPage />, "Calendar"),
+          route("/license/:id", <LicenseDetailPage />, "Detail"),
+
+          route("/regulation", <RegulationLibraryPage />, "Regulations"),
+          route("/regulation/compare", <RegulationComparisonPage />, "Compare"),
+          route("/regulation/:id/impact", <RegulationImpactPage />, "Impact"),
+          route("/regulation/:id", <RegulationDetailPage />, "Detail"),
+
+          route("/reports", <ReportsIndexPage />, "Reports"),
+          route("/reports/status", <ReportsStatusPage />, "Status"),
+          route("/reports/calendar", <ReportsCalendarPage />, "Calendar"),
+          route("/reports/cap", <ReportsCAPPage />, "CAP Reports"),
+          route("/reports/license", <ReportsLicensePage />, "License Reports"),
+          route(
+            "/reports/executive",
+            <ReportsExecutivePage />,
+            "Executive Reports",
+          ),
+
+          route("/admin/users", <AdminUsersPage />, "Users"),
+          route("/admin/roles", <AdminRolesPage />, "Roles"),
+          route(
+            "/admin/organization",
+            <AdminOrganizationPage />,
+            "Organization",
+          ),
+          route("/admin/templates", <AdminTemplatesPage />, "Templates"),
+          route("/admin/audit-logs", <AdminAuditLogsPage />, "Audit Logs"),
+          route("/admin/ai-config", <AdminAIConfigPage />, "AI Config"),
+
+          route("/profile", <ProfilePage />, "Profile"),
+          route("/settings", <SettingsPage />, "Settings"),
+        ],
+      },
+    ],
+  },
+
+  route("/unauthorized", <UnauthorizedPage />),
+  route("/404", <NotFoundPage />),
+  route("*", <Navigate to="/404" replace />),
+]);

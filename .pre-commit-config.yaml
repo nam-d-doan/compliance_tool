@@ -1,0 +1,78 @@
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
+# Spec docs are prose — keep out of formatters. dist/ is build output.
+exclude: ^(docs/specs|dist|node_modules|public/mockServiceWorker\.js)/
+
+repos:
+  # ── Conventional commit message ────────────
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        name: Check Commit Message Style
+        stages: [commit-msg]
+        args:
+          - feat
+          - fix
+          - improve
+          - style
+          - env
+          - docs
+          - refactor
+          - ci
+          - test
+          - chore
+          - git
+          - wip
+
+  # ── Betterleaks (secret scanning) ──────────
+  # Scans staged diffs + entropy analysis. Catches API keys, tokens,
+  # passwords, JWTs, etc.
+  - repo: https://github.com/betterleaks/betterleaks
+    rev: v1.4.0
+    hooks:
+      - id: betterleaks
+        args:
+          - --pre-commit
+          - --redact # mask secrets in output (won't leak in terminal)
+
+  # ── Standard security + hygiene hooks ──────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ["--maxkb=8192"]
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        # tsconfig files are JSONC (allow comments) → invalid strict JSON
+        exclude: ^tsconfig.*\.json$
+      - id: check-toml
+
+  # ── Prettier (formatting) ──────────────────
+  # Format JS/TS/CSS/MD/JSON. Matches the project's existing prettier config
+  # if present; otherwise uses prettier defaults.
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, css, markdown, json]
+        exclude: ^(dist|node_modules|pnpm-lock\.yaml|package-lock\.json)/
+
+  # ── ESLint (linting via oxlint) ─────────────
+  # oxlint is the project's configured linter (see .oxlintrc.json + package.json).
+  # Run via local binary to avoid version drift with the mirrors repo.
+  - repo: local
+    hooks:
+      - id: oxlint
+        name: oxlint
+        entry: pnpm exec oxlint
+        language: system
+        types_or: [javascript, jsx, ts, tsx]
+        pass_filenames: true
+        exclude: ^(dist|node_modules|src/components/ui)/
