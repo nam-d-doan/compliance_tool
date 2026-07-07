@@ -1,6 +1,7 @@
 export * from "./useComplianceQueries";
 export * from "./useCAPQueries";
 export * from "./useRegulationQueries";
+export * from "./useAssignmentQueries";
 export * from "./useReportQueries";
 export * from "./useAdminQueries";
 export * from "./useDashboardQueries";

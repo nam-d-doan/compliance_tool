@@ -9,6 +9,7 @@ import { notificationHandlers } from "./notification_handlers";
 import { activityHandlers } from "./activity_handlers";
 import { aiHandlers } from "./ai_handlers";
 import { commentHandlers } from "./comment_handlers";
+import { assignmentHandlers } from "./assignment_handlers";
 
 export const handlers = [
   ...authHandlers,
@@ -22,4 +23,5 @@ export const handlers = [
   ...activityHandlers,
   ...aiHandlers,
   ...commentHandlers,
+  ...assignmentHandlers,
 ];

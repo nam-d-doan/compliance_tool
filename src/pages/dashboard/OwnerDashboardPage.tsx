@@ -17,6 +17,7 @@ import {
   DashboardKpiCard,
   DashboardChartCard,
   DashboardActivityFeed,
+  DashboardAssignmentsCard,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -31,9 +32,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore } from "@/stores";
-import { useDashboard, useComplianceList, useCAPList } from "@/hooks/queries";
+import {
+  useDashboard,
+  useComplianceList,
+  useCAPList,
+  useAssignmentList,
+} from "@/hooks/queries";
 import { format } from "date-fns";
-import { ArrowRight, UploadCloud } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ComplianceObligation } from "@/types";
 
@@ -42,12 +48,13 @@ function useOwnerData() {
   const dashboard = useDashboard("owner");
   const compliance = useComplianceList({ page: 1, pageSize: 500 }, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 }, 1, 500);
+  const assignments = useAssignmentList({}, 1, 200);
 
   const isLoading =
     dashboard.isPending || compliance.isPending || caps.isPending;
   const error = dashboard.error ?? compliance.error ?? caps.error;
 
-  return { user, dashboard, compliance, caps, isLoading, error };
+  return { user, dashboard, compliance, caps, assignments, isLoading, error };
 }
 
 function TaskList({
@@ -112,13 +119,17 @@ function TaskList({
 }
 
 export default function OwnerDashboardPage() {
-  const { user, dashboard, compliance, caps, isLoading, error } =
+  const { user, dashboard, compliance, caps, assignments, isLoading, error } =
     useOwnerData();
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
     [compliance.data],
   );
   const capItems = useMemo(() => caps.data?.items ?? [], [caps.data]);
+  const assignmentItems = useMemo(
+    () => assignments.data?.items ?? [],
+    [assignments.data],
+  );
 
   const statusData = useMemo(() => {
     const counts = new Map<string, number>();
@@ -323,6 +334,16 @@ export default function OwnerDashboardPage() {
           items={dashboard.data?.activity}
           title="Activity on My Items"
           delay={0.3}
+        />
+      </div>
+
+      <div className="md:col-span-1">
+        <DashboardAssignmentsCard
+          title="My Department Assignments"
+          description="Priority breakdown of assignments routed for review."
+          assignments={assignmentItems}
+          breakdown="priority"
+          delay={0.35}
         />
       </div>
     </DashboardLayout>

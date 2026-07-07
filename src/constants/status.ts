@@ -19,7 +19,9 @@ import {
   MinusCircle,
   PlayCircle,
   RefreshCw,
+  Send,
   ShieldAlert,
+  ThumbsUp,
   UploadCloud,
   UserCheck,
   UserMinus,
@@ -166,6 +168,11 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
   },
   closed: { label: "Closed", icon: CheckCircle2, ...emerald },
 
+  // Assignment lifecycle
+  published: { label: "Published", icon: Send, ...blue },
+  acknowledged: { label: "Acknowledged", icon: ThumbsUp, ...violet },
+  cancelled: { label: "Cancelled", icon: XCircle, ...rose },
+
   // Regulation / content
   effective: { label: "Effective", icon: CheckCircle, ...emerald },
   expired: { label: "Expired", icon: Archive, ...slate },
@@ -251,9 +258,19 @@ export const USER_STATUSES = [
 
 export const PRIORITY_LEVELS = ["low", "medium", "high", "critical"] as const;
 
+export const ASSIGNMENT_STATUSES = [
+  "draft",
+  "published",
+  "acknowledged",
+  "in_progress",
+  "completed",
+  "cancelled",
+] as const;
+
 export type ComplianceStatus = (typeof COMPLIANCE_STATUSES)[number];
 export type ComplianceSubmissionStatus =
   (typeof COMPLIANCE_SUBMISSION_STATUSES)[number];
+export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 export type CAPStatus = (typeof CAP_STATUSES)[number];
 export type RegulationStatus = (typeof REGULATION_STATUSES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];

@@ -8,3 +8,4 @@ export { DashboardNeedsAttentionList } from "./DashboardNeedsAttentionList";
 export { DashboardApprovalQueue } from "./DashboardApprovalQueue";
 export { DashboardReviewQueue } from "./DashboardReviewQueue";
 export { DashboardAdminStats } from "./DashboardAdminStats";
+export { DashboardAssignmentsCard } from "./DashboardAssignmentsCard";

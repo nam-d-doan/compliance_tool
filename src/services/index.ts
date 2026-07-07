@@ -2,6 +2,7 @@ export { AuthService } from "./auth_service";
 export { ComplianceService } from "./compliance_service";
 export { CAPService } from "./cap_service";
 export { RegulationService } from "./regulation_service";
+export { AssignmentService } from "./assignment_service";
 export { ReportService } from "./report_service";
 export { AdminService } from "./admin_service";
 export { DashboardService } from "./dashboard_service";

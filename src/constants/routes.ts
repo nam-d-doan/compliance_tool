@@ -18,6 +18,7 @@ import {
   ScrollText,
   BrainCircuit,
   Settings,
+  ClipboardCheck,
 } from "lucide-react";
 
 // Route definitions with paths and permissions
@@ -61,6 +62,13 @@ export const ROUTES = {
     COMPARISON: "/regulation/compare",
     IMPACT: "/regulation/:id/impact",
     CREATE: "/regulation/create",
+  },
+
+  // Assignment routes
+  ASSIGNMENTS: {
+    LIST: "/assignment",
+    CREATE: "/assignment/create",
+    DETAIL: "/assignment/:id",
   },
 
   // Reports routes
@@ -123,6 +131,15 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.CAP.LIST]: ["reviewer", "approver", "owner", "executive", "admin"],
 
   [ROUTES.REGULATION.CREATE]: ["admin"],
+
+  [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],
+  [ROUTES.ASSIGNMENTS.LIST]: [
+    "reviewer",
+    "approver",
+    "owner",
+    "executive",
+    "admin",
+  ],
 
   [ROUTES.ADMIN.USERS]: ["admin"],
   [ROUTES.ADMIN.ROLES]: ["admin"],
@@ -237,6 +254,29 @@ export function buildNavTree(role: Role | null): NavSection[] {
               path: ROUTES.REGULATION.CREATE,
               section: "Compliance",
               requiredPermission: "regulation:create",
+            },
+          ],
+        },
+        {
+          label: "Assignments",
+          icon: ClipboardCheck,
+          path: ROUTES.ASSIGNMENTS.LIST,
+          section: "Compliance",
+          requiredPermission: "assignment:read",
+          children: [
+            {
+              label: "All Assignments",
+              icon: List,
+              path: ROUTES.ASSIGNMENTS.LIST,
+              section: "Compliance",
+              requiredPermission: "assignment:read",
+            },
+            {
+              label: "Create Assignment",
+              icon: PlusCircle,
+              path: ROUTES.ASSIGNMENTS.CREATE,
+              section: "Compliance",
+              requiredPermission: "assignment:create",
             },
           ],
         },

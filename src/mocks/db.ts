@@ -7,6 +7,7 @@ import {
   CAP_STATUSES,
   USER_STATUSES,
   PRIORITY_LEVELS,
+  ASSIGNMENT_STATUSES,
 } from "@/constants/status";
 import type {
   UserProfile,
@@ -28,6 +29,8 @@ import type {
   ComplianceComment,
   CAPComment,
   RegulationDependency,
+  Assignment,
+  AssignmentTimelineEvent,
 } from "@/types";
 
 faker.seed(42);
@@ -1023,6 +1026,10 @@ function generateTimelineFor(
   entityId: string,
   entityType: "regulation",
 ): TimelineEvent[];
+function generateTimelineFor(
+  entityId: string,
+  entityType: "assignment",
+): AssignmentTimelineEvent[];
 function generateTimelineFor(entityId: string, entityType: string): unknown[] {
   const eventTypes: Record<string, string[]> = {
     compliance: [
@@ -1046,6 +1053,15 @@ function generateTimelineFor(entityId: string, entityType: string): unknown[] {
       "commented",
     ],
     regulation: ["published", "updated"],
+    assignment: [
+      "created",
+      "published",
+      "acknowledged",
+      "in_progress",
+      "completed",
+      "cancelled",
+      "updated",
+    ],
   };
   const types = eventTypes[entityType];
   const count = faker.number.int({ min: 5, max: 12 });
@@ -1068,6 +1084,7 @@ function generateTimelineFor(entityId: string, entityType: string): unknown[] {
     };
     if (entityType === "compliance") event.complianceId = entityId;
     else if (entityType === "cap") event.capId = entityId;
+    else if (entityType === "assignment") event.assignmentId = entityId;
     else {
       event.entityId = entityId;
       event.entityType = entityType;
@@ -1107,6 +1124,117 @@ function generateCommentsFor(entityId: string, entityType: string): unknown[] {
   });
 }
 
+const VIETNAMESE_DEPARTMENTS = [
+  { id: "dept-credit", name: "Khối Quản lý Tín dụng" },
+  { id: "dept-legal", name: "Khối Pháp chế" },
+  { id: "dept-risk", name: "Khối Quản lý Rủi ro" },
+  { id: "dept-operations", name: "Khối Vận hành" },
+  { id: "dept-audit", name: "Khối Kiểm toán nội bộ" },
+] as const;
+
+const OFFICES = [
+  {
+    id: "off-credit-1",
+    name: "Phòng Cấp tín dụng",
+    departmentId: "dept-credit",
+  },
+  {
+    id: "off-credit-2",
+    name: "Phòng Giám sát tín dụng",
+    departmentId: "dept-credit",
+  },
+  {
+    id: "off-legal-1",
+    name: "Phòng Tư vấn pháp lý",
+    departmentId: "dept-legal",
+  },
+  { id: "off-legal-2", name: "Phòng Hợp đồng", departmentId: "dept-legal" },
+  {
+    id: "off-risk-1",
+    name: "Phòng Quản lý rủi ro tín dụng",
+    departmentId: "dept-risk",
+  },
+  {
+    id: "off-risk-2",
+    name: "Phòng Quản lý rủi ro thị trường",
+    departmentId: "dept-risk",
+  },
+  {
+    id: "off-ops-1",
+    name: "Phòng Vận hành hệ thống",
+    departmentId: "dept-operations",
+  },
+  {
+    id: "off-ops-2",
+    name: "Phòng Dịch vụ khách hàng",
+    departmentId: "dept-operations",
+  },
+  {
+    id: "off-audit-1",
+    name: "Phòng Kiểm toán tuân thủ",
+    departmentId: "dept-audit",
+  },
+] as const;
+
+function generateAssignments(
+  regulations: Regulation[],
+  users: UserProfile[],
+  count = 15,
+): Assignment[] {
+  const assignors = users.filter((u) =>
+    ["admin", "owner", "approver"].includes(u.role),
+  );
+  return Array.from({ length: count }, (_, i) => {
+    const regulation = pick(regulations);
+    const assignor = assignors.length ? pick(assignors) : pick(users);
+    const department = pick(VIETNAMESE_DEPARTMENTS);
+    const office = faker.datatype.boolean(0.4)
+      ? pick(OFFICES.filter((o) => o.departmentId === department.id))
+      : undefined;
+    const createdAt = subDays(today, faker.number.int({ min: 14, max: 120 }));
+    const dueOffset = weightedPick([
+      { item: faker.number.int({ min: -60, max: -1 }), weight: 15 },
+      { item: faker.number.int({ min: 0, max: 14 }), weight: 20 },
+      { item: faker.number.int({ min: 15, max: 60 }), weight: 35 },
+      { item: faker.number.int({ min: 61, max: 180 }), weight: 25 },
+      { item: faker.number.int({ min: -180, max: -61 }), weight: 5 },
+    ]);
+    const dueDate = addDays(createdAt, dueOffset);
+    const updatedAt = randomDate(createdAt, today);
+    let status: Assignment["status"] = pick(ASSIGNMENT_STATUSES);
+    if (
+      isBefore(dueDate, today) &&
+      !["completed", "cancelled"].includes(status)
+    ) {
+      status = weightedPick<Assignment["status"]>([
+        { item: "in_progress", weight: 40 },
+        { item: "acknowledged", weight: 30 },
+        { item: "published", weight: 20 },
+        { item: "cancelled", weight: 10 },
+      ]);
+    }
+    return {
+      id: uid("asn"),
+      title: `${regulation.category} — ${faker.company.buzzPhrase()}`,
+      description: faker.lorem.paragraph(2),
+      regulationId: regulation.id,
+      regulationTitle: regulation.title,
+      assignorId: assignor.id,
+      assignorName: assignor.name,
+      assignedDepartmentId: department.id,
+      assignedDepartmentName: department.name,
+      assignedOfficeId: office?.id,
+      assignedOfficeName: office?.name,
+      status,
+      priority: faker.helpers.arrayElement(PRIORITY_LEVELS),
+      dueDate: iso(dueDate),
+      createdDate: iso(createdAt),
+      updatedDate: iso(updatedAt),
+      notes: faker.datatype.boolean(0.3) ? faker.lorem.sentence() : undefined,
+    };
+  });
+}
+
 export interface MockDb {
   users: UserProfile[];
   regulations: Regulation[];
@@ -1114,6 +1242,7 @@ export interface MockDb {
   compliance: ComplianceObligation[];
   submissions: ComplianceSubmission[];
   caps: CAP[];
+  assignments: Assignment[];
   notifications: Notification[];
   auditLogs: AuditLog[];
   roles: RoleEntity[];
@@ -1136,6 +1265,7 @@ export function getDb(): MockDb {
   const compliance = generateComplianceObligations(regulations, users);
   const submissions = generateSubmissions(compliance, users);
   const caps = generateCAPs(compliance, users);
+  const assignments = generateAssignments(regulations, users);
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
@@ -1151,6 +1281,7 @@ export function getDb(): MockDb {
     compliance,
     submissions,
     caps,
+    assignments,
     notifications,
     auditLogs,
     roles,
@@ -1170,6 +1301,7 @@ export function getDb(): MockDb {
       compliance: compliance.length,
       submissions: submissions.length,
       caps: caps.length,
+      assignments: assignments.length,
       notifications: notifications.length,
       auditLogs: auditLogs.length,
       roles: roles.length,

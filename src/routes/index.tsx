@@ -73,6 +73,15 @@ const RegulationCreatePage = lazy(
 const RegulationEditPage = lazy(
   () => import("@/pages/regulation/RegulationEditPage"),
 );
+const AssignmentListPage = lazy(
+  () => import("@/pages/assignment/AssignmentListPage"),
+);
+const AssignmentCreatePage = lazy(
+  () => import("@/pages/assignment/AssignmentCreatePage"),
+);
+const AssignmentDetailPage = lazy(
+  () => import("@/pages/assignment/AssignmentDetailPage"),
+);
 const ReportsIndexPage = lazy(() => import("@/pages/reports/ReportsIndexPage"));
 const ReportsStatusPage = lazy(
   () => import("@/pages/reports/ReportsStatusPage"),
@@ -162,6 +171,14 @@ export const router = createBrowserRouter([
           route("/regulation/compare", <RegulationComparisonPage />, "Compare"),
           route("/regulation/:id/impact", <RegulationImpactPage />, "Impact"),
           route("/regulation/:id", <RegulationDetailPage />, "Detail"),
+
+          route("/assignment", <AssignmentListPage />, "Assignments"),
+          route(
+            "/assignment/create",
+            <AssignmentCreatePage />,
+            "Create Assignment",
+          ),
+          route("/assignment/:id", <AssignmentDetailPage />, "Detail"),
 
           route("/reports", <ReportsIndexPage />, "Reports"),
           route("/reports/status", <ReportsStatusPage />, "Status"),

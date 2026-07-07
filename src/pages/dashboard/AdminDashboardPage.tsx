@@ -15,6 +15,7 @@ import {
   DashboardKpiCard,
   DashboardChartCard,
   DashboardAdminStats,
+  DashboardAssignmentsCard,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -22,7 +23,7 @@ import {
   ListSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import { useDashboard } from "@/hooks/queries";
+import { useDashboard, useAssignmentList } from "@/hooks/queries";
 import {
   useAdminUsers,
   useAdminAuditLogs,
@@ -34,6 +35,7 @@ function useAdminData() {
   const users = useAdminUsers(1, 500);
   const auditLogs = useAdminAuditLogs(1, 100);
   const aiConfig = useAdminAIConfig();
+  const assignments = useAssignmentList({}, 1, 200);
 
   const isLoading =
     dashboard.isPending ||
@@ -43,17 +45,36 @@ function useAdminData() {
   const error =
     dashboard.error ?? users.error ?? auditLogs.error ?? aiConfig.error;
 
-  return { dashboard, users, auditLogs, aiConfig, isLoading, error };
+  return {
+    dashboard,
+    users,
+    auditLogs,
+    aiConfig,
+    assignments,
+    isLoading,
+    error,
+  };
 }
 
 export default function AdminDashboardPage() {
-  const { dashboard, users, auditLogs, aiConfig, isLoading, error } =
-    useAdminData();
+  const {
+    dashboard,
+    users,
+    auditLogs,
+    aiConfig,
+    assignments,
+    isLoading,
+    error,
+  } = useAdminData();
 
   const userItems = useMemo(() => users.data?.items ?? [], [users.data]);
   const auditItems = useMemo(
     () => auditLogs.data?.items ?? [],
     [auditLogs.data],
+  );
+  const assignmentItems = useMemo(
+    () => assignments.data?.items ?? [],
+    [assignments.data],
   );
 
   const userActivity = useMemo(() => {
@@ -197,11 +218,21 @@ export default function AdminDashboardPage() {
         </DashboardChartCard>
       </div>
 
+      <div className="md:col-span-1">
+        <DashboardAssignmentsCard
+          title="Review Assignments"
+          description="Assignments routed to departments."
+          assignments={assignmentItems}
+          breakdown="status"
+          delay={0.25}
+        />
+      </div>
+
       <div className="md:col-span-2">
         <DashboardAdminStats
           auditLogs={auditItems}
           aiConfig={aiConfig.data ?? null}
-          delay={0.25}
+          delay={0.3}
         />
       </div>
     </DashboardLayout>

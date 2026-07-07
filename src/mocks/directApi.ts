@@ -79,6 +79,16 @@ import {
   handleAiExecutiveSummary,
 } from "./handlers/ai_handlers";
 import { handleGetComments } from "./handlers/comment_handlers";
+import {
+  handleGetAssignmentList,
+  handleGetAssignmentDetail,
+  handleCreateAssignment,
+  handleUpdateAssignment,
+  handleAcknowledgeAssignment,
+  handleCancelAssignment,
+  handleGetAssignmentTimeline,
+  handleBulkUpdateAssignments,
+} from "./handlers/assignment_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
 type Route = {
@@ -259,6 +269,48 @@ const routes: Route[] = [
     methods: ["DELETE"],
     pattern: "/api/regulation-dependencies/:id",
     handler: handleDeleteRegulationDependency,
+  },
+
+  // Assignments
+  {
+    methods: ["GET"],
+    pattern: "/api/assignments",
+    handler: handleGetAssignmentList,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/assignments",
+    handler: handleCreateAssignment,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/assignments/bulk",
+    handler: handleBulkUpdateAssignments,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/assignments/:id/timeline",
+    handler: handleGetAssignmentTimeline,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/assignments/:id/acknowledge",
+    handler: handleAcknowledgeAssignment,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/assignments/:id/cancel",
+    handler: handleCancelAssignment,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/assignments/:id",
+    handler: handleGetAssignmentDetail,
+  },
+  {
+    methods: ["PUT"],
+    pattern: "/api/assignments/:id",
+    handler: handleUpdateAssignment,
   },
 
   // Reports

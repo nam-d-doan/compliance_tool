@@ -47,6 +47,14 @@ export type {
   PenaltyThreshold,
 } from "./admin";
 export type {
+  Assignment,
+  CreateAssignmentInput,
+  AssignmentFilter,
+  UpdateAssignmentInput,
+  BulkAssignmentInput,
+  AssignmentTimelineEvent,
+} from "./assignment";
+export type {
   DashboardKPI,
   DashboardWidget,
   TrendData,

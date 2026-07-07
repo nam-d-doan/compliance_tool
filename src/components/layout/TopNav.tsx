@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore, useThemeStore, useCopilotStore } from "@/stores";
 import { AuthService } from "@/services/auth_service";
+import { useAssignmentList } from "@/hooks/queries";
+import { ROUTES } from "@/constants/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,6 +34,7 @@ import {
   Sparkles,
   HelpCircle,
   PanelLeftIcon,
+  ClipboardCheck,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 
@@ -43,6 +46,14 @@ export function TopNav() {
   const { toggleSidebar, isMobile } = useSidebar();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notificationCount = 4;
+
+  // Count of published assignments awaiting acknowledgment (badge source)
+  const { data: pendingAssignments } = useAssignmentList(
+    { status: "published" },
+    1,
+    1,
+  );
+  const pendingAssignmentCount = pendingAssignments?.total ?? 0;
 
   const handleLogout = async () => {
     await AuthService.logout();
@@ -122,6 +133,24 @@ export function TopNav() {
               <Moon className="size-5" />
             ) : (
               <Sun className="size-5" />
+            )}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="relative"
+            aria-label="Assignments"
+            onClick={() => navigate(ROUTES.ASSIGNMENTS.LIST)}
+          >
+            <ClipboardCheck className="size-5" />
+            {pendingAssignmentCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full p-0 text-[10px]"
+              >
+                {pendingAssignmentCount > 9 ? "9+" : pendingAssignmentCount}
+              </Badge>
             )}
           </Button>
 

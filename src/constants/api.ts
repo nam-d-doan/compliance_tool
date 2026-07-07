@@ -81,6 +81,16 @@ export const API_ENDPOINTS = {
   ADMIN_AUDIT_LOGS: "/api/admin/audit-logs",
   ADMIN_AI_CONFIG: "/api/admin/ai-config",
 
+  // Assignment endpoints
+  ASSIGNMENT_LIST: "/api/assignments",
+  ASSIGNMENT_CREATE: "/api/assignments",
+  ASSIGNMENT_BULK: "/api/assignments/bulk",
+  ASSIGNMENT_GET: (id: string) => `/api/assignments/${id}`,
+  ASSIGNMENT_UPDATE: (id: string) => `/api/assignments/${id}`,
+  ASSIGNMENT_ACKNOWLEDGE: (id: string) => `/api/assignments/${id}/acknowledge`,
+  ASSIGNMENT_CANCEL: (id: string) => `/api/assignments/${id}/cancel`,
+  ASSIGNMENT_TIMELINE: (id: string) => `/api/assignments/${id}/timeline`,
+
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",
   AI_CAP_GENERATE: "/api/ai/cap/generate",

@@ -109,8 +109,7 @@ export default function RegulationEditPage() {
 
   const isPastExpiration = Boolean(
     expirationDate &&
-      new Date(expirationDate) <
-        new Date(new Date().setHours(0, 0, 0, 0)),
+    new Date(expirationDate) < new Date(new Date().setHours(0, 0, 0, 0)),
   );
 
   if (!canEdit) {
@@ -160,10 +159,7 @@ export default function RegulationEditPage() {
         Back
       </Button>
 
-      <PageHero
-        title="Edit Regulation"
-        subtitle={`Update ${item.title}`}
-      />
+      <PageHero title="Edit Regulation" subtitle={`Update ${item.title}`} />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <Card>

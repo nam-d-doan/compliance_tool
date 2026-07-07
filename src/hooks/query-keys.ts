@@ -3,6 +3,7 @@ import type {
   CAPFilter,
   RegulationFilter,
   ReportFilter,
+  AssignmentFilter,
 } from "@/types";
 
 export const complianceKeys = {
@@ -41,6 +42,16 @@ export const regulationKeys = {
     [...regulationKeys.detail(id), "dependencies"] as const,
   vietlex: (query: string) =>
     [...regulationKeys.all, "vietlex", query] as const,
+};
+
+export const assignmentKeys = {
+  all: ["assignment"] as const,
+  lists: () => [...assignmentKeys.all, "list"] as const,
+  list: (filters: AssignmentFilter) =>
+    [...assignmentKeys.lists(), filters] as const,
+  details: () => [...assignmentKeys.all, "detail"] as const,
+  detail: (id: string) => [...assignmentKeys.details(), id] as const,
+  timeline: (id: string) => [...assignmentKeys.detail(id), "timeline"] as const,
 };
 
 export const reportKeys = {

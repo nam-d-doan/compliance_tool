@@ -21,6 +21,7 @@ import {
   DashboardAIInsightCard,
   DashboardRiskHeatmap,
   DashboardNeedsAttentionList,
+  DashboardAssignmentsCard,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -28,7 +29,12 @@ import {
   ListSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import { useDashboard, useComplianceList, useCAPList } from "@/hooks/queries";
+import {
+  useDashboard,
+  useComplianceList,
+  useCAPList,
+  useAssignmentList,
+} from "@/hooks/queries";
 import { useExecutiveSummary } from "@/hooks/queries/useAIQueries";
 import { EmptyState } from "@/components/common/EmptyState";
 
@@ -39,6 +45,7 @@ function useExecutiveData() {
   const dashboard = useDashboard("executive");
   const compliance = useComplianceList({ page: 1, pageSize: 500 });
   const caps = useCAPList({ page: 1, pageSize: 500 });
+  const assignments = useAssignmentList({}, 1, 200);
   const aiSummary = useExecutiveSummary();
 
   const isLoading =
@@ -46,18 +53,37 @@ function useExecutiveData() {
 
   const error = dashboard.error ?? compliance.error ?? caps.error;
 
-  return { dashboard, compliance, caps, aiSummary, isLoading, error };
+  return {
+    dashboard,
+    compliance,
+    caps,
+    assignments,
+    aiSummary,
+    isLoading,
+    error,
+  };
 }
 
 export default function ExecutiveDashboardPage() {
-  const { dashboard, compliance, caps, aiSummary, isLoading, error } =
-    useExecutiveData();
+  const {
+    dashboard,
+    compliance,
+    caps,
+    assignments,
+    aiSummary,
+    isLoading,
+    error,
+  } = useExecutiveData();
 
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
     [compliance.data],
   );
   const capItems = useMemo(() => caps.data?.items ?? [], [caps.data]);
+  const assignmentItems = useMemo(
+    () => assignments.data?.items ?? [],
+    [assignments.data],
+  );
 
   const complianceByBU = useMemo(() => {
     const counts = new Map<string, number>();
@@ -309,6 +335,16 @@ export default function ExecutiveDashboardPage() {
           items={dashboard.data?.activity}
           title="Organization Activity"
           delay={0.45}
+        />
+      </div>
+
+      <div className="md:col-span-1">
+        <DashboardAssignmentsCard
+          title="Compliance Assignments"
+          description="By department, with overdue and critical counts."
+          assignments={assignmentItems}
+          breakdown="department"
+          delay={0.5}
         />
       </div>
     </DashboardLayout>
