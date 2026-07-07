@@ -19,6 +19,7 @@ import {
   CheckSquare,
   Square,
   Briefcase,
+  Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,11 +51,13 @@ import { AIRecommendationCard } from "@/components/ai/AIRecommendationCard";
 import { AIExplanation } from "@/components/ai/AIExplanation";
 import { ConfidenceIndicator } from "@/components/ai/ConfidenceIndicator";
 import { CAPForm, type CAPFormValues } from "@/components/cap/CAPForm";
+import { FileUploadComponent } from "@/components/cap/FileUploadComponent";
 import {
   useCAPDetail,
   useCAPTimeline,
   useCAPComments,
 } from "@/hooks/queries/useCAPQueries";
+import { useFilesByIds } from "@/hooks/queries/useFileQueries";
 import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import {
@@ -80,6 +83,7 @@ import type { PriorityLevel } from "@/constants/status";
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "actions", label: "Actions" },
+  { id: "files", label: "Files" },
   { id: "timeline", label: "Timeline" },
   { id: "comments", label: "Comments" },
   { id: "approvals", label: "Approvals" },
@@ -178,6 +182,10 @@ export default function CAPDetailPage() {
   const complianceQuery = useComplianceList({}, 1, 200);
 
   const item = detail.data;
+
+  // Files linked to this CAP. Fetched by ID list (robust to files uploaded
+  // before the CAP existed, which carry no `capId`).
+  const filesQuery = useFilesByIds(item?.fileIds ?? []);
 
   const daysToDue = item
     ? differenceInDays(parseISO(item.dueDate), new Date())
@@ -666,6 +674,40 @@ export default function CAPDetailPage() {
                   users={usersQuery.data?.items ?? []}
                   onAdd={handleAddAction}
                 />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="files" className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Paperclip className="size-4" aria-hidden="true" />
+                      Attachments
+                      {item.fileIds.length > 0 && (
+                        <Badge variant="secondary">{item.fileIds.length}</Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <FileUploadComponent
+                      files={filesQuery.data?.items ?? []}
+                      capId={item.id}
+                      uploadedBy={user?.name}
+                      uploadedById={user?.id}
+                      disabled={item.status === "Closed"}
+                      listOnly={item.status === "Closed"}
+                    />
+                    {item.status === "Closed" && (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        This CAP is closed — file attachments are read-only.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               </motion.div>
             </TabsContent>
 

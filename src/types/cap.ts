@@ -50,6 +50,8 @@ export interface CAP extends BaseEntity {
   aiSuggestions: CAPAISuggestion[];
   progress: number;
   tags: string[];
+  /** IDs of FileAttachments linked to this CAP (Phase 5). */
+  fileIds: string[];
 }
 
 export interface CAPFilter {

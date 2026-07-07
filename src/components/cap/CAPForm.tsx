@@ -3,7 +3,7 @@ import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "motion/react";
-import { Loader2, X, ChevronDown, Check } from "lucide-react";
+import { Loader2, X, ChevronDown, Check, Paperclip } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PRIORITY_LEVELS } from "@/constants/status";
+import {
+  FileUploadComponent,
+  type FileUploadComponentProps,
+} from "@/components/cap/FileUploadComponent";
+import type { FileAttachment } from "@/types";
 
 const schema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -45,6 +50,17 @@ export interface CAPFormProps {
   draftLabel?: string;
   onCancel?: () => void;
   className?: string;
+  /** Attachments. When `onFilesChange` is provided a file upload section is
+   *  rendered. Omit both to hide the section (e.g. on the edit sheet, where
+   *  files are managed from the detail page's Files tab). */
+  files?: FileAttachment[];
+  onFilesChange?: (files: FileAttachment[]) => void;
+  capId?: string;
+  uploadedBy?: string;
+  uploadedById?: string;
+  fileUploadProps?: Partial<
+    Omit<FileUploadComponentProps, "files" | "onFilesChange" | "capId">
+  >;
 }
 
 const selectClass =
@@ -65,6 +81,12 @@ export function CAPForm({
   draftLabel = "Save as Draft",
   onCancel,
   className,
+  files,
+  onFilesChange,
+  capId,
+  uploadedBy,
+  uploadedById,
+  fileUploadProps,
 }: CAPFormProps) {
   const {
     register,
@@ -332,6 +354,29 @@ export function CAPForm({
           />
         </div>
       </div>
+
+      {onFilesChange && (
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <Paperclip className="size-3.5" aria-hidden="true" />
+            Attachments
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {capId
+              ? "Upload supporting evidence or remediation documents."
+              : "Files upload immediately. They will be linked to the CAP once it is created."}
+          </p>
+          <FileUploadComponent
+            files={files ?? []}
+            onFilesChange={onFilesChange}
+            capId={capId}
+            uploadedBy={uploadedBy}
+            uploadedById={uploadedById}
+            disabled={isSubmitting}
+            {...fileUploadProps}
+          />
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 8 }}

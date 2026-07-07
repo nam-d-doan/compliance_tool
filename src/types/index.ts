@@ -12,9 +12,14 @@ export type {
   Obligation,
   ObligationStatus,
   ObligationRiskLevel,
+  ObligationFilter,
   BulkObligationInputItem,
   BulkCreateObligationsInput,
   BulkCreateObligationsResult,
+  UpdateObligationInput,
+  BulkUpdateObligationsInput,
+  BulkUpdateObligationsResult,
+  ObligationTimelineEvent,
 } from "./obligation";
 export type {
   CAP,
@@ -24,6 +29,7 @@ export type {
   CAPTimelineEvent,
   CAPComment,
 } from "./cap";
+export type { FileAttachment, FileFilter } from "./file";
 export type {
   Regulation,
   RegulationFilter,

@@ -360,10 +360,7 @@ export default function ObligationCreatePage() {
   if (loadingContext) {
     return (
       <div className="space-y-6">
-        <PageHero
-          title="Create Obligations"
-          subtitle="Loading context..."
-        />
+        <PageHero title="Create Obligations" subtitle="Loading context..." />
         <DetailSkeleton />
       </div>
     );

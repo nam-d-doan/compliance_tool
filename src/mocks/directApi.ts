@@ -88,7 +88,18 @@ import {
   handleGetAssignmentTimeline,
   handleBulkUpdateAssignments,
 } from "./handlers/assignment_handlers";
-import { handleBulkCreateObligations } from "./handlers/obligation_handlers";
+import {
+  handleBulkCreateObligations,
+  handleGetObligationList,
+  handleGetObligationDetail,
+  handleUpdateObligation,
+  handleBulkUpdateObligations,
+} from "./handlers/obligation_handlers";
+import {
+  handleGetFileList,
+  handleUploadFile,
+  handleDeleteFile,
+} from "./handlers/file_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
 type Route = {
@@ -308,11 +319,40 @@ const routes: Route[] = [
     handler: handleUpdateAssignment,
   },
 
-  // Obligations
+  // Obligations — literal paths (list, bulk) must precede :id.
+  {
+    methods: ["GET"],
+    pattern: "/api/obligations/list",
+    handler: handleGetObligationList,
+  },
   {
     methods: ["POST"],
     pattern: "/api/obligations/bulk",
     handler: handleBulkCreateObligations,
+  },
+  {
+    methods: ["PATCH"],
+    pattern: "/api/obligations/bulk",
+    handler: handleBulkUpdateObligations,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/obligations/:id",
+    handler: handleGetObligationDetail,
+  },
+  {
+    methods: ["PUT", "PATCH"],
+    pattern: "/api/obligations/:id",
+    handler: handleUpdateObligation,
+  },
+
+  // File attachments (Phase 5)
+  { methods: ["GET"], pattern: "/api/files", handler: handleGetFileList },
+  { methods: ["POST"], pattern: "/api/files", handler: handleUploadFile },
+  {
+    methods: ["DELETE"],
+    pattern: "/api/files/:id",
+    handler: handleDeleteFile,
   },
 
   // Reports

@@ -12,6 +12,11 @@ export interface Obligation {
   description: string;
   ownerDepartmentId: string;
   ownerDepartmentName?: string;
+  /** Owning user id — the person accountable for fulfilling the obligation.
+   * Drives the owner-role dashboard ("My Obligations"). */
+  ownerId: string;
+  /** Denormalized owner display name. */
+  ownerName: string;
   dueDate: string; // ISO
   riskLevel: ObligationRiskLevel;
   status: ObligationStatus;
@@ -30,6 +35,9 @@ export interface BulkObligationInputItem {
   description: string;
   ownerDepartmentId: string;
   ownerDepartmentName?: string;
+  /** Optional owner user. Defaults to the requesting user when omitted. */
+  ownerId?: string;
+  ownerName?: string;
   dueDate: string; // ISO
   riskLevel: ObligationRiskLevel;
 }
@@ -51,8 +59,16 @@ export interface BulkCreateObligationsResult {
 export interface ObligationFilter {
   status?: ObligationStatus | ObligationStatus[];
   riskLevel?: ObligationRiskLevel;
+  owner?: string;
+  ownerName?: string;
   ownerDepartment?: string;
   assignmentId?: string;
+  /** Filter to obligations that are overdue (dueDate < now, not completed). */
+  overdue?: boolean;
+  /** Filter to obligations linked to a given CAP id. */
+  capId?: string;
+  /** Filter to obligations NOT linked to any CAP (needs-CAP candidates). */
+  withoutCap?: boolean;
   dueDateFrom?: string;
   dueDateTo?: string;
   search?: string;

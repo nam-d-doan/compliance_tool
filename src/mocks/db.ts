@@ -31,6 +31,7 @@ import type {
   Assignment,
   AssignmentTimelineEvent,
   Obligation,
+  FileAttachment,
 } from "@/types";
 
 faker.seed(42);
@@ -634,7 +635,10 @@ function generateComplianceObligations(
   });
 }
 
-function generateObligations(assignments: Assignment[]): Obligation[] {
+function generateObligations(
+  assignments: Assignment[],
+  users: UserProfile[],
+): Obligation[] {
   const articleThemes = [
     "Phạm vi điều chỉnh",
     "Đối tượng áp dụng",
@@ -678,11 +682,24 @@ function generateObligations(assignments: Assignment[]): Obligation[] {
     "Tái cấp vốn",
   ];
 
-  const total = faker.number.int({ min: 30, max: 40 });
+  // Owner pool: prefer real owner-role users. The demo owner ("demo-owner")
+  // is weighted heavily so the owner dashboard is always populated when
+  // logging in as Sarah Mitchell.
+  const ownerUsers = users.filter((u) => u.role === "owner");
+  const demoOwner = users.find((u) => u.id === "demo-owner") ?? ownerUsers[0];
+  const pickOwner = (): UserProfile =>
+    demoOwner && faker.datatype.boolean(0.45)
+      ? demoOwner
+      : ownerUsers.length
+        ? pick(ownerUsers)
+        : pick(users);
+
+  const total = faker.number.int({ min: 60, max: 80 });
   const obligations: Obligation[] = [];
 
   for (let i = 0; i < total; i++) {
     const assignment = assignments[i % assignments.length];
+    const owner = pickOwner();
     const createdAt = randomDate(subDays(today, 90), subDays(today, 7));
     const dueOffset = faker.number.int({ min: -30, max: 120 });
     const dueDate = addDays(createdAt, dueOffset);
@@ -708,6 +725,8 @@ function generateObligations(assignments: Assignment[]): Obligation[] {
       description: faker.lorem.paragraph(2),
       ownerDepartmentId: assignment.assignedDepartmentId,
       ownerDepartmentName: assignment.assignedDepartmentName,
+      ownerId: owner.id,
+      ownerName: owner.name,
       dueDate: iso(dueDate),
       riskLevel: faker.helpers.weightedArrayElement([
         { weight: 15, value: "low" },
@@ -824,10 +843,74 @@ function generateCAPs(
       ],
       progress,
       tags: item.tags,
+      fileIds: [],
       createdAt: iso(createdAt),
       updatedAt: iso(randomDate(createdAt, today)),
     };
   });
+}
+
+/**
+ * Generate 0-2 mock file attachments per CAP. Returns the files and patches
+ * each CAP's `fileIds` in place so the two collections stay linked.
+ * Seeded files only carry metadata (no real binary); the `url` is a mock
+ * placeholder that the UI renders as a disabled/best-effort download.
+ */
+const MOCK_FILE_PRESETS: {
+  name: string;
+  type: string;
+  size: number;
+}[] = [
+  { name: "Root-Cause-Analysis.pdf", type: "application/pdf", size: 482_000 },
+  {
+    name: "Remediation-Plan.docx",
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    size: 76_500,
+  },
+  { name: "Evidence-Screenshots.png", type: "image/png", size: 1_240_000 },
+  { name: "Audit-Findings.pdf", type: "application/pdf", size: 905_000 },
+  {
+    name: "Training-Records.docx",
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    size: 152_000,
+  },
+  { name: "Policy-Update.doc", type: "application/msword", size: 88_000 },
+  { name: "Incident-Report.pdf", type: "application/pdf", size: 318_000 },
+  { name: "Sign-off-Photo.jpg", type: "image/jpeg", size: 642_000 },
+];
+
+function generateFiles(caps: CAP[]): FileAttachment[] {
+  const files: FileAttachment[] = [];
+  for (const cap of caps) {
+    const count = faker.number.int({ min: 0, max: 2 });
+    if (count === 0) continue;
+    const chosen = faker.helpers.arrayElements(MOCK_FILE_PRESETS, {
+      min: 1,
+      max: count,
+    });
+    const uploader = faker.helpers.arrayElement(DEMO_USERS);
+    const uploadedAt = randomDate(subDays(today, 30), today);
+    const capFileIds: string[] = [];
+    for (const preset of chosen) {
+      const id = uid("file");
+      capFileIds.push(id);
+      files.push({
+        id,
+        name: preset.name,
+        size: preset.size,
+        type: preset.type,
+        url: `https://mock-files.example.com/caps/${cap.id}/${preset.name}`,
+        uploadedAt: iso(uploadedAt),
+        uploadedBy: uploader.name,
+        uploadedById: uploader.id,
+        capId: cap.id,
+        createdAt: iso(uploadedAt),
+        updatedAt: iso(uploadedAt),
+      });
+    }
+    cap.fileIds = capFileIds;
+  }
+  return files;
 }
 
 function generateNotifications(
@@ -1309,6 +1392,7 @@ export interface MockDb {
   obligations: Obligation[];
   caps: CAP[];
   assignments: Assignment[];
+  files: FileAttachment[];
   notifications: Notification[];
   auditLogs: AuditLog[];
   roles: RoleEntity[];
@@ -1322,6 +1406,32 @@ export interface MockDb {
 
 let dbInstance: MockDb | null = null;
 
+/**
+ * Link a subset of obligations to existing CAPs by pushing obligation ids
+ * into the CAP's `obligationIds`. This seeds the real one-to-many CAP↔obligation
+ * relationship the owner dashboard relies on (Needs CAP alerts, "Go to CAP").
+ * Obligations already in `cap_in_progress`/`completed` are linked more often so
+ * the status and linkage stay coherent.
+ */
+function linkObligationsToCAPs(caps: CAP[], obligations: Obligation[]): void {
+  if (!caps.length || !obligations.length) return;
+  for (const obg of obligations) {
+    const linkProbability =
+      obg.status === "cap_in_progress" || obg.status === "completed"
+        ? 0.6
+        : 0.3;
+    if (!faker.datatype.boolean(linkProbability)) continue;
+    const cap = faker.helpers.arrayElement(caps);
+    if (!cap.obligationIds.includes(obg.id)) {
+      cap.obligationIds.push(obg.id);
+    }
+    // Reflect the link on the obligation status when it's still open.
+    if (obg.status === "draft" || obg.status === "submitted") {
+      obg.status = "cap_in_progress";
+    }
+  }
+}
+
 export function getDb(): MockDb {
   if (dbInstance) return dbInstance;
 
@@ -1330,8 +1440,10 @@ export function getDb(): MockDb {
   const regulationDependencies = generateRegulationDependencies(regulations);
   const compliance = generateComplianceObligations(regulations, users);
   const caps = generateCAPs(compliance, users);
+  const files = generateFiles(caps);
   const assignments = generateAssignments(regulations, users);
-  const obligations = generateObligations(assignments);
+  const obligations = generateObligations(assignments, users);
+  linkObligationsToCAPs(caps, obligations);
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
@@ -1348,6 +1460,7 @@ export function getDb(): MockDb {
     obligations,
     caps,
     assignments,
+    files,
     notifications,
     auditLogs,
     roles,
@@ -1368,6 +1481,7 @@ export function getDb(): MockDb {
       obligations: obligations.length,
       caps: caps.length,
       assignments: assignments.length,
+      files: files.length,
       notifications: notifications.length,
       auditLogs: auditLogs.length,
       roles: roles.length,

@@ -1,0 +1,44 @@
+import { apiGet, apiUpload, apiDelete } from "@/lib/api";
+import { API_ENDPOINTS } from "@/constants/api";
+import type { FileAttachment, FileFilter, Paginated } from "@/types";
+
+function buildQuery(filters: FileFilter): string {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    if (Array.isArray(value)) {
+      if (value.length) params.set(key, value.join(","));
+    } else {
+      params.set(key, String(value));
+    }
+  });
+  return params.toString() ? `?${params.toString()}` : "";
+}
+
+export const FileService = {
+  list(filters: FileFilter = {}) {
+    return apiGet<Paginated<FileAttachment>>(
+      `${API_ENDPOINTS.FILE_LIST}${buildQuery(filters)}`,
+    );
+  },
+
+  /**
+   * Upload a single file. The caller may pass `capId` to link the attachment
+   * to a CAP and `uploadedBy`/`uploadedById` for attribution.
+   */
+  upload(
+    file: File,
+    meta: { capId?: string; uploadedBy?: string; uploadedById?: string } = {},
+  ) {
+    const form = new FormData();
+    form.append("file", file);
+    if (meta.capId) form.append("capId", meta.capId);
+    if (meta.uploadedBy) form.append("uploadedBy", meta.uploadedBy);
+    if (meta.uploadedById) form.append("uploadedById", meta.uploadedById);
+    return apiUpload<FileAttachment>(API_ENDPOINTS.FILE_UPLOAD, form);
+  },
+
+  remove(id: string) {
+    return apiDelete<{ success: boolean }>(API_ENDPOINTS.FILE_DELETE(id));
+  },
+};

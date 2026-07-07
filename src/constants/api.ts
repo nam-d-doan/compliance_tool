@@ -90,7 +90,17 @@ export const API_ENDPOINTS = {
   ASSIGNMENT_TIMELINE: (id: string) => `/api/assignments/${id}/timeline`,
 
   // Obligation endpoints
+  OBLIGATION_LIST: "/api/obligations/list",
   OBLIGATION_BULK: "/api/obligations/bulk",
+  OBLIGATION_BULK_UPDATE: "/api/obligations/bulk",
+  OBLIGATION_GET: (id: string) => `/api/obligations/${id}`,
+  OBLIGATION_UPDATE: (id: string) => `/api/obligations/${id}`,
+
+  // File attachment endpoints (Phase 5)
+  FILE_LIST: "/api/files",
+  FILE_UPLOAD: "/api/files",
+  FILE_GET: (id: string) => `/api/files/${id}`,
+  FILE_DELETE: (id: string) => `/api/files/${id}`,
 
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",

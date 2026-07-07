@@ -27,11 +27,11 @@ import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
-import type { CAPAction } from "@/types";
+import type { CAPAction, FileAttachment } from "@/types";
 
 export default function CAPCreatePage() {
   const navigate = useNavigate();
-  const { role } = useAuthStore();
+  const { role, user } = useAuthStore();
   const canCreate = hasPermission(role, "cap:create");
 
   const [searchParams] = useSearchParams();
@@ -44,6 +44,9 @@ export default function CAPCreatePage() {
   );
   const [highlightKey, setHighlightKey] = useState(0);
   const [aiExplainOpen, setAiExplainOpen] = useState(false);
+  /** Files uploaded while filling out the form (orphan until the CAP exists).
+   *  Linked to the new CAP via `fileIds` in the create payload. */
+  const [uploadedFiles, setUploadedFiles] = useState<FileAttachment[]>([]);
 
   // Pre-fill obligations from query params. Supports `?obligations=id1,id2`
   // (new) and legacy `?complianceId=id` / `?compliance=id` (single).
@@ -195,6 +198,7 @@ export default function CAPCreatePage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })) ?? []) as CAPAction[],
+      fileIds: uploadedFiles.map((f) => f.id),
     };
   };
 
@@ -449,6 +453,10 @@ export default function CAPCreatePage() {
                     ? { obligationIds: prefilledObligationIds }
                     : undefined
                 }
+                files={uploadedFiles}
+                onFilesChange={setUploadedFiles}
+                uploadedBy={user?.name}
+                uploadedById={user?.id}
               />
             </CardContent>
           </Card>

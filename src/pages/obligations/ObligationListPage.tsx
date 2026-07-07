@@ -118,39 +118,40 @@ export default function ObligationListPage() {
     status: "Active",
   });
 
-  const columns = useMemo<ColumnDef<ComplianceObligation>[]>(() => [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          aria-label="Select all visible obligations"
-          className="size-4 cursor-pointer accent-primary"
-          checked={table.getIsAllPageRowsSelected()}
-          ref={(el) => {
-            if (el) el.indeterminate = table.getIsSomePageRowsSelected();
-          }}
-          onChange={table.getToggleAllPageRowsSelectedHandler()}
-        />
-      ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          aria-label={`Select ${row.original.title}`}
-          className="size-4 cursor-pointer accent-primary"
-          checked={row.getIsSelected()}
-          onChange={row.getToggleSelectedHandler()}
-          onClick={(e) => e.stopPropagation()}
-        />
-      ),
-      size: 40,
-      enableSorting: false,
-    },
-    {
-      accessorKey: "complianceId",
-      header: "Obligation ID",
-      size: 140,
-    },
+  const columns = useMemo<ColumnDef<ComplianceObligation>[]>(
+    () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <input
+            type="checkbox"
+            aria-label="Select all visible obligations"
+            className="size-4 cursor-pointer accent-primary"
+            checked={table.getIsAllPageRowsSelected()}
+            ref={(el) => {
+              if (el) el.indeterminate = table.getIsSomePageRowsSelected();
+            }}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            aria-label={`Select ${row.original.title}`}
+            className="size-4 cursor-pointer accent-primary"
+            checked={row.getIsSelected()}
+            onChange={row.getToggleSelectedHandler()}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ),
+        size: 40,
+        enableSorting: false,
+      },
+      {
+        accessorKey: "complianceId",
+        header: "Obligation ID",
+        size: 140,
+      },
       {
         accessorKey: "title",
         header: "Title",

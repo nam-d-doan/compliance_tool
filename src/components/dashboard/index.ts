@@ -9,3 +9,6 @@ export { DashboardApprovalQueue } from "./DashboardApprovalQueue";
 export { DashboardReviewQueue } from "./DashboardReviewQueue";
 export { DashboardAdminStats } from "./DashboardAdminStats";
 export { DashboardAssignmentsCard } from "./DashboardAssignmentsCard";
+export { MyObligationsWidget } from "./MyObligationsWidget";
+export { NeedsCAPAlerts } from "./NeedsCAPAlerts";
+export { ObligationProgressRing } from "./ObligationProgressRing";

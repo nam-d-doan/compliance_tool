@@ -4,6 +4,7 @@ import type {
   RegulationFilter,
   ReportFilter,
   AssignmentFilter,
+  ObligationFilter,
 } from "@/types";
 
 export const complianceKeys = {
@@ -57,7 +58,19 @@ export const assignmentKeys = {
 export const obligationKeys = {
   all: ["obligation"] as const,
   lists: () => [...obligationKeys.all, "list"] as const,
+  list: (filters: ObligationFilter) =>
+    [...obligationKeys.lists(), filters] as const,
+  details: () => [...obligationKeys.all, "detail"] as const,
+  detail: (id: string) => [...obligationKeys.details(), id] as const,
   bulk: () => [...obligationKeys.all, "bulk"] as const,
+};
+
+export const fileKeys = {
+  all: ["files"] as const,
+  lists: () => [...fileKeys.all, "list"] as const,
+  list: (filters: { capId?: string; search?: string }) =>
+    [...fileKeys.lists(), filters] as const,
+  byCap: (capId: string) => [...fileKeys.all, "cap", capId] as const,
 };
 
 export const reportKeys = {

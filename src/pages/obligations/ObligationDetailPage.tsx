@@ -199,9 +199,7 @@ export default function ObligationDetailPage() {
 
   const handleDelete = () => {
     if (!item) return;
-    if (
-      !window.confirm("Are you sure you want to delete this obligation?")
-    )
+    if (!window.confirm("Are you sure you want to delete this obligation?"))
       return;
     remove.mutate(item.id, {
       onSuccess: () => {
@@ -294,7 +292,11 @@ export default function ObligationDetailPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <Button variant="ghost" size="sm" onClick={() => navigate("/obligations")}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate("/obligations")}
+      >
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to obligations
       </Button>

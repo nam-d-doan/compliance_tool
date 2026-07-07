@@ -6,3 +6,4 @@ export * from "./useObligationMutations";
 export * from "./useAdminMutations";
 export * from "./useNotificationMutations";
 export * from "./useAIMutations";
+export * from "./useFileMutations";

@@ -125,6 +125,7 @@ export async function handleCreateCap({ request }: { request: Request }) {
     aiSuggestions: body.aiSuggestions ?? [],
     progress: body.progress ?? 0,
     tags: body.tags ?? [],
+    fileIds: body.fileIds ?? [],
     createdAt: now,
     updatedAt: now,
   };

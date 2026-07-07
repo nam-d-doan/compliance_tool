@@ -11,6 +11,7 @@ import { aiHandlers } from "./ai_handlers";
 import { commentHandlers } from "./comment_handlers";
 import { assignmentHandlers } from "./assignment_handlers";
 import { obligationHandlers } from "./obligation_handlers";
+import { fileHandlers } from "./file_handlers";
 
 export const handlers = [
   ...authHandlers,
@@ -26,4 +27,5 @@ export const handlers = [
   ...commentHandlers,
   ...assignmentHandlers,
   ...obligationHandlers,
+  ...fileHandlers,
 ];

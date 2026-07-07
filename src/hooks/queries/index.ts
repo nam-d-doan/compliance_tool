@@ -7,3 +7,5 @@ export * from "./useAdminQueries";
 export * from "./useDashboardQueries";
 export * from "./useNotificationQueries";
 export * from "./useAIQueries";
+export * from "./useFileQueries";
+export * from "./useObligationQueries";

@@ -21,6 +21,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { NotificationDrawer } from "./NotificationDrawer";
+import { NeedsCapNavButton } from "./NeedsCapNavButton";
 import { RoleSwitch } from "@/components/auth/RoleSwitch";
 import {
   Search,
@@ -135,6 +136,8 @@ export function TopNav() {
               <Sun className="size-5" />
             )}
           </Button>
+
+          <NeedsCapNavButton />
 
           <Button
             variant="ghost"
