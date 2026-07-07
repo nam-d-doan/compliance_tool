@@ -13,6 +13,8 @@ import {
   Trash2,
   BookOpen,
   UploadCloud,
+  AlertTriangle,
+  Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,19 +22,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHero } from "@/components/common";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { useCreateRegulation } from "@/hooks/mutations/useRegulationMutations";
-import { useVietLexSearch } from "@/hooks/queries/useRegulationQueries";
+import {
+  useRegulationList,
+  useVietLexSearch,
+} from "@/hooks/queries/useRegulationQueries";
+import { RegulationService } from "@/services";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
+import { REGULATION_STATUSES } from "@/constants/status";
 import { toast } from "sonner";
 import type { VietLexDoc } from "@/types";
 
@@ -68,6 +70,13 @@ const articleSchema = z.object({
   summary: z.string().min(1, "Article summary is required"),
 });
 
+const DEPENDENCY_TYPES = [
+  "amends",
+  "repeals",
+  "supersedes",
+  "references",
+] as const;
+
 const formSchema = z.object({
   title: z.string().min(3, "Title is required"),
   description: z.string().min(10, "Description is required"),
@@ -75,10 +84,14 @@ const formSchema = z.object({
   regulatoryBody: z.string().min(1, "Regulatory body is required"),
   effectiveDate: z.string().min(1, "Effective date is required"),
   expirationDate: z.string().optional(),
+  status: z.enum(["Effective", "Expired", "Superseded"]),
   priority: z.enum(PRIORITIES),
   articles: z
     .array(articleSchema)
     .min(1, "At least one article with title and summary is required"),
+  dependencyRegulationId: z.string().optional(),
+  dependencyType: z.enum(DEPENDENCY_TYPES).optional(),
+  dependencyDescription: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -130,7 +143,8 @@ const VIETLEX_STUB_ARTICLES: ArticleInput[] = [
 
 function inferCategory(title: string): string {
   const t = title.toLowerCase();
-  if (t.includes("an toàn vốn") || t.includes("capital")) return "Capital Adequacy";
+  if (t.includes("an toàn vốn") || t.includes("capital"))
+    return "Capital Adequacy";
   if (t.includes("rủi ro tín dụng") || t.includes("credit risk"))
     return "Operational Risk";
   if (t.includes("khủng bố") || t.includes("aml") || t.includes("kyc"))
@@ -161,16 +175,25 @@ export default function RegulationCreatePage() {
     register,
     control,
     handleSubmit,
+    watch,
     setValue,
     trigger,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema as never) as Resolver<FormValues>,
     defaultValues: {
+      status: "Effective",
       priority: "medium",
       articles: [],
     },
   });
+
+  const status = watch("status");
+  const expirationDate = watch("expirationDate");
+  const dependencyRegulationId = watch("dependencyRegulationId");
+
+  const { data: existingRegulations } = useRegulationList({ pageSize: 200 });
+  const regulationOptions = existingRegulations?.items ?? [];
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchQuery(searchInput.trim()), 500);
@@ -218,10 +241,7 @@ export default function RegulationCreatePage() {
     }, 1200);
   };
 
-  const updateArticle = (
-    index: number,
-    updates: Partial<ArticleInput>,
-  ) => {
+  const updateArticle = (index: number, updates: Partial<ArticleInput>) => {
     const next = articles.map((a, i) =>
       i === index ? { ...a, ...updates } : a,
     );
@@ -259,26 +279,55 @@ export default function RegulationCreatePage() {
     toast.success(`Imported ${doc.docNumber}`);
   };
 
-  const submitForm = async (statusKey: "draft" | "published") => {
+  const isPastExpiration = Boolean(
+    expirationDate &&
+    new Date(expirationDate) < new Date(new Date().setHours(0, 0, 0, 0)),
+  );
+
+  const submitForm = async () => {
     const isValid = await trigger();
     if (!isValid) {
       toast.error("Please fix the form errors");
       return;
     }
+    if (isPastExpiration && status !== "Expired") {
+      toast.warning(
+        "Expiration date is in the past. The regulation will be created as Expired.",
+      );
+    }
     handleSubmit((values) => {
       createRegulation.mutate(
         {
           ...values,
-          status: statusKey === "draft" ? "Draft" : "Published",
+          status: isPastExpiration ? "Expired" : values.status,
           source: "internal",
         },
         {
-          onSuccess: (data) => {
-            toast.success(
-              statusKey === "draft"
-                ? "Regulation saved as draft"
-                : "Regulation published",
-            );
+          onSuccess: async (data) => {
+            toast.success("Regulation created");
+            if (values.dependencyRegulationId && values.dependencyType) {
+              try {
+                await RegulationService.createDependency({
+                  fromRegulationId: data.id,
+                  toRegulationId: values.dependencyRegulationId,
+                  type: values.dependencyType,
+                  description:
+                    values.dependencyDescription ||
+                    `${values.dependencyType} ${data.title}`,
+                });
+                if (values.dependencyType === "supersedes") {
+                  toast.info(
+                    "The superseded regulation has been marked as Superseded",
+                  );
+                }
+              } catch (err) {
+                toast.error(
+                  err instanceof Error
+                    ? err.message
+                    : "Failed to create dependency",
+                );
+              }
+            }
             navigate(`/regulation/${data.id}`);
           },
           onError: (err) =>
@@ -300,7 +349,11 @@ export default function RegulationCreatePage() {
         subtitle="Upload a document or search VietLex to draft a new regulation."
       />
 
-      <Tabs defaultValue="upload" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        defaultValue="upload"
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
         <TabsList>
           <TabsTrigger value="upload">
             <UploadCloud className="size-4" aria-hidden="true" />
@@ -486,9 +539,7 @@ export default function RegulationCreatePage() {
               aria-invalid={errors.title ? "true" : "false"}
             />
             {errors.title && (
-              <p className="text-xs text-destructive">
-                {errors.title.message}
-              </p>
+              <p className="text-xs text-destructive">{errors.title.message}</p>
             )}
           </div>
 
@@ -615,7 +666,115 @@ export default function RegulationCreatePage() {
                 )}
               />
             </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="status">Status</Label>
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <select id="status" {...field} className={selectClass}>
+                    {REGULATION_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
+              {errors.status && (
+                <p className="text-xs text-destructive">
+                  {errors.status.message}
+                </p>
+              )}
+              {isPastExpiration && status !== "Expired" && (
+                <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="size-3.5" aria-hidden="true" />
+                  Expiration date is in the past. The regulation will be saved
+                  as Expired.
+                </p>
+              )}
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Dependency</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="dependencyRegulationId">
+                Related Regulation{" "}
+                <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Controller
+                name="dependencyRegulationId"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    id="dependencyRegulationId"
+                    {...field}
+                    className={selectClass}
+                  >
+                    <option value="">Select regulation</option>
+                    {regulationOptions.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dependencyType">
+                Dependency Type{" "}
+                <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Controller
+                name="dependencyType"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    id="dependencyType"
+                    {...field}
+                    className={selectClass}
+                  >
+                    <option value="">Select type</option>
+                    {DEPENDENCY_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="dependencyDescription">
+              Description{" "}
+              <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Textarea
+              id="dependencyDescription"
+              {...register("dependencyDescription")}
+              placeholder="Describe how this regulation relates to the selected regulation"
+            />
+          </div>
+
+          {dependencyRegulationId && (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Link2 className="size-3.5" aria-hidden="true" />
+              Selecting <strong>supersedes</strong> will automatically mark the
+              related regulation as Superseded.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -701,24 +860,13 @@ export default function RegulationCreatePage() {
         </Button>
         <Button
           type="button"
-          variant="secondary"
-          onClick={() => submitForm("draft")}
+          onClick={() => submitForm()}
           disabled={createRegulation.isPending}
         >
           {createRegulation.isPending && (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           )}
-          Save as Draft
-        </Button>
-        <Button
-          type="button"
-          onClick={() => submitForm("published")}
-          disabled={createRegulation.isPending}
-        >
-          {createRegulation.isPending && (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          )}
-          Publish
+          Create Regulation
         </Button>
       </div>
     </motion.div>

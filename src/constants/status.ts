@@ -167,8 +167,9 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
   closed: { label: "Closed", icon: CheckCircle2, ...emerald },
 
   // Regulation / content
-  published: { label: "Published", icon: Globe, ...emerald },
-  updated: { label: "Updated", icon: RefreshCw, ...blue },
+  effective: { label: "Effective", icon: CheckCircle, ...emerald },
+  expired: { label: "Expired", icon: Archive, ...slate },
+  superseded: { label: "Superseded", icon: RefreshCw, ...amber },
 
   // User / admin
   inactive: { label: "Inactive", icon: UserX, ...slate },
@@ -236,10 +237,9 @@ export const CAP_STATUSES = [
 ] as const;
 
 export const REGULATION_STATUSES = [
-  "Published",
-  "Updated",
-  "Archived",
-  "Draft",
+  "Effective",
+  "Expired",
+  "Superseded",
 ] as const;
 
 export const USER_STATUSES = [

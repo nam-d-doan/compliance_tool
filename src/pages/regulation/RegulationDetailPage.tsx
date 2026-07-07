@@ -14,16 +14,15 @@ import {
   BarChart3,
   CheckCircle,
   AlertTriangle,
-  ShieldAlert,
-  GitCompare,
-  Zap,
   Loader2,
   Archive,
+  Pencil,
   Link2,
   ArrowUpRight,
   ArrowDownLeft,
   ExternalLink,
-  Plus,
+  ClipboardList,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,16 +91,16 @@ const IMPACT_AREAS = [
 
 function buildInsight(item: Regulation): AIInsight {
   const score =
-    item.priority === "critical" ? 95 : item.priority === "high" ? 75 : 50;
+    item.status === "Expired" ? 30 : item.articles.length > 50 ? 80 : 60;
   return {
     id: `ai-${item.id}`,
     title: "AI Impact Summary",
-    description: `This ${item.priority} priority regulation contains ${item.articles.length} articles and may have broad operational impact.`,
+    description: `This regulation contains ${item.articles.length} articles and may have broad operational impact.`,
     type: score >= 70 ? "risk" : score >= 40 ? "action" : "opportunity",
     confidence: Math.min(score / 100 + 0.05, 0.95),
-    recommendation: `Prioritize review of ${item.title} due to its ${item.priority} priority and ${item.articles.length} linked articles.`,
+    recommendation: `Prioritize review of ${item.title} and its ${item.articles.length} linked articles.`,
     reasoning: [
-      `Priority level ${item.priority} indicates ${score >= 70 ? "high" : score >= 40 ? "moderate" : "low"} operational impact.`,
+      `Regulation status ${item.status} indicates ${score >= 70 ? "high" : score >= 40 ? "moderate" : "low"} current relevance.`,
       `Cross-referenced with ${item.articles.length} articles and linked compliance obligations.`,
       "Estimated effort is based on similar regulatory changes in the knowledge base.",
     ],
@@ -192,18 +191,20 @@ export default function RegulationDetailPage() {
 
   const handleArchive = () => {
     if (!id || !item) return;
-    const isArchived = item.status === "Archived";
+    const isExpired = item.status === "Expired";
     archive.mutate(id, {
       onSuccess: () => {
         toast.success(
-          isArchived ? "Regulation unarchived" : "Regulation archived",
+          isExpired
+            ? "Regulation marked effective"
+            : "Regulation marked expired",
         );
       },
       onError: (err) => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to update archive status",
+            : "Failed to update regulation status",
         );
       },
     });
@@ -288,7 +289,7 @@ export default function RegulationDetailPage() {
     >
       <PageHero
         title={item.title}
-        subtitle={`${item.regulatoryBody} · Effective ${format(new Date(item.effectiveDate), "MMM d, yyyy")} · Priority ${item.priority}`}
+        subtitle={`${item.regulatoryBody} · Effective ${format(new Date(item.effectiveDate), "MMM d, yyyy")}`}
       >
         <div className="flex flex-col items-end gap-2">
           <Button
@@ -325,16 +326,25 @@ export default function RegulationDetailPage() {
                 ) : (
                   <Archive className="size-4" aria-hidden="true" />
                 )}
-                {item.status === "Archived" ? "Unarchive" : "Archive"}
+                {item.status === "Expired" ? "Mark Effective" : "Mark Expired"}
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/regulation/${item.id}/edit`)}
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+              Edit
+            </Button>
           </div>
           <StatusBadge status={item.status} size="md" />
         </div>
       </PageHero>
 
       {item.expirationDate &&
-        item.status !== "Archived" &&
+        item.status !== "Expired" &&
         new Date(item.expirationDate) < new Date() && (
           <Card className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40">
             <CardContent className="flex items-center gap-3 py-4">
@@ -348,12 +358,23 @@ export default function RegulationDetailPage() {
           </Card>
         )}
 
-      {item.status === "Archived" && (
+      {item.status === "Expired" && (
         <Card className="border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/40">
           <CardContent className="flex items-center gap-3 py-4">
             <Archive className="size-5 text-slate-600 dark:text-slate-400" />
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              This regulation is archived and is no longer active.
+              This regulation is expired and is no longer active.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {item.status === "Superseded" && (
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertTriangle className="size-5 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              This regulation has been superseded by a newer regulation.
             </p>
           </CardContent>
         </Card>
@@ -421,7 +442,6 @@ export default function RegulationDetailPage() {
                       />
                       <Fact icon={Tag} label="Category" value={item.category} />
                       <Fact icon={Tag} label="Source" value={item.source} />
-                      <Fact icon={Tag} label="Priority" value={item.priority} />
                       <Fact
                         icon={Tag}
                         label="Articles"
@@ -460,15 +480,17 @@ export default function RegulationDetailPage() {
                 </Card>
 
                 {insight && explanation && (
-                  <AIInsightCard
-                    insight={insight}
-                    explanation={{
-                      ...explanation,
-                      recommendation: insight.recommendation,
-                      confidence: insight.confidence,
-                      reasoning: insight.reasoning,
-                    }}
-                  />
+                  <div id="ai-summary">
+                    <AIInsightCard
+                      insight={insight}
+                      explanation={{
+                        ...explanation,
+                        recommendation: insight.recommendation,
+                        confidence: insight.confidence,
+                        reasoning: insight.reasoning,
+                      }}
+                    />
+                  </div>
                 )}
               </motion.div>
             </TabsContent>
@@ -755,30 +777,11 @@ export default function RegulationDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <KPICard label="Priority" value={item.priority} icon={BarChart3} />
           <KPICard
             label="Articles"
             value={item.articles.length}
             icon={CheckCircle}
           />
-          <KPICard
-            label="Risk Level"
-            value={
-              item.priority === "critical"
-                ? "High"
-                : item.priority === "high"
-                  ? "Medium"
-                  : "Low"
-            }
-            icon={
-              item.priority === "critical"
-                ? ShieldAlert
-                : item.priority === "high"
-                  ? AlertTriangle
-                  : CheckCircle
-            }
-          />
-
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
@@ -786,16 +789,23 @@ export default function RegulationDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link to={`/regulation/compare?a=${item.id}`}>
-                  <GitCompare className="size-4" aria-hidden="true" />
-                  Compare with another
-                </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() =>
+                  document
+                    .getElementById("ai-summary")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              >
+                <ScrollText className="size-4" aria-hidden="true" />
+                AI Summary
               </Button>
               <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link to={`/regulation/${item.id}/impact`}>
-                  <Zap className="size-4" aria-hidden="true" />
-                  Deep impact analysis
+                <Link to={`/compliance/submit?regulationId=${item.id}`}>
+                  <ClipboardList className="size-4" aria-hidden="true" />
+                  Create Obligations
                 </Link>
               </Button>
             </CardContent>
@@ -840,19 +850,18 @@ export default function RegulationDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">
-                  Auto-Archive
+                  Auto-Expire
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                {item.status === "Archived" ? (
+                {item.status === "Expired" ? (
                   <p className="text-muted-foreground">
-                    This regulation was auto-archived based on its expiration
-                    date (VietLex citator stub).
+                    This regulation was auto-expired based on its expiration
+                    date.
                   </p>
                 ) : (
                   <p className="text-muted-foreground">
-                    Auto-archive will be evaluated against the expiration date
-                    (VietLex citator stub).
+                    Status will be evaluated against the expiration date.
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">

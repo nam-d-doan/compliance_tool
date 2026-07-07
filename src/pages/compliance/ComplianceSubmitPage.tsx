@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { motion } from "motion/react";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -16,6 +16,8 @@ import type { ComplianceObligation } from "@/types";
 
 export default function ComplianceSubmitPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedRegulationId = searchParams.get("regulationId") ?? undefined;
   const { role, user } = useAuthStore();
   const canCreate = hasPermission(role, "compliance:create");
 
@@ -170,6 +172,7 @@ export default function ComplianceSubmitPage() {
               isSubmitting={create.isPending}
               defaultValues={{
                 ownerId: user?.id ?? "",
+                regulationId: preselectedRegulationId,
               }}
             />
           )}

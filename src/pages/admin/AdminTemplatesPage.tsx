@@ -101,7 +101,7 @@ function TemplateForm({
     status: "Active",
   });
   const { data: regulationsData, isPending: regulationsLoading } =
-    useRegulationList({ status: "Published", pageSize: 200 });
+    useRegulationList({ status: ["Effective", "Superseded"], pageSize: 200 });
 
   const owners = useMemo(
     () => usersData?.items.filter((u) => u.role === "owner") ?? [],

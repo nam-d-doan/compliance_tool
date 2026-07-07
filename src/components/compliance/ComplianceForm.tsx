@@ -98,7 +98,7 @@ export function ComplianceForm({
   });
 
   const { data: regulationsData, isPending: regulationsLoading } =
-    useRegulationList({ status: "Published", pageSize: 200 });
+    useRegulationList({ pageSize: 200 });
   const { data: ownersData, isPending: ownersLoading } = useAdminUsers(1, 200, {
     role: "owner",
     status: "Active",

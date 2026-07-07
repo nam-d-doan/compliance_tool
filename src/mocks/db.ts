@@ -17,6 +17,7 @@ import type {
   AIConfig,
   OrganizationSettings,
   Regulation,
+  Article,
   ComplianceObligation,
   ComplianceSubmission,
   CAP,
@@ -167,7 +168,109 @@ function generateDemoUserProfiles(): UserProfile[] {
   }));
 }
 
-function generateRegulations(count = 80): Regulation[] {
+const ARTICLE_THEMES = [
+  "Phạm vi điều chỉnh",
+  "Đối tượng áp dụng",
+  "Giải thích từ ngữ",
+  "Trách nhiệm của tổ chức tín dụng",
+  "Yêu cầu báo cáo",
+  "Xử lý vi phạm",
+  "Hiệu lực thi hành",
+  "Quy định chuyển tiếp",
+  "Trách nhiệm giải trình",
+  "Giám sát và thanh tra",
+  "Quản lý hồ sơ",
+  "Ngưỡng an toàn vốn tối thiểu",
+  "Tỷ lệ an toàn vốn",
+  "Quản lý rủi ro tín dụng",
+  "Phân loại nợ",
+  "Trích lập dự phòng",
+  "Phòng chống rửa tiền",
+  "Nhận diện khách hàng",
+  "Giao dịch đáng ngờ",
+  "Bảo mật thông tin",
+  "An toàn thông tin",
+  "Quản trị nội bộ",
+  "Hội đồng quản trị",
+  "Ban kiểm soát",
+  "Công bố thông tin",
+  "Minh bạch giao dịch",
+  "Bảo vệ người tiêu dùng",
+  "Giải quyết khiếu nại",
+  "Quản lý rủi ro hoạt động",
+  "Báo cáo sự cố",
+  "Kế hoạch kinh doanh",
+  "Kiểm toán nội bộ",
+  "Kiểm soát nội bộ",
+  "Tuân thủ pháp luật",
+  "Đạo đức kinh doanh",
+  "Xung đột lợi ích",
+  "Giao dịch liên kết",
+  "Cấp tín dụng",
+  "Giám sát chi phí",
+  "Quản lý tài sản",
+  "Thanh khoản",
+  "Tỷ lệ nợ xấu",
+  "Tái cấp vốn",
+  "Giao dịch ngoại hối",
+  "Phái sinh tài chính",
+  "Kinh doanh chứng khoán",
+  "Quản lý danh mục",
+  "Bán hàng đa cấp",
+  "Thu hồi nợ",
+  "Xử lý tài sản bảo đảm",
+  "Tổ chức tín dụng phi ngân hàng",
+  "Hợp tác xã tín dụng",
+  "Công ty tài chính",
+  "Cho thuê tài chính",
+  "Bảo hiểm tiền gửi",
+  "Giải quyết phá sản",
+  "Cơ cấu lại tín dụng",
+  "Miễn giảm lãi vay",
+  "Gia hạn nợ",
+  "Cấp tín dụng mới",
+  "Giám sát đặc biệt",
+  "Kiểm soát đặc biệt",
+  "Đình chỉ hoạt động",
+  "Thu hồi giấy phép",
+  "Bắt buộc chuyển nhượng",
+  "Phong tỏa tài sản",
+  "Khởi tố hình sự",
+  "Hợp tác quốc tế",
+  "Trao đổi thông tin",
+  "Thỏa thuận song phương",
+  "Chuẩn mực kế toán",
+  "Báo cáo tài chính",
+  "Kiểm toán báo cáo tài chính",
+  "Phân tích tài chính",
+  "Giới hạn giao dịch",
+  "Hạn mức tín dụng",
+  "Tỷ lệ bảo đảm",
+  "Định giá tài sản",
+  "Thẩm định dự án",
+  "Quản lý nợ công",
+  "Rủi ro lãi suất",
+  "Rủi ro tỷ giá",
+  "Rủi ro thanh khoản",
+  "Rủi ro tập trung",
+  "Rủi ro danh mục",
+];
+
+function generateArticles(count: number, effectiveAt: Date): Article[] {
+  return Array.from({ length: count }, (_, j) => {
+    const theme = ARTICLE_THEMES[j % ARTICLE_THEMES.length];
+    return {
+      id: faker.string.uuid(),
+      number: `${j + 1}`,
+      title: `Điều ${j + 1}: ${theme}`,
+      summary: faker.lorem.paragraph(2),
+      effectiveDate: iso(effectiveAt),
+      status: "active" as const,
+    };
+  });
+}
+
+function generateRegulations(count = 8): Regulation[] {
   // Realistic Vietnamese regulatory document numbers and titles
   const sbvPrefixes = [
     "Thông tư 19/2016/TT-NHNN",
@@ -193,21 +296,6 @@ function generateRegulations(count = 80): Regulation[] {
     "Basel Committee Guidelines",
   ];
 
-  const articleTitles = [
-    "Điều 1: Phạm vi điều chỉnh",
-    "Điều 2: Đối tượng áp dụng",
-    "Điều 3: Giải thích từ ngữ",
-    "Điều 4: Trách nhiệm của tổ chức tín dụng",
-    "Điều 5: Yêu cầu báo cáo",
-    "Điều 6: Xử lý vi phạm",
-    "Điều 7: Hiệu lực thi hành",
-    "Điều 8: Quy định chuyển tiếp",
-    "Điều 9: Trách nhiệm giải trình",
-    "Điều 10: Giám sát và thanh tra",
-    "Điều 11: Quản lý hồ sơ",
-    "Điều 12: Ngưỡng an toàn vốn tối thiểu",
-  ];
-
   const sbvDescriptions = [
     "Quy định của Ngân hàng Nhà nước về tỷ lệ an toàn vốn đối với các tổ chức tín dụng hoạt động tại Việt Nam.",
     "Hướng dẫn triển khai các biện pháp quản lý rủi ro tín dụng và phân loại nợ theo quy định mới.",
@@ -231,11 +319,6 @@ function generateRegulations(count = 80): Regulation[] {
       effectiveAt,
       faker.number.int({ min: 30, max: 180 }),
     );
-    const status = weightedPick<Regulation["status"]>([
-      { item: "Published", weight: 70 },
-      { item: "Updated", weight: 25 },
-      { item: "Archived", weight: 5 },
-    ]);
 
     // Determine source: Vietnamese regulators are 'internal', Basel is 'external'
     const source: "internal" | "external" =
@@ -266,15 +349,26 @@ function generateRegulations(count = 80): Regulation[] {
       description = pick(baselDescriptions);
     }
 
-    const articleCount = faker.number.int({ min: 3, max: 7 });
-    const articles = Array.from({ length: articleCount }, (__, j) => ({
-      id: faker.string.uuid(),
-      number: `${j + 1}`,
-      title: articleTitles[j % articleTitles.length],
-      summary: faker.lorem.paragraph(2),
-      effectiveDate: iso(effectiveAt),
-      status: "active" as const,
-    }));
+    // First regulation is the flagship large regulation with ~80 articles;
+    // remaining regulations are still substantial (10-20 articles each).
+    const isFlagship = i === 0;
+    const articleCount = isFlagship
+      ? faker.number.int({ min: 78, max: 84 })
+      : faker.number.int({ min: 10, max: 20 });
+    const articles = generateArticles(articleCount, effectiveAt);
+
+    const expirationDate = faker.datatype.boolean(0.3)
+      ? iso(addDays(effectiveAt, faker.number.int({ min: 365, max: 1825 })))
+      : undefined;
+
+    let status: Regulation["status"] = "Effective";
+    if (expirationDate && isBefore(new Date(expirationDate), today)) {
+      status = "Expired";
+    } else if (isFlagship) {
+      status = "Effective";
+    } else if (faker.datatype.boolean(0.15)) {
+      status = "Superseded";
+    }
 
     return {
       id: uid("reg"),
@@ -283,9 +377,7 @@ function generateRegulations(count = 80): Regulation[] {
       category,
       regulatoryBody,
       effectiveDate: iso(effectiveAt),
-      expirationDate: faker.datatype.boolean(0.2)
-        ? iso(addDays(effectiveAt, faker.number.int({ min: 365, max: 1825 })))
-        : undefined,
+      expirationDate,
       status,
       priority: faker.helpers.arrayElement(PRIORITY_LEVELS),
       source,

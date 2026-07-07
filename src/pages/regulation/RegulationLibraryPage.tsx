@@ -120,7 +120,6 @@ export default function RegulationLibraryPage() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "effectiveDate", desc: false },
   ]);
-  const [showArchived, setShowArchived] = useState(false);
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -139,19 +138,14 @@ export default function RegulationLibraryPage() {
     status,
     effectiveDateFrom,
     effectiveDateTo,
-    showArchived,
   ]);
 
   const sortField = sorting[0]?.id ?? "effectiveDate";
   const sortDirection = sorting[0]?.desc ? "desc" : "asc";
 
   const effectiveStatus = useMemo(() => {
-    const selected = status ? [status] : [];
-    if (showArchived && !selected.includes("Archived")) {
-      selected.push("Archived");
-    }
-    return selected.length ? selected : undefined;
-  }, [status, showArchived]);
+    return status ? [status] : undefined;
+  }, [status]);
 
   const filters = useMemo(
     () => ({
@@ -188,18 +182,20 @@ export default function RegulationLibraryPage() {
 
   const handleArchiveToggle = useCallback(
     (item: Regulation) => {
-      const isArchived = item.status === "Archived";
+      const isExpired = item.status === "Expired";
       archive.mutate(item.id, {
         onSuccess: () => {
           toast.success(
-            isArchived ? "Regulation unarchived" : "Regulation archived",
+            isExpired
+              ? "Regulation marked effective"
+              : "Regulation marked expired",
           );
         },
         onError: (err) => {
           toast.error(
             err instanceof Error
               ? err.message
-              : "Failed to update archive status",
+              : "Failed to update regulation status",
           );
         },
       });
@@ -376,7 +372,9 @@ export default function RegulationLibraryPage() {
                     disabled={archive.isPending}
                   >
                     <Archive className="size-4" aria-hidden="true" />
-                    {item.status === "Archived" ? "Unarchive" : "Archive"}
+                    {item.status === "Expired"
+                      ? "Mark Effective"
+                      : "Mark Expired"}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -507,14 +505,6 @@ export default function RegulationLibraryPage() {
               onChange={(e) => setEffectiveDateTo(e.target.value)}
               className="h-8"
             />
-            <label className="flex h-8 items-center gap-2 text-sm">
-              <Checkbox
-                id="showArchived"
-                checked={showArchived}
-                onCheckedChange={(checked) => setShowArchived(Boolean(checked))}
-              />
-              Show archived
-            </label>
           </div>
         </CardContent>
       </Card>
@@ -548,7 +538,7 @@ export default function RegulationLibraryPage() {
                     disabled={bulkArchive.isPending}
                   >
                     <Archive className="size-4" aria-hidden="true" />
-                    Archive Selected
+                    Mark Selected Expired
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

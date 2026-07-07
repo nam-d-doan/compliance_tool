@@ -114,18 +114,17 @@ export async function handleGetRegulationDetail({
 }
 
 function normalizeRegulationStatus(status?: string): Regulation["status"] {
-  const raw = (status ?? "published").toLowerCase();
-  if (raw === "draft") return "Draft";
-  if (raw === "updated") return "Updated";
-  if (raw === "archived") return "Archived";
-  return "Published";
+  const raw = (status ?? "effective").toLowerCase();
+  if (raw === "expired") return "Expired";
+  if (raw === "superseded") return "Superseded";
+  return "Effective";
 }
 
-function checkAutoArchive(item: Regulation): void {
-  if (item.status === "Published" && item.expirationDate) {
+function checkAutoExpire(item: Regulation): void {
+  if (item.status === "Effective" && item.expirationDate) {
     const expiration = new Date(item.expirationDate);
     if (!Number.isNaN(expiration.getTime()) && expiration < new Date()) {
-      item.status = "Archived";
+      item.status = "Expired";
     }
   }
 }
@@ -159,7 +158,7 @@ export async function handleCreateRegulation({
     createdDate: now,
     updatedDate: now,
   };
-  checkAutoArchive(newItem);
+  checkAutoExpire(newItem);
   db.regulations.unshift(newItem);
   return jsonResponse(newItem, 201);
 }
@@ -178,7 +177,7 @@ export async function handleUpdateRegulation({
     ...body,
     updatedDate: new Date().toISOString(),
   };
-  checkAutoArchive(updated);
+  checkAutoExpire(updated);
   db.regulations[index] = updated;
   return jsonResponse(updated);
 }
@@ -315,7 +314,7 @@ export async function handleArchiveRegulationToggle({
   const index = db.regulations.findIndex((i) => i.id === params.id);
   if (index === -1) return notFound("Regulation not found");
   const item = db.regulations[index];
-  const nextStatus = item.status === "Archived" ? "Published" : "Archived";
+  const nextStatus = item.status === "Expired" ? "Effective" : "Expired";
   db.regulations[index] = {
     ...item,
     status: nextStatus,
@@ -339,10 +338,10 @@ export async function handleBulkArchiveRegulations({
   let archived = 0;
   ids.forEach((id) => {
     const index = db.regulations.findIndex((i) => i.id === id);
-    if (index !== -1 && db.regulations[index].status !== "Archived") {
+    if (index !== -1 && db.regulations[index].status !== "Expired") {
       db.regulations[index] = {
         ...db.regulations[index],
-        status: "Archived",
+        status: "Expired",
         updatedDate: now,
       };
       archived++;
@@ -410,21 +409,74 @@ const VIETLEX_DOCS: VietLexDoc[] = [
   },
 ];
 
+interface VietLexSearchResult {
+  id?: string;
+  soHieu?: string;
+  title?: string;
+  capBanHanh?: string;
+  nguon?: string;
+  ngayBanHanh?: string;
+  loai?: string;
+  linhVuc?: string;
+}
+
+function parseVietLexDate(value?: string): string {
+  if (!value) return new Date().toISOString();
+  const parts = value.split("/");
+  if (parts.length === 3) {
+    const [d, m, y] = parts.map((p) => Number.parseInt(p, 10));
+    const date = new Date(y, m - 1, d);
+    if (!Number.isNaN(date.getTime())) return date.toISOString();
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? new Date().toISOString()
+    : parsed.toISOString();
+}
+
+function mapVietLexResult(item: VietLexSearchResult): VietLexDoc {
+  const issuer = item.capBanHanh?.trim() || item.nguon || "VietLex";
+  return {
+    id: item.id || `vl-${crypto.randomUUID()}`,
+    docNumber: item.soHieu || "Không rõ số hiệu",
+    title: item.title || "Không có tiêu đề",
+    issuer,
+    date: parseVietLexDate(item.ngayBanHanh),
+  };
+}
+
 export async function handleSearchVietLex({ request }: { request: Request }) {
   await getDelay();
   const url = new URL(request.url);
-  const q = parseQuery(url).q?.toLowerCase() ?? "";
+  const q = parseQuery(url).q?.trim() ?? "";
 
-  const filtered = q
-    ? VIETLEX_DOCS.filter(
-        (d) =>
-          d.title.toLowerCase().includes(q) ||
-          d.docNumber.toLowerCase().includes(q) ||
-          d.issuer.toLowerCase().includes(q),
-      )
-    : VIETLEX_DOCS;
+  if (!q) {
+    return jsonResponse([]);
+  }
 
-  return jsonResponse(filtered);
+  try {
+    const apiUrl = `https://vietlex.vn/api/v1/search?q=${encodeURIComponent(q)}`;
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      console.error(`[VietLex] Search failed: ${response.status}`);
+      return jsonResponse([]);
+    }
+
+    const data = (await response.json()) as {
+      results?: VietLexSearchResult[];
+    };
+    const items = Array.isArray(data.results) ? data.results : [];
+    const mapped = items.map(mapVietLexResult);
+    return jsonResponse(mapped);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[VietLex] Search error: ${message}`);
+    return jsonResponse([]);
+  }
 }
 
 export async function handleGetRegulationDependencies({
@@ -486,6 +538,20 @@ export async function handleCreateRegulationDependency({
     createdDate: new Date().toISOString(),
   };
   db.regulationDependencies.unshift(dependency);
+
+  if (dependency.type === "supersedes") {
+    const targetIndex = db.regulations.findIndex(
+      (r) => r.id === dependency.toRegulationId,
+    );
+    if (targetIndex !== -1) {
+      db.regulations[targetIndex] = {
+        ...db.regulations[targetIndex],
+        status: "Superseded",
+        updatedDate: new Date().toISOString(),
+      };
+    }
+  }
+
   return jsonResponse(dependency, 201);
 }
 
@@ -559,19 +625,18 @@ export async function handleGetVietLexDetail({ params }: MockResolverContext) {
 }
 
 export const regulationHandlers = [
-  http.get("/api/regulation", handleGetRegulationList),
-  http.get("/api/regulation/:id", handleGetRegulationDetail),
-  http.post("/api/regulation", handleCreateRegulation),
+  http.get("/api/regulations", handleGetRegulationList),
+  http.get("/api/regulations/:id", handleGetRegulationDetail),
   http.post("/api/regulations", handleCreateRegulation),
-  http.put("/api/regulation/:id", handleUpdateRegulation),
+  http.put("/api/regulations/:id", handleUpdateRegulation),
   http.patch("/api/regulations/:id/archive", handleArchiveRegulationToggle),
   http.patch("/api/regulations/bulk-archive", handleBulkArchiveRegulations),
-  http.delete("/api/regulation/:id", handleDeleteRegulation),
-  http.get("/api/regulation/:id/timeline", handleGetRegulationTimeline),
-  http.get("/api/regulation/:id/comments", handleGetRegulationComments),
-  http.post("/api/regulation/:id/comments", handleCreateRegulationComment),
-  http.post("/api/regulation/compare", handleCompareRegulations),
-  http.post("/api/regulation/impact", handleRegulationImpact),
+  http.delete("/api/regulations/:id", handleDeleteRegulation),
+  http.get("/api/regulations/:id/timeline", handleGetRegulationTimeline),
+  http.get("/api/regulations/:id/comments", handleGetRegulationComments),
+  http.post("/api/regulations/:id/comments", handleCreateRegulationComment),
+  http.post("/api/regulations/compare", handleCompareRegulations),
+  http.post("/api/regulations/impact", handleRegulationImpact),
   http.get(
     "/api/regulations/:id/dependencies",
     handleGetRegulationDependencies,

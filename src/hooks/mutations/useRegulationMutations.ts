@@ -65,7 +65,7 @@ export function usePublishRegulation(filters: RegulationFilter = {}) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      RegulationService.update(id, { status: "Published" }),
+      RegulationService.update(id, { status: "Effective" }),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: regulationKeys.detail(id) });
       queryClient.invalidateQueries({

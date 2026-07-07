@@ -40,6 +40,10 @@ import {
   handleSearchVietLex,
   handleArchiveRegulationToggle,
   handleBulkArchiveRegulations,
+  handleGetRegulationDependencies,
+  handleCreateRegulationDependency,
+  handleUpdateRegulationDependency,
+  handleDeleteRegulationDependency,
 } from "./handlers/regulation_handlers";
 import { handleGetReport } from "./handlers/report_handlers";
 import {
@@ -173,13 +177,8 @@ const routes: Route[] = [
   // Regulation
   {
     methods: ["GET"],
-    pattern: "/api/regulation",
+    pattern: "/api/regulations",
     handler: handleGetRegulationList,
-  },
-  {
-    methods: ["POST"],
-    pattern: "/api/regulation",
-    handler: handleCreateRegulation,
   },
   {
     methods: ["POST"],
@@ -188,12 +187,12 @@ const routes: Route[] = [
   },
   {
     methods: ["POST"],
-    pattern: "/api/regulation/compare",
+    pattern: "/api/regulations/compare",
     handler: handleCompareRegulations,
   },
   {
     methods: ["POST"],
-    pattern: "/api/regulation/impact",
+    pattern: "/api/regulations/impact",
     handler: handleRegulationImpact,
   },
   {
@@ -203,27 +202,27 @@ const routes: Route[] = [
   },
   {
     methods: ["GET"],
-    pattern: "/api/regulation/:id/timeline",
+    pattern: "/api/regulations/:id/timeline",
     handler: handleGetRegulationTimeline,
   },
   {
     methods: ["GET"],
-    pattern: "/api/regulation/:id/comments",
+    pattern: "/api/regulations/:id/comments",
     handler: handleGetRegulationComments,
   },
   {
     methods: ["POST"],
-    pattern: "/api/regulation/:id/comments",
+    pattern: "/api/regulations/:id/comments",
     handler: handleCreateRegulationComment,
   },
   {
     methods: ["GET"],
-    pattern: "/api/regulation/:id",
+    pattern: "/api/regulations/:id",
     handler: handleGetRegulationDetail,
   },
   {
     methods: ["PUT"],
-    pattern: "/api/regulation/:id",
+    pattern: "/api/regulations/:id",
     handler: handleUpdateRegulation,
   },
   {
@@ -238,8 +237,28 @@ const routes: Route[] = [
   },
   {
     methods: ["DELETE"],
-    pattern: "/api/regulation/:id",
+    pattern: "/api/regulations/:id",
     handler: handleDeleteRegulation,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/regulations/:id/dependencies",
+    handler: handleGetRegulationDependencies,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/regulation-dependencies",
+    handler: handleCreateRegulationDependency,
+  },
+  {
+    methods: ["PATCH"],
+    pattern: "/api/regulation-dependencies/:id",
+    handler: handleUpdateRegulationDependency,
+  },
+  {
+    methods: ["DELETE"],
+    pattern: "/api/regulation-dependencies/:id",
+    handler: handleDeleteRegulationDependency,
   },
 
   // Reports
