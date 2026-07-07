@@ -63,50 +63,50 @@ export function RoleSwitch({ variant = "default" }: RoleSwitchProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 p-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
+    <div className="flex flex-col gap-2 p-2 min-w-0">
+      <div className="flex items-center justify-between min-w-0">
+        <span className="text-xs font-medium text-muted-foreground truncate">
           Demo role
         </span>
         <Badge
           variant="outline"
-          className={`text-[10px] font-semibold uppercase tracking-wide ${ROLE_COLORS[currentRole]}`}
+          className={`text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 ${ROLE_COLORS[currentRole]}`}
         >
           {currentRole}
         </Badge>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-between"
-          >
-            <span className="flex items-center gap-2">
-              <UserCircle className="size-4" />
-              <span className="capitalize">{currentRole}</span>
-            </span>
-            <ChevronDown className="size-3 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
-          {ROLES.map((r) => (
-            <DropdownMenuItem
-              key={r}
-              onClick={() => handleRoleChange(r)}
-              className="capitalize"
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-between min-w-0"
             >
-              {r}
-              {r === currentRole && (
-                <span className="ml-auto text-xs text-primary">active</span>
-              )}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {user && (
-        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-      )}
+              <span className="flex items-center gap-2 min-w-0">
+                <UserCircle className="size-4 flex-shrink-0" />
+                <span className="capitalize truncate">{currentRole}</span>
+              </span>
+              <ChevronDown className="size-3 opacity-50 flex-shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            {ROLES.map((r) => (
+              <DropdownMenuItem
+                key={r}
+                onClick={() => handleRoleChange(r)}
+                className="capitalize"
+              >
+                {r}
+                {r === currentRole && (
+                  <span className="ml-auto text-xs text-primary flex-shrink-0">active</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {user && (
+          <p className="truncate text-xs text-muted-foreground min-w-0">{user.email}</p>
+        )}
     </div>
   );
 }

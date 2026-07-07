@@ -19,6 +19,7 @@ import {
   XCircle,
   AlertTriangle,
   FileText,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,15 +133,13 @@ export default function ObligationCreatePage() {
     ? toInputDate(assignment.dueDate)
     : format(addDays(new Date(), 30), "yyyy-MM-dd");
 
-  // Row state — start with 3 blank rows. Initialized once after context loads
+  // Row state — start with 1 blank placeholder row. Initialized once after context loads
   // so the defaults propagate from the assignment.
   const [rows, setRows] = useState<ObligationRow[]>(() =>
-    Array.from({ length: 3 }, () =>
-      blankRow(
-        assignment?.assignedDepartmentId ?? "",
-        assignment ? toInputDate(assignment.dueDate) : defaultDueDate,
-      ),
-    ),
+    [blankRow(
+      assignment?.assignedDepartmentId ?? "",
+      assignment ? toInputDate(assignment.dueDate) : defaultDueDate,
+    )],
   );
   const [errors, setErrors] = useState<Record<string, RowErrors>>({});
   const [commonDueDate, setCommonDueDate] = useState("");
@@ -167,7 +166,7 @@ export default function ObligationCreatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignmentQuery.isSuccess]);
 
-  const totalObligations = rows.length;
+  const totalObligations = Math.max(0, rows.length - 1);
 
   // --- Row operations -------------------------------------------------------
   const addRow = () => {
@@ -184,9 +183,23 @@ export default function ObligationCreatePage() {
   };
 
   const updateRow = (rowId: string, patch: Partial<ObligationRow>) => {
-    setRows((prev) =>
-      prev.map((r) => (r.rowId === rowId ? { ...r, ...patch } : r)),
-    );
+    setRows((prev) => {
+      const updated = prev.map((r) => (r.rowId === rowId ? { ...r, ...patch } : r));
+      
+      // If this is the last row and user started typing in it, add a new placeholder
+      const lastRowIndex = updated.length - 1;
+      const lastRow = updated[lastRowIndex];
+      const isLastRow = rowId === lastRow.rowId;
+      const hasContent = (patch.articleRef?.trim() || patch.title?.trim() || patch.description?.trim() || 
+                          lastRow.articleRef.trim() || lastRow.title.trim() || lastRow.description.trim());
+      
+      if (isLastRow && hasContent) {
+        return [...updated, blankRow(defaultDept, defaultDueDate)];
+      }
+      
+      return updated;
+    });
+    
     // Clear field errors on edit.
     setErrors((prev) => {
       if (!prev[rowId]) return prev;
@@ -201,11 +214,20 @@ export default function ObligationCreatePage() {
   };
 
   const clearAll = () => {
-    setRows(
-      Array.from({ length: 3 }, () => blankRow(defaultDept, defaultDueDate)),
-    );
+    setRows([blankRow(defaultDept, defaultDueDate)]);
     setErrors({});
     toast.info("Cleared all rows");
+  };
+
+  const moveRow = (fromIndex: number, toIndex: number) => {
+    // Don't allow moving the placeholder row (last row)
+    if (toIndex === rows.length - 1) return;
+    setRows((prev) => {
+      const newRows = [...prev];
+      const [movedRow] = newRows.splice(fromIndex, 1);
+      newRows.splice(toIndex, 0, movedRow);
+      return newRows;
+    });
   };
 
   const applyCommonDueDate = () => {
@@ -255,7 +277,11 @@ export default function ObligationCreatePage() {
     const newErrors: Record<string, RowErrors> = {};
     const valid: ObligationRow[] = [];
 
-    rows.forEach((r) => {
+    rows.forEach((r, index) => {
+      // Skip the last placeholder row (it's always blank)
+      const isPlaceholder = index === rows.length - 1 && !r.articleRef.trim() && !r.title.trim() && !r.description.trim();
+      if (isPlaceholder) return;
+
       const isEmpty = !r.articleRef.trim() && !r.title.trim();
       if (isEmpty && !requireAll) return; // skip blank rows for draft
 
@@ -567,6 +593,9 @@ export default function ObligationCreatePage() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
+                <th className="w-10 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="sr-only">Drag</span>
+                </th>
                 <th className="w-28 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Article Ref <span className="text-destructive">*</span>
                 </th>
@@ -594,9 +623,29 @@ export default function ObligationCreatePage() {
               {rows.map((row, idx) => {
                 const rowErr = errors[row.rowId];
                 const hasError = Boolean(rowErr);
+                const isPlaceholder = idx === rows.length - 1 && !row.articleRef.trim() && !row.title.trim() && !row.description.trim();
+                const isDraggable = !isPlaceholder && rows.length > 2;
+                
                 return (
                   <tr
                     key={row.rowId}
+                    draggable={isDraggable}
+                    onDragStart={() => {
+                      if (isDraggable) window.sessionStorage.setItem('draggingRowIdx', idx.toString());
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (isDraggable) {
+                        const fromIdx = parseInt(window.sessionStorage.getItem('draggingRowIdx') || '-1');
+                        if (fromIdx !== -1 && fromIdx !== idx) {
+                          moveRow(fromIdx, idx);
+                          window.sessionStorage.setItem('draggingRowIdx', idx.toString());
+                        }
+                      }
+                    }}
+                    onDragEnd={() => {
+                      window.sessionStorage.removeItem('draggingRowIdx');
+                    }}
                     className={cn(
                       "border-b border-border/60 transition-colors",
                       hasError
@@ -604,8 +653,16 @@ export default function ObligationCreatePage() {
                         : idx % 2 === 0
                           ? "bg-card"
                           : "bg-muted/20",
+                      isDraggable && "cursor-move hover:bg-muted/40",
                     )}
                   >
+                    <td className="px-3 py-2 align-top">
+                      {isDraggable ? (
+                        <GripVertical className="size-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                      ) : (
+                        <span className="size-4" />
+                      )}
+                    </td>
                     <td className="px-3 py-2 align-top">
                       <input
                         type="text"
@@ -863,18 +920,27 @@ export default function ObligationCreatePage() {
               </CardContent>
             </Card>
           );
-        })}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={addRow}
-          disabled={submitting}
-        >
-          <Plus className="size-4" aria-hidden="true" />
-          Add Row
-        </Button>
+})}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              // Check if last row is placeholder, add new row otherwise
+              const lastRow = rows[rows.length - 1];
+              const hasContent = lastRow.articleRef.trim() || lastRow.title.trim() || lastRow.description.trim();
+              if (!hasContent) {
+                toast.info("Use the placeholder row at the bottom to add new obligations");
+                return;
+              }
+              addRow();
+            }}
+            disabled={submitting}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Add Row
+          </Button>
       </div>
 
       {/* Action bar */}

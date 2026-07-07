@@ -34,25 +34,20 @@ function SidebarNavItem({ item }: { item: NavItem }) {
   if (hasChildren) {
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton
-          isActive={isActive}
-          tooltip={item.label}
-          render={<Link to={item.path} className="flex items-center gap-2" />}
-        >
-          <item.icon className="size-4" />
-          <span>{item.label}</span>
+        <SidebarMenuButton isActive={isActive} tooltip={item.label}>
+          <Link to={item.path} className="flex items-center gap-2">
+            <item.icon className="size-4" />
+            <span>{item.label}</span>
+          </Link>
         </SidebarMenuButton>
         <SidebarMenuSub>
           {item.children?.map((child) => (
             <SidebarMenuSubItem key={child.path}>
-              <SidebarMenuSubButton
-                isActive={location.pathname === child.path}
-                render={
-                  <Link to={child.path} className="flex items-center gap-2" />
-                }
-              >
-                <child.icon className="size-4" />
-                <span>{child.label}</span>
+              <SidebarMenuSubButton isActive={location.pathname === child.path}>
+                <Link to={child.path} className="flex items-center gap-2">
+                  <child.icon className="size-4" />
+                  <span>{child.label}</span>
+                </Link>
               </SidebarMenuSubButton>
             </SidebarMenuSubItem>
           ))}
@@ -63,13 +58,11 @@ function SidebarNavItem({ item }: { item: NavItem }) {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton
-        isActive={isActive}
-        tooltip={item.label}
-        render={<Link to={item.path} className="flex items-center gap-2" />}
-      >
-        <item.icon className="size-4" />
-        <span>{item.label}</span>
+      <SidebarMenuButton isActive={isActive} tooltip={item.label}>
+        <Link to={item.path} className="flex items-center gap-2">
+          <item.icon className="size-4" />
+          <span>{item.label}</span>
+        </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
   );

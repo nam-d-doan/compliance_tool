@@ -408,24 +408,22 @@ export default function AssignmentListPage() {
                   Cancel selected
                 </Button>
                 <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={bulk.isPending}
-                      >
-                        {bulk.isPending ? (
-                          <Loader2
-                            className="size-3.5 animate-spin"
-                            aria-hidden="true"
-                          />
-                        ) : null}
-                        Change priority
-                        <ChevronDown className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    }
-                  />
+                  <DropdownMenuTrigger>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={bulk.isPending}
+                    >
+                      {bulk.isPending ? (
+                        <Loader2
+                          className="size-3.5 animate-spin"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      Change priority
+                      <ChevronDown className="size-3.5" aria-hidden="true" />
+                    </Button>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Set priority</DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -543,10 +541,10 @@ export default function AssignmentListPage() {
                             )}
                           </Link>
                         </td>
-                        <td className="hidden max-w-[14rem] px-3 py-3 md:table-cell">
+                        <td className="hidden max-w-[14rem] min-w-0 px-3 py-3 md:table-cell">
                           <Link
                             to={`/regulation/${a.regulationId}`}
-                            className="truncate text-muted-foreground hover:text-primary"
+                            className="block truncate text-muted-foreground hover:text-primary"
                             title={a.regulationTitle}
                           >
                             {a.regulationTitle ?? a.regulationId}
