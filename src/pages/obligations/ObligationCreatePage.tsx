@@ -102,7 +102,7 @@ function toInputDate(iso: string): string {
   }
 }
 
-export default function ComplianceSubmitPage() {
+export default function ObligationCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const assignmentId = searchParams.get("assignmentId") ?? undefined;
@@ -324,7 +324,7 @@ export default function ComplianceSubmitPage() {
             ? `Submitted ${data.created} obligation${data.created > 1 ? "s" : ""}`
             : `Saved ${data.created} draft obligation${data.created > 1 ? "s" : ""}`,
         );
-        navigate(ROUTES.COMPLIANCE.HISTORY);
+        navigate(ROUTES.OBLIGATIONS.HISTORY);
       },
       onError: (err) => {
         toast.error(err.message || "Failed to save obligations");
@@ -340,12 +340,12 @@ export default function ComplianceSubmitPage() {
           Unauthorized
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          You do not have permission to create compliance obligations.
+          You do not have permission to create obligations.
         </p>
         <Button
           variant="outline"
           className="mt-5"
-          onClick={() => navigate("/compliance")}
+          onClick={() => navigate("/obligations")}
         >
           Back to list
         </Button>
@@ -361,7 +361,7 @@ export default function ComplianceSubmitPage() {
     return (
       <div className="space-y-6">
         <PageHero
-          title="Submit Compliance Obligations"
+          title="Create Obligations"
           subtitle="Loading context..."
         />
         <DetailSkeleton />
@@ -372,7 +372,7 @@ export default function ComplianceSubmitPage() {
   if (assignmentId && assignmentQuery.isError) {
     return (
       <div className="space-y-6">
-        <PageHero title="Submit Compliance Obligations" />
+        <PageHero title="Create Obligations" />
         <ErrorState
           title="Assignment not found"
           message="The assignment referenced in the link could not be loaded."
@@ -387,13 +387,13 @@ export default function ComplianceSubmitPage() {
     ? assignment.title
     : regulation
       ? regulation.title
-      : "Submit Compliance Obligations";
+      : "Create Obligations";
 
   const headerSubtitle = assignment
     ? `Batch obligation submission for ${assignment.assignedDepartmentName ?? assignment.assignedDepartmentId}`
     : regulation
       ? "Batch obligation submission from regulation articles"
-      : "Define multiple compliance obligations in one submission.";
+      : "Define multiple obligations in one submission.";
 
   const submitting = bulkCreate.isPending;
 

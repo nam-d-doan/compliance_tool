@@ -106,7 +106,7 @@ export function DashboardReviewQueue({
                     asChild
                     className="shrink-0 opacity-0 group-hover:opacity-100"
                   >
-                    <Link to={`/compliance/${item.id}`}>
+                    <Link to={`/obligations/${item.id}`}>
                       <ArrowRight className="size-3.5" aria-hidden="true" />
                     </Link>
                   </Button>

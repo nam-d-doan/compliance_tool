@@ -39,12 +39,12 @@ export const ROUTES = {
     REVIEWER: "/dashboard/reviewer",
   },
 
-  // Compliance routes
-  COMPLIANCE: {
-    LIST: "/compliance",
-    DETAIL: "/compliance/:id",
-    SUBMIT: "/compliance/submit",
-    HISTORY: "/compliance/history",
+  // Obligation routes
+  OBLIGATIONS: {
+    LIST: "/obligations",
+    DETAIL: "/obligations/:id",
+    CREATE: "/obligations/create",
+    HISTORY: "/obligations/history",
   },
 
   // CAP routes
@@ -111,8 +111,8 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
     "admin",
   ],
 
-  [ROUTES.COMPLIANCE.SUBMIT]: ["owner", "executive", "admin"],
-  [ROUTES.COMPLIANCE.LIST]: [
+  [ROUTES.OBLIGATIONS.CREATE]: ["owner", "executive", "admin"],
+  [ROUTES.OBLIGATIONS.LIST]: [
     "reviewer",
     "approver",
     "owner",
@@ -182,30 +182,30 @@ export function buildNavTree(role: Role | null): NavSection[] {
       label: "Compliance",
       items: [
         {
-          label: "Compliance",
+          label: "Obligations",
           icon: ShieldCheck,
-          path: ROUTES.COMPLIANCE.LIST,
+          path: ROUTES.OBLIGATIONS.LIST,
           section: "Compliance",
           requiredPermission: "compliance:read",
           children: [
             {
               label: "All Obligations",
               icon: List,
-              path: ROUTES.COMPLIANCE.LIST,
+              path: ROUTES.OBLIGATIONS.LIST,
               section: "Compliance",
               requiredPermission: "compliance:read",
             },
             {
-              label: "Submit",
+              label: "Create",
               icon: PlusCircle,
-              path: ROUTES.COMPLIANCE.SUBMIT,
+              path: ROUTES.OBLIGATIONS.CREATE,
               section: "Compliance",
               requiredPermission: "compliance:create",
             },
             {
               label: "History",
               icon: History,
-              path: ROUTES.COMPLIANCE.HISTORY,
+              path: ROUTES.OBLIGATIONS.HISTORY,
               section: "Compliance",
               requiredPermission: "compliance:read",
             },

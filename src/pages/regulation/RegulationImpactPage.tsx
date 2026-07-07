@@ -420,7 +420,7 @@ export default function RegulationImpactPage() {
                   {obligationItems.map((obligation) => (
                     <Link
                       key={obligation.id}
-                      to={`/compliance/${obligation.id}`}
+                      to={`/obligations/${obligation.id}`}
                       className="flex items-center justify-between rounded-md border border-border bg-card p-2 text-sm transition-colors hover:bg-muted/50"
                     >
                       <span className="truncate font-medium">

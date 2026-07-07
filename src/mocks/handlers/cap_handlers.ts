@@ -9,7 +9,7 @@ import {
   parseNumber,
   type MockResolverContext,
 } from "./utils";
-import type { CAP, CAPComment } from "@/types";
+import type { CAP, CAPComment, ComplianceObligation } from "@/types";
 
 export async function handleGetCapList({ request }: { request: Request }) {
   await getDelay();
@@ -42,10 +42,10 @@ export async function handleGetCapList({ request }: { request: Request }) {
   if (q.compliance) {
     items = items.filter(
       (item) =>
-        item.complianceId === q.compliance ||
+        item.obligationIds.includes(q.compliance!) ||
         (item.complianceTitle ?? "")
           .toLowerCase()
-          .includes(q.compliance.toLowerCase()),
+          .includes(q.compliance!.toLowerCase()),
     );
   }
   if (q.dueDateFrom) {
@@ -79,9 +79,27 @@ export async function handleGetCapDetail({ params }: MockResolverContext) {
 
 export async function handleCreateCap({ request }: { request: Request }) {
   await getDelay();
-  const body = (await request.json()) as Partial<CAP>;
+  const body = (await request.json()) as Partial<CAP> & {
+    complianceId?: string;
+    obligationIds?: string[];
+  };
   const now = new Date().toISOString();
   const db = getDb();
+
+  // Backward compatibility: accept legacy single `complianceId` and wrap it.
+  const obligationIds =
+    body.obligationIds && body.obligationIds.length > 0
+      ? body.obligationIds
+      : body.complianceId
+        ? [body.complianceId]
+        : [];
+
+  // Derive primary title from the first linked obligation (if any).
+  const primary =
+    obligationIds.length > 0
+      ? findById(db.compliance, obligationIds[0])
+      : undefined;
+
   const newItem: CAP = {
     id: `cap-${crypto.randomUUID()}`,
     capId: `CAP-${new Date().getFullYear()}-${String(db.caps.length + 1).padStart(3, "0")}`,
@@ -101,8 +119,8 @@ export async function handleCreateCap({ request }: { request: Request }) {
     estimatedCost: body.estimatedCost ?? 0,
     actualCost: body.actualCost ?? 0,
     rootCause: body.rootCause ?? "",
-    complianceId: body.complianceId,
-    complianceTitle: body.complianceTitle,
+    obligationIds,
+    complianceTitle: body.complianceTitle ?? primary?.title,
     actions: body.actions ?? [],
     aiSuggestions: body.aiSuggestions ?? [],
     progress: body.progress ?? 0,
@@ -110,6 +128,10 @@ export async function handleCreateCap({ request }: { request: Request }) {
     createdAt: now,
     updatedAt: now,
   };
+
+  // Bulk update linked obligations: mark as under active remediation.
+  bulkUpdateObligationStatus(db, obligationIds, "Pending Review");
+
   db.caps.unshift(newItem);
   return jsonResponse(newItem, 201);
 }
@@ -122,13 +144,53 @@ export async function handleUpdateCap({
   const db = getDb();
   const index = db.caps.findIndex((i) => i.id === params.id);
   if (index === -1) return notFound("CAP not found");
-  const body = (await request.json()) as Partial<CAP>;
+  const body = (await request.json()) as Partial<CAP> & {
+    complianceId?: string;
+    obligationIds?: string[];
+  };
+
+  // Backward compatibility: legacy single `complianceId` collapses into the array.
+  let nextObligationIds = db.caps[index].obligationIds;
+  if (body.obligationIds) {
+    nextObligationIds = body.obligationIds;
+  } else if (body.complianceId !== undefined) {
+    nextObligationIds = body.complianceId ? [body.complianceId] : [];
+  }
+
+  const prev = db.caps[index];
   db.caps[index] = {
-    ...db.caps[index],
+    ...prev,
     ...body,
+    obligationIds: nextObligationIds,
     updatedAt: new Date().toISOString(),
   };
+
+  // When a CAP transitions to Closed, mark all linked obligations as Completed.
+  if (prev.status !== "Closed" && db.caps[index].status === "Closed") {
+    bulkUpdateObligationStatus(db, nextObligationIds, "Completed");
+  }
   return jsonResponse(db.caps[index]);
+}
+
+/**
+ * Bulk-set a status on every linked ComplianceObligation (the entities surfaced
+ * in the /obligations UI). Silently skips IDs that no longer exist.
+ */
+function bulkUpdateObligationStatus(
+  db: ReturnType<typeof getDb>,
+  obligationIds: string[],
+  status: ComplianceObligation["status"],
+): void {
+  for (const id of obligationIds) {
+    const idx = db.compliance.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      db.compliance[idx] = {
+        ...db.compliance[idx],
+        status,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+  }
 }
 
 export async function handleDeleteCap({ params }: MockResolverContext) {

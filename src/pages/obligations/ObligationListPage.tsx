@@ -7,6 +7,7 @@ import {
   flexRender,
   type SortingState,
   type ColumnDef,
+  type RowSelectionState,
 } from "@tanstack/react-table";
 import { motion } from "motion/react";
 import { format } from "date-fns";
@@ -17,6 +18,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +52,7 @@ const PAGE_SIZE = 10;
 const selectClass =
   "h-8 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
-export default function ComplianceListPage() {
+export default function ObligationListPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "compliance:create");
@@ -65,6 +67,7 @@ export default function ComplianceListPage() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "dueDate", desc: false },
   ]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -74,6 +77,12 @@ export default function ComplianceListPage() {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, status, priority, businessUnit, owner]);
+
+  // Row selection is index-based; clear it whenever the page or filters shift
+  // so selections never silently rebind to different rows.
+  useEffect(() => {
+    setRowSelection({});
+  }, [debouncedSearch, status, priority, businessUnit, owner, page]);
 
   const sortField = sorting[0]?.id ?? "dueDate";
   const sortDirection = sorting[0]?.desc ? "desc" : "asc";
@@ -109,13 +118,39 @@ export default function ComplianceListPage() {
     status: "Active",
   });
 
-  const columns = useMemo<ColumnDef<ComplianceObligation>[]>(
-    () => [
-      {
-        accessorKey: "complianceId",
-        header: "Compliance ID",
-        size: 140,
-      },
+  const columns = useMemo<ColumnDef<ComplianceObligation>[]>(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          aria-label="Select all visible obligations"
+          className="size-4 cursor-pointer accent-primary"
+          checked={table.getIsAllPageRowsSelected()}
+          ref={(el) => {
+            if (el) el.indeterminate = table.getIsSomePageRowsSelected();
+          }}
+          onChange={table.getToggleAllPageRowsSelectedHandler()}
+        />
+      ),
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          aria-label={`Select ${row.original.title}`}
+          className="size-4 cursor-pointer accent-primary"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+      size: 40,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "complianceId",
+      header: "Obligation ID",
+      size: 140,
+    },
       {
         accessorKey: "title",
         header: "Title",
@@ -189,7 +224,7 @@ export default function ComplianceListPage() {
             size="icon-xs"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/compliance/${row.original.id}`);
+              navigate(`/obligations/${row.original.id}`);
             }}
           >
             <Eye className="size-4" aria-hidden="true" />
@@ -204,14 +239,29 @@ export default function ComplianceListPage() {
   const table = useReactTable({
     data: data?.items ?? [],
     columns,
-    state: { sorting },
+    state: { sorting, rowSelection },
     onSortingChange: setSorting,
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualSorting: true,
   });
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
+
+  // Selected rows reference rows on the current page; resolve to obligation IDs.
+  const selectedIds = useMemo(
+    () => Object.keys(rowSelection).map((idx) => data?.items[Number(idx)]?.id),
+    [rowSelection, data],
+  );
+  const selectedCount = selectedIds.filter(Boolean).length;
+
+  const handleCreateCAPFromSelected = () => {
+    const ids = selectedIds.filter(Boolean);
+    if (ids.length === 0) return;
+    navigate(`/cap/create?obligations=${ids.join(",")}`);
+  };
 
   return (
     <motion.div
@@ -221,19 +271,35 @@ export default function ComplianceListPage() {
       className="space-y-6"
     >
       <PageHero
-        title="Compliance Obligations"
-        subtitle="Track, manage, and submit compliance obligations across the organization."
+        title="Obligations"
+        subtitle="Track, manage, and submit obligations across the organization."
       >
-        {canCreate && (
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            variant="outline"
-            onClick={() => navigate("/compliance/submit")}
-            className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            variant="secondary"
+            onClick={handleCreateCAPFromSelected}
+            disabled={selectedCount === 0}
+            className={
+              selectedCount > 0
+                ? "border-white/30 bg-white/20 text-white hover:bg-white/30 hover:text-white"
+                : ""
+            }
           >
-            <Plus className="size-4" aria-hidden="true" />
-            Submit New
+            <ClipboardCheck className="size-4" aria-hidden="true" />
+            Create CAP
+            {selectedCount > 0 ? ` (${selectedCount})` : ""}
           </Button>
-        )}
+          {canCreate && (
+            <Button
+              variant="outline"
+              onClick={() => navigate("/obligations/create")}
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Create New
+            </Button>
+          )}
+        </div>
       </PageHero>
 
       <Card>
@@ -318,13 +384,13 @@ export default function ComplianceListPage() {
             ) : data?.items.length === 0 ? (
               <div className="p-6">
                 <EmptyState
-                  title="No compliance obligations found"
-                  description="Try adjusting your filters or create a new compliance obligation."
+                  title="No obligations found"
+                  description="Try adjusting your filters or create a new obligation."
                   action={
                     canCreate ? (
-                      <Button onClick={() => navigate("/compliance/submit")}>
+                      <Button onClick={() => navigate("/obligations/create")}>
                         <Plus className="size-4" aria-hidden="true" />
-                        Submit New
+                        Create New
                       </Button>
                     ) : undefined
                   }
@@ -388,7 +454,7 @@ export default function ComplianceListPage() {
                         key={row.id}
                         className="cursor-pointer border-b border-border transition-colors hover:bg-muted/50"
                         onClick={() =>
-                          navigate(`/compliance/${row.original.id}`)
+                          navigate(`/obligations/${row.original.id}`)
                         }
                       >
                         {row.getVisibleCells().map((cell) => (

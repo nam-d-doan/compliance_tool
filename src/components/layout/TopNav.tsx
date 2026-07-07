@@ -90,7 +90,7 @@ export function TopNav() {
           <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search compliance, regulations, CAPs..."
+            placeholder="Search obligations, regulations, CAPs..."
             className="h-9 w-full rounded-md border-border bg-muted/50 pl-9 pr-4 text-sm focus:bg-background"
             onFocus={() => {
               // Command palette stub for Phase 5

@@ -803,7 +803,7 @@ export default function RegulationDetailPage() {
                 AI Summary
               </Button>
               <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link to={`/compliance/submit?regulationId=${item.id}`}>
+                <Link to={`/obligations/create?regulationId=${item.id}`}>
                   <ClipboardList className="size-4" aria-hidden="true" />
                   Create Obligations
                 </Link>
@@ -832,7 +832,7 @@ export default function RegulationDetailPage() {
                   {obligations.data?.items.map((obligation) => (
                     <button
                       key={obligation.id}
-                      onClick={() => navigate(`/compliance/${obligation.id}`)}
+                      onClick={() => navigate(`/obligations/${obligation.id}`)}
                       className="flex w-full items-center justify-between rounded-md border border-border bg-card p-2 text-left text-sm transition-colors hover:bg-muted/50"
                     >
                       <span className="truncate font-medium">

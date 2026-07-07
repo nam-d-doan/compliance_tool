@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { PageHero } from "@/components/common";
 
-export default function ComplianceHistoryPage() {
+export default function ObligationHistoryPage() {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -10,8 +10,8 @@ export default function ComplianceHistoryPage() {
       className="space-y-6"
     >
       <PageHero
-        title="Compliance History"
-        subtitle="Submission history has been replaced by obligations. Phase 3B will rebuild this view."
+        title="Obligation History"
+        subtitle="Submission history will be rebuilt in a later phase."
         className="py-5"
       />
     </motion.div>

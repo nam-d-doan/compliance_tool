@@ -36,7 +36,7 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
   {
     id: "1",
     icon: AlertTriangle,
-    title: "Overdue compliance filing",
+    title: "Overdue obligation filing",
     description: "GDPR Article 30 registration is 3 days overdue.",
     timestamp: "1 hr ago",
     read: false,

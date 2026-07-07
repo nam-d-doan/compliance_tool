@@ -42,7 +42,9 @@ export interface CAP extends BaseEntity {
   estimatedCost: number;
   actualCost: number;
   rootCause: string;
-  complianceId?: string;
+  /** Linked ComplianceObligation IDs (1..n). Replaces the legacy single `complianceId`. */
+  obligationIds: string[];
+  /** Denormalized title of the primary (first) linked obligation. Backward-compat convenience. */
   complianceTitle?: string;
   actions: CAPAction[];
   aiSuggestions: CAPAISuggestion[];

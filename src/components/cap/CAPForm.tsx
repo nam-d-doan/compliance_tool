@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "motion/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, ChevronDown, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PRIORITY_LEVELS } from "@/constants/status";
 
@@ -21,7 +22,7 @@ const schema = z.object({
   businessUnit: z.string().min(1, "Business unit is required"),
   location: z.string().min(1, "Location is required"),
   dueDate: z.string().min(1, "Due date is required"),
-  linkedComplianceId: z.string().optional(),
+  obligationIds: z.array(z.string()).min(1, "Link at least one obligation"),
   rootCause: z.string().min(5, "Root cause is required"),
   estimatedCost: z.coerce.number().min(0, "Estimated cost must be 0 or more"),
   tags: z.string().optional(),
@@ -35,7 +36,7 @@ export interface CAPFormProps {
   highlightKey?: number;
   ownerOptions: { id: string; name: string; email?: string }[];
   approverOptions: { id: string; name: string; email?: string }[];
-  complianceOptions: { id: string; title: string }[];
+  obligationOptions: { id: string; title: string }[];
   optionsLoading?: boolean;
   onSubmit: (values: CAPFormValues) => void;
   onDraft?: (values: CAPFormValues) => void;
@@ -55,7 +56,7 @@ export function CAPForm({
   highlightKey,
   ownerOptions,
   approverOptions,
-  complianceOptions,
+  obligationOptions,
   optionsLoading,
   onSubmit,
   onDraft,
@@ -77,6 +78,7 @@ export function CAPForm({
       priority: "medium",
       estimatedCost: 0,
       tags: "",
+      obligationIds: [],
       ...defaultValues,
     },
   });
@@ -264,27 +266,30 @@ export function CAPForm({
           )}
         </div>
 
-        <div className={cn("space-y-2", highlightClass)}>
-          <Label htmlFor="linkedComplianceId">Linked Compliance</Label>
+        <div className={cn("space-y-2 md:col-span-2", highlightClass)}>
+          <Label htmlFor="obligationIds">
+            Linked Obligations <span className="text-destructive">*</span>
+          </Label>
           <Controller
-            name="linkedComplianceId"
+            name="obligationIds"
             control={control}
             render={({ field }) => (
-              <select
-                id="linkedComplianceId"
-                {...field}
+              <ObligationMultiSelect
+                id="obligationIds"
+                options={obligationOptions}
+                selected={field.value ?? []}
+                onChange={field.onChange}
                 disabled={optionsLoading}
-                className={selectClass}
-              >
-                <option value="">None</option>
-                {complianceOptions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
+              />
             )}
           />
+          {errors.obligationIds && (
+            <p className="text-xs text-destructive">
+              {typeof errors.obligationIds.message === "string"
+                ? errors.obligationIds.message
+                : "Link at least one obligation"}
+            </p>
+          )}
         </div>
 
         <div className={cn("space-y-2 md:col-span-2", highlightClass)}>
@@ -361,5 +366,153 @@ export function CAPForm({
         </Button>
       </motion.div>
     </form>
+  );
+}
+
+/**
+ * Compact tag-style multi-select for linking CAPs to obligations.
+ * Shows selected items as removable chips; a filterable dropdown lists the rest.
+ */
+function ObligationMultiSelect({
+  id,
+  options,
+  selected,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  options: { id: string; title: string }[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const selectedItems = useMemo(
+    () =>
+      selected
+        .map((sid) => options.find((o) => o.id === sid))
+        .filter((o): o is { id: string; title: string } => Boolean(o)),
+    [selected, options],
+  );
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const base = term
+      ? options.filter((o) => o.title.toLowerCase().includes(term))
+      : options;
+    return base.slice(0, 100);
+  }, [options, query]);
+
+  const toggle = (oid: string) => {
+    onChange(
+      selectedSet.has(oid)
+        ? selected.filter((s) => s !== oid)
+        : [...selected, oid],
+    );
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div
+        className={cn(
+          "flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-input bg-transparent px-2 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30",
+        )}
+      >
+        {selectedItems.length === 0 && (
+          <span className="text-muted-foreground">
+            {disabled ? "Loading…" : "Select obligations…"}
+          </span>
+        )}
+        {selectedItems.map((o) => (
+          <Badge key={o.id} variant="secondary" className="gap-1 pr-1 text-xs">
+            <span className="max-w-[16rem] truncate">{o.title}</span>
+            <button
+              type="button"
+              onClick={() => toggle(o.id)}
+              className="rounded-sm hover:bg-foreground/10"
+              aria-label={`Remove ${o.title}`}
+            >
+              <X className="size-3" aria-hidden="true" />
+            </button>
+          </Badge>
+        ))}
+        <button
+          type="button"
+          id={id}
+          onClick={() => setOpen((v) => !v)}
+          disabled={disabled}
+          className="ml-auto inline-flex items-center text-muted-foreground"
+          aria-label="Toggle obligation list"
+          aria-expanded={open}
+        >
+          <ChevronDown className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute z-30 mt-1 w-full rounded-lg border border-border bg-popover p-2 shadow-md">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search obligations…"
+            className="h-8"
+          />
+          <div className="mt-1 max-h-52 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+                No obligations found.
+              </p>
+            ) : (
+              <ul className="space-y-0.5">
+                {filtered.map((o) => {
+                  const checked = selectedSet.has(o.id);
+                  return (
+                    <li key={o.id}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(o.id)}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                      >
+                        <span
+                          className={cn(
+                            "flex size-4 shrink-0 items-center justify-center rounded border",
+                            checked
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-input",
+                          )}
+                        >
+                          {checked && (
+                            <Check className="size-3" aria-hidden="true" />
+                          )}
+                        </span>
+                        <span className="truncate">{o.title}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

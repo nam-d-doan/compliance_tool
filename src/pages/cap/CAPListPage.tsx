@@ -317,7 +317,7 @@ export default function CAPListPage() {
                     onSort={handleSort}
                   />
                   <th className="px-4 py-3 font-medium">Progress</th>
-                  <th className="px-4 py-3 font-medium">Linked Compliance</th>
+                  <th className="px-4 py-3 font-medium">Linked Obligations</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -358,10 +358,17 @@ export default function CAPListPage() {
                       </div>
                     </td>
                     <td className="max-w-xs px-4 py-3">
-                      {cap.complianceTitle ? (
-                        <span className="line-clamp-1 text-muted-foreground">
-                          {cap.complianceTitle}
-                        </span>
+                      {cap.obligationIds.length > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="line-clamp-1 text-muted-foreground">
+                            {cap.complianceTitle ?? cap.obligationIds[0]}
+                          </span>
+                          {cap.obligationIds.length > 1 && (
+                            <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 text-xs font-medium text-muted-foreground">
+                              +{cap.obligationIds.length - 1}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}

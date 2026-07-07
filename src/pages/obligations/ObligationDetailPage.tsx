@@ -15,6 +15,7 @@ import {
   Pencil,
   ExternalLink,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -115,7 +116,7 @@ function buildInsight(item: ComplianceObligation): AIInsight {
   };
 }
 
-export default function ComplianceDetailPage() {
+export default function ObligationDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { role, user } = useAuthStore();
@@ -185,29 +186,27 @@ export default function ComplianceDetailPage() {
   const handleApprove = () => {
     update.mutate(
       { status: "Approved", progress: 100 },
-      { onSuccess: () => toast.success("Compliance approved") },
+      { onSuccess: () => toast.success("Obligation approved") },
     );
   };
 
   const handleReject = () => {
     update.mutate(
       { status: "Rejected" },
-      { onSuccess: () => toast.success("Compliance rejected") },
+      { onSuccess: () => toast.success("Obligation rejected") },
     );
   };
 
   const handleDelete = () => {
     if (!item) return;
     if (
-      !window.confirm(
-        "Are you sure you want to delete this compliance obligation?",
-      )
+      !window.confirm("Are you sure you want to delete this obligation?")
     )
       return;
     remove.mutate(item.id, {
       onSuccess: () => {
-        toast.success("Compliance deleted");
-        navigate("/compliance");
+        toast.success("Obligation deleted");
+        navigate("/obligations");
       },
     });
   };
@@ -248,7 +247,7 @@ export default function ComplianceDetailPage() {
       },
       {
         onSuccess: () => {
-          toast.success("Compliance updated");
+          toast.success("Obligation updated");
           setEditOpen(false);
         },
       },
@@ -295,13 +294,21 @@ export default function ComplianceDetailPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <Button variant="ghost" size="sm" onClick={() => navigate("/compliance")}>
+      <Button variant="ghost" size="sm" onClick={() => navigate("/obligations")}>
         <ArrowLeft className="size-4" aria-hidden="true" />
         Back to obligations
       </Button>
 
       <PageHero title={item.title} subtitle={item.complianceId}>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => navigate(`/cap/create?obligations=${item.id}`)}
+            className="border-white/30 bg-white/20 text-white hover:bg-white/30 hover:text-white"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Create CAP
+          </Button>
           {canEdit && (
             <Button
               variant="outline"
@@ -339,7 +346,7 @@ export default function ComplianceDetailPage() {
                 {tab.label}
                 {activeTab === tab.id && (
                   <motion.div
-                    layoutId="compliance-tab"
+                    layoutId="obligation-tab"
                     className="absolute right-0 bottom-0 left-0 h-0.5 bg-primary"
                   />
                 )}
@@ -667,7 +674,7 @@ export default function ComplianceDetailPage() {
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent side="right" className="w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>Edit Compliance Obligation</SheetTitle>
+            <SheetTitle>Edit Obligation</SheetTitle>
             <SheetDescription>
               Update the details for {item.complianceId}.
             </SheetDescription>

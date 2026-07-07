@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -222,6 +223,25 @@ export default function CAPDetailPage() {
     ];
   }, [item]);
 
+  // Resolve full obligation details for every linked ID. Falls back to a
+  // {id, title} stub when an obligation can't be found (e.g. deleted).
+  const linkedObligations = useMemo(() => {
+    if (!item) return [];
+    const byId = new Map(
+      (complianceQuery.data?.items ?? []).map((c) => [c.id, c]),
+    );
+    return item.obligationIds.map((id) => {
+      const found = byId.get(id);
+      return {
+        id,
+        title: found?.title ?? item.complianceTitle ?? id,
+        status: found?.status,
+        dueDate: found?.dueDate,
+        found: Boolean(found),
+      };
+    });
+  }, [item, complianceQuery.data]);
+
   const handleApprove = () => {
     update.mutate(
       { status: "Closed", progress: 100 },
@@ -258,8 +278,8 @@ export default function CAPDetailPage() {
     const approver = usersQuery.data?.items.find(
       (u) => u.id === values.approverId,
     );
-    const compliance = complianceQuery.data?.items.find(
-      (c) => c.id === values.linkedComplianceId,
+    const firstObligation = complianceQuery.data?.items.find((c) =>
+      values.obligationIds.includes(c.id),
     );
 
     update.mutate(
@@ -275,8 +295,8 @@ export default function CAPDetailPage() {
         businessUnit: values.businessUnit,
         location: values.location,
         dueDate: new Date(values.dueDate).toISOString(),
-        complianceId: values.linkedComplianceId || undefined,
-        complianceTitle: compliance?.title ?? item.complianceTitle,
+        obligationIds: values.obligationIds,
+        complianceTitle: firstObligation?.title ?? item.complianceTitle,
         rootCause: values.rootCause,
         estimatedCost: values.estimatedCost,
         tags: values.tags
@@ -355,7 +375,7 @@ export default function CAPDetailPage() {
     businessUnit: item.businessUnit,
     location: item.location ?? "",
     dueDate: item.dueDate.slice(0, 10),
-    linkedComplianceId: item.complianceId ?? "",
+    obligationIds: item.obligationIds,
     rootCause: item.rootCause,
     estimatedCost: item.estimatedCost,
     tags: item.tags.join(", "),
@@ -535,22 +555,37 @@ export default function CAPDetailPage() {
                         value={item.rootCause}
                         className="sm:col-span-2 lg:col-span-3"
                       />
-                      {item.complianceId && (
+                      {linkedObligations.length > 0 && (
                         <div className="rounded-lg border border-border bg-card p-3 sm:col-span-2 lg:col-span-3">
                           <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <ExternalLink
                               className="size-3.5"
                               aria-hidden="true"
                             />
-                            Linked Compliance
+                            Linked Obligations
+                            <Badge variant="secondary" className="ml-1">
+                              {linkedObligations.length}
+                            </Badge>
                           </dt>
                           <dd className="mt-1">
-                            <Link
-                              to={`/compliance/${item.complianceId}`}
-                              className="text-sm font-medium text-primary hover:underline"
-                            >
-                              {item.complianceTitle}
-                            </Link>
+                            <ul className="flex flex-wrap gap-1.5">
+                              {linkedObligations.map((o) => (
+                                <li key={o.id}>
+                                  {o.found ? (
+                                    <Link
+                                      to={`/obligations/${o.id}`}
+                                      className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-primary hover:underline"
+                                    >
+                                      {o.title}
+                                    </Link>
+                                  ) : (
+                                    <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                      {o.title}
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
                           </dd>
                         </div>
                       )}
@@ -718,32 +753,52 @@ export default function CAPDetailPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  Linked Compliance
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  Linked Obligations
+                  {linkedObligations.length > 0 && (
+                    <Badge variant="secondary">
+                      {linkedObligations.length}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {item.complianceId ? (
-                  <>
-                    <p className="text-sm font-medium text-foreground">
-                      {item.complianceTitle}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      asChild
-                    >
-                      <Link to={`/compliance/${item.complianceId}`}>
-                        <ExternalLink className="size-4" aria-hidden="true" />
-                        View obligation
-                      </Link>
-                    </Button>
-                  </>
-                ) : (
+                {linkedObligations.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No compliance obligation linked.
+                    No obligations linked.
                   </p>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedObligations.map((o) => (
+                      <div
+                        key={o.id}
+                        className="rounded-md border border-border bg-card p-2 text-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          {o.found ? (
+                            <Link
+                              to={`/obligations/${o.id}`}
+                              className="min-w-0 flex-1 truncate font-medium text-primary hover:underline"
+                            >
+                              {o.title}
+                            </Link>
+                          ) : (
+                            <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                              {o.title}
+                            </span>
+                          )}
+                          {o.status && (
+                            <StatusBadge status={o.status} size="sm" />
+                          )}
+                        </div>
+                        {o.dueDate && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Due {format(parseISO(o.dueDate), "MMM d, yyyy")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -803,7 +858,12 @@ export default function CAPDetailPage() {
                   (u) => u.role === "approver" || u.role === "admin",
                 ) ?? []
               }
-              complianceOptions={complianceQuery.data?.items ?? []}
+              obligationOptions={(complianceQuery.data?.items ?? []).map(
+                (c) => ({
+                  id: c.id,
+                  title: `${c.complianceId} - ${c.title}`,
+                }),
+              )}
               optionsLoading={usersQuery.isPending || complianceQuery.isPending}
               onSubmit={handleEditSubmit}
               onCancel={() => setEditOpen(false)}

@@ -37,7 +37,7 @@ MSW Handlers (mocks/handlers/) → Services (services/) → React Query (hooks/)
 
 - `routes/index.tsx` — single `createBrowserRouter` with lazy-loaded pages.
 - Public: `/login`, `/forgot-password`, `/mfa`.
-- Protected (under `ProtectedRoute` + `MainLayout`): `/dashboard/*`, `/compliance/*`, `/evidence/*`, `/cap/*`, `/license/*`, `/regulation/*`, `/reports/*`, `/admin/*`, `/profile`, `/settings`.
+- Protected (under `ProtectedRoute` + `MainLayout`): `/dashboard/*`, `/obligations/*`, `/evidence/*`, `/cap/*`, `/license/*`, `/regulation/*`, `/reports/*`, `/admin/*`, `/profile`, `/settings`.
 
 ### API Client
 

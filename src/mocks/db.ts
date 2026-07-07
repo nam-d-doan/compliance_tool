@@ -735,6 +735,12 @@ function generateCAPs(
     const approver = pick(
       users.filter((u) => u.role === "approver" || u.role === "admin"),
     );
+    // Link 1-3 obligations per CAP: `item` is the primary, plus 0-2 extras.
+    const extras = faker.helpers.arrayElements(
+      compliance.filter((c) => c.id !== item.id),
+      faker.number.int({ min: 0, max: 2 }),
+    );
+    const obligationIds = [item.id, ...extras.map((e) => e.id)];
     const createdAt = randomDate(subDays(today, 180), subDays(today, 7));
     const dueDate = addDays(createdAt, faker.number.int({ min: 30, max: 180 }));
     const status = isBefore(dueDate, today)
@@ -800,7 +806,7 @@ function generateCAPs(
       estimatedCost: faker.number.int({ min: 5000, max: 500000 }),
       actualCost: faker.number.int({ min: 0, max: 500000 }),
       rootCause: faker.lorem.sentence(),
-      complianceId: item.id,
+      obligationIds,
       complianceTitle: item.title,
       actions,
       aiSuggestions: [

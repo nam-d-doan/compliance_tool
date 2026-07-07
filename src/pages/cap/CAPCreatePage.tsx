@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { motion } from "motion/react";
 import {
   Sparkles,
@@ -34,6 +34,8 @@ export default function CAPCreatePage() {
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "cap:create");
 
+  const [searchParams] = useSearchParams();
+
   const formRef = useRef<HTMLDivElement>(null);
   const [description, setDescription] = useState("");
   const [complianceId, setComplianceId] = useState("");
@@ -42,6 +44,20 @@ export default function CAPCreatePage() {
   );
   const [highlightKey, setHighlightKey] = useState(0);
   const [aiExplainOpen, setAiExplainOpen] = useState(false);
+
+  // Pre-fill obligations from query params. Supports `?obligations=id1,id2`
+  // (new) and legacy `?complianceId=id` / `?compliance=id` (single).
+  const prefilledObligationIds = useMemo(() => {
+    const list = searchParams.get("obligations");
+    if (list)
+      return list
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    const legacy =
+      searchParams.get("complianceId") ?? searchParams.get("compliance");
+    return legacy ? [legacy] : [];
+  }, [searchParams]);
 
   const generate = useGenerateCAP();
   const create = useCreateCAP();
@@ -108,7 +124,12 @@ export default function CAPCreatePage() {
       businessUnit: compliance?.businessUnit,
       location: compliance?.location,
       dueDate,
-      linkedComplianceId: compliance?.id,
+      obligationIds:
+        prefilledObligationIds.length > 0
+          ? prefilledObligationIds
+          : compliance
+            ? [compliance.id]
+            : [],
       tags: "ai-generated, remediation",
     };
     setDraft(nextDraft);
@@ -125,8 +146,8 @@ export default function CAPCreatePage() {
   const buildPayload = (values: CAPFormValues, status: "Draft" | "Open") => {
     const owner = owners.find((u) => u.id === values.ownerId);
     const approver = approvers.find((u) => u.id === values.approverId);
-    const compliance = complianceItems.find(
-      (c) => c.id === values.linkedComplianceId,
+    const firstObligation = complianceItems.find((c) =>
+      values.obligationIds.includes(c.id),
     );
 
     return {
@@ -146,8 +167,8 @@ export default function CAPCreatePage() {
       rootCause: values.rootCause,
       estimatedCost: values.estimatedCost,
       actualCost: 0,
-      complianceId: values.linkedComplianceId || undefined,
-      complianceTitle: compliance?.title,
+      obligationIds: values.obligationIds,
+      complianceTitle: firstObligation?.title,
       progress: 0,
       tags: values.tags
         ? values.tags
@@ -411,7 +432,7 @@ export default function CAPCreatePage() {
                 highlightKey={highlightKey}
                 ownerOptions={owners}
                 approverOptions={approvers}
-                complianceOptions={complianceItems.map((c) => ({
+                obligationOptions={complianceItems.map((c) => ({
                   id: c.id,
                   title: `${c.complianceId} - ${c.title}`,
                 }))}
@@ -423,6 +444,11 @@ export default function CAPCreatePage() {
                 isSubmitting={create.isPending}
                 submitLabel="Create CAP"
                 draftLabel="Save as Draft"
+                defaultValues={
+                  prefilledObligationIds.length > 0
+                    ? { obligationIds: prefilledObligationIds }
+                    : undefined
+                }
               />
             </CardContent>
           </Card>

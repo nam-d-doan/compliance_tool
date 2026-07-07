@@ -39,17 +39,17 @@ const AdminDashboardPage = lazy(
 );
 
 // Module placeholder pages
-const ComplianceListPage = lazy(
-  () => import("@/pages/compliance/ComplianceListPage"),
+const ObligationListPage = lazy(
+  () => import("@/pages/obligations/ObligationListPage"),
 );
-const ComplianceDetailPage = lazy(
-  () => import("@/pages/compliance/ComplianceDetailPage"),
+const ObligationDetailPage = lazy(
+  () => import("@/pages/obligations/ObligationDetailPage"),
 );
-const ComplianceSubmitPage = lazy(
-  () => import("@/pages/compliance/ComplianceSubmitPage"),
+const ObligationCreatePage = lazy(
+  () => import("@/pages/obligations/ObligationCreatePage"),
 );
-const ComplianceHistoryPage = lazy(
-  () => import("@/pages/compliance/ComplianceHistoryPage"),
+const ObligationHistoryPage = lazy(
+  () => import("@/pages/obligations/ObligationHistoryPage"),
 );
 const CAPDashboardPage = lazy(() => import("@/pages/cap/CAPDashboardPage"));
 const CAPListPage = lazy(() => import("@/pages/cap/CAPListPage"));
@@ -155,10 +155,10 @@ export const router = createBrowserRouter([
           route("/dashboard/reviewer", <ReviewerDashboardPage />, "Reviewer"),
           route("/dashboard/admin", <AdminDashboardPage />, "Admin"),
 
-          route("/compliance", <ComplianceListPage />, "Compliance"),
-          route("/compliance/submit", <ComplianceSubmitPage />, "Submit"),
-          route("/compliance/history", <ComplianceHistoryPage />, "History"),
-          route("/compliance/:id", <ComplianceDetailPage />, "Detail"),
+          route("/obligations", <ObligationListPage />, "Obligations"),
+          route("/obligations/create", <ObligationCreatePage />, "Create"),
+          route("/obligations/history", <ObligationHistoryPage />, "History"),
+          route("/obligations/:id", <ObligationDetailPage />, "Detail"),
 
           route("/cap", <CAPDashboardPage />, "Corrective Actions"),
           route("/cap/list", <CAPListPage />, "All CAPs"),

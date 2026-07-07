@@ -245,7 +245,7 @@ export default function AssignmentDetailPage() {
                 <Button
                   size="sm"
                   onClick={() =>
-                    navigate(`/compliance/submit?assignmentId=${a.id}`)
+                    navigate(`/obligations/create?assignmentId=${a.id}`)
                   }
                 >
                   <ClipboardList className="size-4" aria-hidden="true" />
@@ -402,7 +402,7 @@ export default function AssignmentDetailPage() {
                   <Button
                     size="sm"
                     onClick={() =>
-                      navigate(`/compliance/submit?assignmentId=${a.id}`)
+                      navigate(`/obligations/create?assignmentId=${a.id}`)
                     }
                   >
                     <ClipboardList className="size-4" aria-hidden="true" />
