@@ -3,11 +3,11 @@ import { addDays, subDays, formatISO, isBefore, isAfter } from "date-fns";
 import { DEMO_USERS } from "@/constants/demo-users";
 import {
   COMPLIANCE_STATUSES,
-  COMPLIANCE_SUBMISSION_STATUSES,
   CAP_STATUSES,
   USER_STATUSES,
   PRIORITY_LEVELS,
   ASSIGNMENT_STATUSES,
+  OBLIGATION_STATUSES,
 } from "@/constants/status";
 import type {
   UserProfile,
@@ -20,7 +20,6 @@ import type {
   Regulation,
   Article,
   ComplianceObligation,
-  ComplianceSubmission,
   CAP,
   CAPAction,
   Notification,
@@ -31,6 +30,7 @@ import type {
   RegulationDependency,
   Assignment,
   AssignmentTimelineEvent,
+  Obligation,
 } from "@/types";
 
 faker.seed(42);
@@ -634,34 +634,94 @@ function generateComplianceObligations(
   });
 }
 
-function generateSubmissions(
-  compliance: ComplianceObligation[],
-  users: UserProfile[],
-  count = 200,
-): ComplianceSubmission[] {
-  return Array.from({ length: count }, () => {
-    const item = pick(compliance);
-    const owner = users.find((u) => u.id === item.ownerId) ?? pick(users);
-    const performedDate = randomDate(subDays(today, 180), today);
-    return {
-      id: uid("sub"),
-      complianceId: item.id,
-      complianceTitle: item.title,
-      ownerId: owner.id,
-      ownerName: owner.name,
-      performedDate: iso(performedDate),
-      status: pick(COMPLIANCE_SUBMISSION_STATUSES),
-      comments: faker.lorem.paragraph(),
-      additionalNotes: faker.lorem.sentence(),
-      capRequired: faker.datatype.boolean(0.25),
-      riskRating: pick(PRIORITY_LEVELS),
-      aiSuggestion: faker.datatype.boolean(0.3)
-        ? faker.lorem.sentence()
-        : undefined,
-      createdAt: iso(performedDate),
-      updatedAt: iso(randomDate(performedDate, today)),
-    };
-  });
+function generateObligations(assignments: Assignment[]): Obligation[] {
+  const articleThemes = [
+    "Phạm vi điều chỉnh",
+    "Đối tượng áp dụng",
+    "Trách nhiệm của tổ chức tín dụng",
+    "Yêu cầu báo cáo",
+    "Xử lý vi phạm",
+    "Hiệu lực thi hành",
+    "Trách nhiệm giải trình",
+    "Giám sát và thanh tra",
+    "Quản lý hồ sơ",
+    "Ngưỡng an toàn vốn tối thiểu",
+    "Tỷ lệ an toàn vốn",
+    "Quản lý rủi ro tín dụng",
+    "Phân loại nợ",
+    "Trích lập dự phòng",
+    "Phòng chống rửa tiền",
+    "Nhận diện khách hàng",
+    "Giao dịch đáng ngờ",
+    "Bảo mật thông tin",
+    "An toàn thông tin",
+    "Quản trị nội bộ",
+    "Hội đồng quản trị",
+    "Ban kiểm soát",
+    "Công bố thông tin",
+    "Minh bạch giao dịch",
+    "Bảo vệ quyền lợi khách hàng",
+    "Giải quyết khiếu nại",
+    "Quản lý rủi ro hoạt động",
+    "Báo cáo sự cố",
+    "Kiểm toán nội bộ",
+    "Kiểm soát nội bộ",
+    "Tuân thủ pháp luật",
+    "Đạo đức kinh doanh",
+    "Xung đột lợi ích",
+    "Giao dịch liên kết",
+    "Cấp tín dụng",
+    "Giám sát chi phí",
+    "Quản lý tài sản",
+    "Thanh khoản",
+    "Tỷ lệ nợ xấu",
+    "Tái cấp vốn",
+  ];
+
+  const total = faker.number.int({ min: 30, max: 40 });
+  const obligations: Obligation[] = [];
+
+  for (let i = 0; i < total; i++) {
+    const assignment = assignments[i % assignments.length];
+    const createdAt = randomDate(subDays(today, 90), subDays(today, 7));
+    const dueOffset = faker.number.int({ min: -30, max: 120 });
+    const dueDate = addDays(createdAt, dueOffset);
+    const updatedAt = randomDate(createdAt, today);
+    const theme = articleThemes[i % articleThemes.length];
+    const articleNumber = (i % 50) + 1;
+
+    let status: Obligation["status"] = pick(OBLIGATION_STATUSES);
+    if (dueOffset < 0 && status === "draft") {
+      status = faker.helpers.arrayElement([
+        "submitted",
+        "review_required",
+        "cap_in_progress",
+      ]);
+    }
+
+    obligations.push({
+      id: uid("obg"),
+      assignmentId: assignment.id,
+      assignmentTitle: assignment.title,
+      articleRef: `Điều ${articleNumber}`,
+      title: `${theme} — ${faker.company.buzzPhrase()}`,
+      description: faker.lorem.paragraph(2),
+      ownerDepartmentId: assignment.assignedDepartmentId,
+      ownerDepartmentName: assignment.assignedDepartmentName,
+      dueDate: iso(dueDate),
+      riskLevel: faker.helpers.weightedArrayElement([
+        { weight: 15, value: "low" },
+        { weight: 35, value: "medium" },
+        { weight: 35, value: "high" },
+        { weight: 15, value: "critical" },
+      ]),
+      status,
+      createdDate: iso(createdAt),
+      updatedDate: iso(updatedAt),
+    });
+  }
+
+  return obligations;
 }
 
 function generateCAPs(
@@ -1240,7 +1300,7 @@ export interface MockDb {
   regulations: Regulation[];
   regulationDependencies: RegulationDependency[];
   compliance: ComplianceObligation[];
-  submissions: ComplianceSubmission[];
+  obligations: Obligation[];
   caps: CAP[];
   assignments: Assignment[];
   notifications: Notification[];
@@ -1263,9 +1323,9 @@ export function getDb(): MockDb {
   const regulations = generateRegulations();
   const regulationDependencies = generateRegulationDependencies(regulations);
   const compliance = generateComplianceObligations(regulations, users);
-  const submissions = generateSubmissions(compliance, users);
   const caps = generateCAPs(compliance, users);
   const assignments = generateAssignments(regulations, users);
+  const obligations = generateObligations(assignments);
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
@@ -1279,7 +1339,7 @@ export function getDb(): MockDb {
     regulations,
     regulationDependencies,
     compliance,
-    submissions,
+    obligations,
     caps,
     assignments,
     notifications,
@@ -1299,7 +1359,7 @@ export function getDb(): MockDb {
       regulations: regulations.length,
       regulationDependencies: regulationDependencies.length,
       compliance: compliance.length,
-      submissions: submissions.length,
+      obligations: obligations.length,
       caps: caps.length,
       assignments: assignments.length,
       notifications: notifications.length,

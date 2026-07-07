@@ -1,7 +1,6 @@
 import type { ComponentType } from "react";
 import {
   AlertCircle,
-  AlertTriangle,
   Archive,
   ArrowDown,
   ArrowUp,
@@ -11,12 +10,9 @@ import {
   Clock,
   Eye,
   FileEdit,
-  Globe,
-  HelpCircle,
   Hourglass,
   Mail,
   Minus,
-  MinusCircle,
   PlayCircle,
   RefreshCw,
   Send,
@@ -85,13 +81,6 @@ const emerald = {
   dot: "text-emerald-600 dark:text-emerald-400",
 };
 
-const teal = {
-  default: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  outline:
-    "border-teal-300 text-teal-700 dark:border-teal-700 dark:text-teal-400",
-  dot: "text-teal-600 dark:text-teal-400",
-};
-
 const amber = {
   default:
     "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -143,19 +132,16 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
   returned: { label: "Returned", icon: RefreshCw, ...orange },
   archived: { label: "Archived", icon: Archive, ...slate },
 
-  // Compliance submission outcomes
-  complied: { label: "Complied", icon: CheckCircle, ...emerald },
-  "complied with exception": {
-    label: "Complied with Exception",
-    icon: AlertTriangle,
-    ...amber,
+  // Obligation lifecycle
+  review_required: {
+    label: "Review Required",
+    icon: AlertCircle,
+    ...red,
   },
-  "not complied": { label: "Not Complied", icon: XCircle, ...red },
-  "not applicable": { label: "Not Applicable", icon: MinusCircle, ...slate },
-  "pending information": {
-    label: "Pending Information",
-    icon: HelpCircle,
-    ...blue,
+  cap_in_progress: {
+    label: "CAP In Progress",
+    icon: PlayCircle,
+    ...amber,
   },
 
   // CAP
@@ -225,12 +211,12 @@ export const COMPLIANCE_STATUSES = [
   "Archived",
 ] as const;
 
-export const COMPLIANCE_SUBMISSION_STATUSES = [
-  "Complied",
-  "Complied with Exception",
-  "Not Complied",
-  "Not Applicable",
-  "Pending Information",
+export const OBLIGATION_STATUSES = [
+  "draft",
+  "submitted",
+  "review_required",
+  "cap_in_progress",
+  "completed",
 ] as const;
 
 export const CAP_STATUSES = [
@@ -268,8 +254,7 @@ export const ASSIGNMENT_STATUSES = [
 ] as const;
 
 export type ComplianceStatus = (typeof COMPLIANCE_STATUSES)[number];
-export type ComplianceSubmissionStatus =
-  (typeof COMPLIANCE_SUBMISSION_STATUSES)[number];
+export type ObligationStatus = (typeof OBLIGATION_STATUSES)[number];
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 export type CAPStatus = (typeof CAP_STATUSES)[number];
 export type RegulationStatus = (typeof REGULATION_STATUSES)[number];

@@ -19,7 +19,10 @@ export function useCreateAssignment(filters: AssignmentFilter = {}) {
   });
 }
 
-export function useUpdateAssignment(id: string, filters: AssignmentFilter = {}) {
+export function useUpdateAssignment(
+  id: string,
+  filters: AssignmentFilter = {},
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: UpdateAssignmentInput) =>

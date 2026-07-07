@@ -7,6 +7,7 @@ import {
   Building2,
   Calendar,
   ClipboardCheck,
+  ClipboardList,
   FileText,
   User,
   BookOpen,
@@ -41,10 +42,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { DetailSkeleton } from "@/components/common/Skeletons";
 import { KPICard } from "@/components/common/KPICard";
 import { TimelineEvent } from "@/components/activity/TimelineEvent";
-import {
-  useAssignmentDetail,
-  useAssignmentTimeline,
-} from "@/hooks/queries";
+import { useAssignmentDetail, useAssignmentTimeline } from "@/hooks/queries";
 import {
   useUpdateAssignment,
   useAcknowledgeAssignment,
@@ -174,10 +172,11 @@ export default function AssignmentDetailPage() {
 
   const isCreator = a.assignorId === user?.id;
   const canEdit = canUpdate && isCreator;
-  const canCancel =
-    canUpdate && !["completed", "cancelled"].includes(a.status);
-  const canAcknowledge =
-    a.status === "published" && a.assignorId !== user?.id;
+  const canCancel = canUpdate && !["completed", "cancelled"].includes(a.status);
+  const canAcknowledge = a.status === "published" && a.assignorId !== user?.id;
+  const canCreateObligations =
+    hasPermission(role, "compliance:create") &&
+    !["completed", "cancelled"].includes(a.status);
 
   const handleAcknowledge = () => {
     acknowledge.mutate(undefined, {
@@ -231,8 +230,8 @@ export default function AssignmentDetailPage() {
         >
           <Calendar className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-            This assignment was due on{" "}
-            {format(new Date(a.dueDate), "PPP")} and is now overdue.
+            This assignment was due on {format(new Date(a.dueDate), "PPP")} and
+            is now overdue.
           </p>
         </motion.div>
       )}
@@ -240,8 +239,19 @@ export default function AssignmentDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {/* Action bar */}
-          {(canEdit || canCancel || canAcknowledge) && (
+          {(canEdit || canCancel || canAcknowledge || canCreateObligations) && (
             <div className="flex flex-wrap items-center gap-2">
+              {canCreateObligations && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    navigate(`/compliance/submit?assignmentId=${a.id}`)
+                  }
+                >
+                  <ClipboardList className="size-4" aria-hidden="true" />
+                  Create Obligations
+                </Button>
+              )}
               {canEdit && (
                 <Button
                   variant="outline"
@@ -259,7 +269,10 @@ export default function AssignmentDetailPage() {
                   disabled={acknowledge.isPending}
                 >
                   {acknowledge.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    <Loader2
+                      className="size-4 animate-spin"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <ThumbsUp className="size-4" aria-hidden="true" />
                   )}
@@ -377,12 +390,26 @@ export default function AssignmentDetailPage() {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
             >
               <EmptyState
                 icon={<Inbox className="size-6" aria-hidden="true" />}
                 title="No obligations yet"
                 description="Obligations will appear here once submitted by the assigned department."
               />
+              {canCreateObligations && (
+                <div className="flex justify-center">
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      navigate(`/compliance/submit?assignmentId=${a.id}`)
+                    }
+                  >
+                    <ClipboardList className="size-4" aria-hidden="true" />
+                    Create Obligations
+                  </Button>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -496,12 +523,7 @@ export default function AssignmentDetailPage() {
             </CardContent>
           </Card>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            asChild
-          >
+          <Button variant="outline" size="sm" className="w-full" asChild>
             <Link to={ROUTES.ASSIGNMENTS.LIST}>
               <ClipboardCheck className="size-4" aria-hidden="true" />
               All Assignments
@@ -553,9 +575,7 @@ function EditForm({
   const [title, setTitle] = useState(assignment.title);
   const [description, setDescription] = useState(assignment.description);
   const [priority, setPriority] = useState<PriorityLevel>(assignment.priority);
-  const [dueDate, setDueDate] = useState(
-    assignment.dueDate.slice(0, 10),
-  );
+  const [dueDate, setDueDate] = useState(assignment.dueDate.slice(0, 10));
   const [notes, setNotes] = useState(assignment.notes ?? "");
 
   const handleSubmit = (e: React.FormEvent) => {

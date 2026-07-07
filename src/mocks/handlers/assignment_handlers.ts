@@ -248,9 +248,7 @@ export async function handleAcknowledgeAssignment({
   return jsonResponse(db.assignments[index]);
 }
 
-export async function handleCancelAssignment({
-  params,
-}: MockResolverContext) {
+export async function handleCancelAssignment({ params }: MockResolverContext) {
   await getDelay();
   const db = getDb();
   const index = db.assignments.findIndex((a) => a.id === params.id);
@@ -302,7 +300,11 @@ export async function handleBulkUpdateAssignments({
     const current = db.assignments[index];
     if (body.action === "cancel") {
       if (["completed", "cancelled"].includes(current.status)) return;
-      db.assignments[index] = { ...current, status: "cancelled", updatedDate: now };
+      db.assignments[index] = {
+        ...current,
+        status: "cancelled",
+        updatedDate: now,
+      };
     } else if (body.action === "setPriority" && body.priority) {
       db.assignments[index] = {
         ...current,
@@ -313,7 +315,11 @@ export async function handleBulkUpdateAssignments({
     updated.push(db.assignments[index]);
   });
 
-  return jsonResponse({ success: true, updated: updated.length, items: updated });
+  return jsonResponse({
+    success: true,
+    updated: updated.length,
+    items: updated,
+  });
 }
 
 export const assignmentHandlers = [

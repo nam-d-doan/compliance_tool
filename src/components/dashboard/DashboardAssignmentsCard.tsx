@@ -40,7 +40,9 @@ function isOverdue(a: Assignment): boolean {
 
 function isDueSoon(a: Assignment): boolean {
   const days = differenceInDays(parseISO(a.dueDate), new Date());
-  return days >= 0 && days <= 7 && !["completed", "cancelled"].includes(a.status);
+  return (
+    days >= 0 && days <= 7 && !["completed", "cancelled"].includes(a.status)
+  );
 }
 
 export function DashboardAssignmentsCard({
@@ -56,7 +58,9 @@ export function DashboardAssignmentsCard({
   const stats = useMemo(() => {
     const overdue = assignments.filter(isOverdue).length;
     const dueSoon = assignments.filter(isDueSoon).length;
-    const critical = assignments.filter((a) => a.priority === "critical").length;
+    const critical = assignments.filter(
+      (a) => a.priority === "critical",
+    ).length;
     const active = assignments.filter(
       (a) => !["completed", "cancelled"].includes(a.status),
     ).length;
@@ -88,8 +92,12 @@ export function DashboardAssignmentsCard({
   const reviewItems = useMemo(() => {
     if (breakdown !== "review") return [];
     return assignments
-      .filter((a) => ["published", "acknowledged", "in_progress"].includes(a.status))
-      .sort((a, b) => parseISO(a.dueDate).getTime() - parseISO(b.dueDate).getTime())
+      .filter((a) =>
+        ["published", "acknowledged", "in_progress"].includes(a.status),
+      )
+      .sort(
+        (a, b) => parseISO(a.dueDate).getTime() - parseISO(b.dueDate).getTime(),
+      )
       .slice(0, 5);
   }, [assignments, breakdown]);
 
@@ -106,7 +114,10 @@ export function DashboardAssignmentsCard({
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
-              <ClipboardCheck className="size-4 text-primary" aria-hidden="true" />
+              <ClipboardCheck
+                className="size-4 text-primary"
+                aria-hidden="true"
+              />
               {title}
             </CardTitle>
             {description && <CardDescription>{description}</CardDescription>}
@@ -184,10 +195,14 @@ export function DashboardAssignmentsCard({
                       className="group flex items-center justify-between gap-2 rounded-md border border-border bg-card p-2 transition-colors hover:bg-muted/50"
                     >
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <p className="truncate text-xs font-medium">{a.title}</p>
+                        <p className="truncate text-xs font-medium">
+                          {a.title}
+                        </p>
                         <p className="truncate text-[11px] text-muted-foreground">
                           {a.assignedDepartmentName}
-                          {a.assignedOfficeName ? ` · ${a.assignedOfficeName}` : ""}
+                          {a.assignedOfficeName
+                            ? ` · ${a.assignedOfficeName}`
+                            : ""}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -213,7 +228,10 @@ export function DashboardAssignmentsCard({
                 <div key={row.name} className="flex items-center gap-2">
                   <span className="w-28 shrink-0 truncate text-xs text-muted-foreground">
                     {breakdown === "priority" ? (
-                      <PriorityBadge priority={row.name as Assignment["priority"]} size="sm" />
+                      <PriorityBadge
+                        priority={row.name as Assignment["priority"]}
+                        size="sm"
+                      />
                     ) : breakdown === "status" ? (
                       <StatusBadge status={row.name} size="sm" />
                     ) : (

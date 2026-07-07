@@ -54,6 +54,12 @@ export const assignmentKeys = {
   timeline: (id: string) => [...assignmentKeys.detail(id), "timeline"] as const,
 };
 
+export const obligationKeys = {
+  all: ["obligation"] as const,
+  lists: () => [...obligationKeys.all, "list"] as const,
+  bulk: () => [...obligationKeys.all, "bulk"] as const,
+};
+
 export const reportKeys = {
   all: ["reports"] as const,
   byType: (type: string, filters?: ReportFilter) =>

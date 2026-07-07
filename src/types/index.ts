@@ -4,11 +4,18 @@ export type { Article } from "./article";
 export type { LoginCredentials, AuthUser, AuthState } from "./user";
 export type {
   ComplianceObligation,
-  ComplianceSubmission,
   ComplianceFilter,
   ComplianceTimelineEvent,
   ComplianceComment,
 } from "./compliance";
+export type {
+  Obligation,
+  ObligationStatus,
+  ObligationRiskLevel,
+  BulkObligationInputItem,
+  BulkCreateObligationsInput,
+  BulkCreateObligationsResult,
+} from "./obligation";
 export type {
   CAP,
   CAPAction,

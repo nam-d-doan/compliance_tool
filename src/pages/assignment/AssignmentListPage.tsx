@@ -37,11 +37,11 @@ import { useBulkUpdateAssignments } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
-import { VIETNAMESE_DEPARTMENTS, getOfficesForDepartment } from "@/constants/departments";
 import {
-  ASSIGNMENT_STATUSES,
-  PRIORITY_LEVELS,
-} from "@/constants/status";
+  VIETNAMESE_DEPARTMENTS,
+  getOfficesForDepartment,
+} from "@/constants/departments";
+import { ASSIGNMENT_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
 import type { Assignment } from "@/types";
 import type { AssignmentStatus, PriorityLevel } from "@/constants/status";
 import { toast } from "sonner";
@@ -246,7 +246,10 @@ export default function AssignmentListPage() {
           {/* Filter bar */}
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Filter className="size-4 text-muted-foreground" aria-hidden="true" />
+              <Filter
+                className="size-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               <span className="text-sm font-medium text-muted-foreground">
                 Filters
               </span>
@@ -279,7 +282,10 @@ export default function AssignmentListPage() {
                         ? statuses[0]
                         : `${statuses.length} statuses`}
                   </span>
-                  <ChevronDown className="size-4 opacity-60" aria-hidden="true" />
+                  <ChevronDown
+                    className="size-4 opacity-60"
+                    aria-hidden="true"
+                  />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
                   <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
@@ -300,7 +306,9 @@ export default function AssignmentListPage() {
               {/* Priority */}
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as PriorityLevel | "")}
+                onChange={(e) =>
+                  setPriority(e.target.value as PriorityLevel | "")
+                }
                 className={cn(selectClass, "w-full")}
               >
                 <option value="">All priorities</option>
@@ -333,7 +341,9 @@ export default function AssignmentListPage() {
                 className={cn(selectClass, "w-full")}
               >
                 <option value="">
-                  {officeOptions.length === 0 ? "No sub-offices" : "All offices"}
+                  {officeOptions.length === 0
+                    ? "No sub-offices"
+                    : "All offices"}
                 </option>
                 {officeOptions.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -400,9 +410,16 @@ export default function AssignmentListPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
-                      <Button variant="outline" size="sm" disabled={bulk.isPending}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={bulk.isPending}
+                      >
                         {bulk.isPending ? (
-                          <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                          <Loader2
+                            className="size-3.5 animate-spin"
+                            aria-hidden="true"
+                          />
                         ) : null}
                         Change priority
                         <ChevronDown className="size-3.5" aria-hidden="true" />
@@ -517,7 +534,10 @@ export default function AssignmentListPage() {
                               {a.title}
                             </span>
                             {overdue && (
-                              <Badge variant="destructive" className="shrink-0 text-xs">
+                              <Badge
+                                variant="destructive"
+                                className="shrink-0 text-xs"
+                              >
                                 Overdue
                               </Badge>
                             )}
@@ -535,7 +555,8 @@ export default function AssignmentListPage() {
                         <td className="hidden px-3 py-3 lg:table-cell">
                           <div className="text-xs">
                             <div className="font-medium text-foreground">
-                              {a.assignedDepartmentName ?? a.assignedDepartmentId}
+                              {a.assignedDepartmentName ??
+                                a.assignedDepartmentId}
                             </div>
                             {a.assignedOfficeName && (
                               <div className="text-muted-foreground">
@@ -575,7 +596,10 @@ export default function AssignmentListPage() {
                                 className="text-muted-foreground hover:text-foreground"
                               >
                                 <Link to={`/assignment/${a.id}`}>
-                                  <Pencil className="size-3.5" aria-hidden="true" />
+                                  <Pencil
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
                                 </Link>
                               </Button>
                             )}
@@ -586,7 +610,10 @@ export default function AssignmentListPage() {
                               className="text-muted-foreground hover:text-foreground"
                             >
                               <Link to={`/regulation/${a.regulationId}`}>
-                                <BookOpen className="size-3.5" aria-hidden="true" />
+                                <BookOpen
+                                  className="size-3.5"
+                                  aria-hidden="true"
+                                />
                               </Link>
                             </Button>
                             <Button
@@ -596,7 +623,10 @@ export default function AssignmentListPage() {
                               className="text-muted-foreground hover:text-foreground"
                             >
                               <Link to={`/assignment/${a.id}`}>
-                                <ArrowRight className="size-3.5" aria-hidden="true" />
+                                <ArrowRight
+                                  className="size-3.5"
+                                  aria-hidden="true"
+                                />
                               </Link>
                             </Button>
                           </div>

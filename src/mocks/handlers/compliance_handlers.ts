@@ -9,11 +9,7 @@ import {
   parseNumber,
   type MockResolverContext,
 } from "./utils";
-import type {
-  ComplianceObligation,
-  ComplianceComment,
-  ComplianceSubmission,
-} from "@/types";
+import type { ComplianceObligation, ComplianceComment } from "@/types";
 
 export async function handleGetComplianceList({
   request,
@@ -99,50 +95,6 @@ export async function handleGetComplianceDetail({
   const item = findById(db.compliance, params.id as string);
   if (!item) return notFound("Compliance obligation not found");
   return jsonResponse(item);
-}
-
-export async function handleGetComplianceHistory({
-  request,
-}: {
-  request: Request;
-}) {
-  await getDelay();
-  const url = new URL(request.url);
-  const q = parseQuery(url);
-
-  const db = getDb();
-  let items: ComplianceSubmission[] = [...db.submissions];
-
-  if (q.status) {
-    const statuses = q.status.split(",").map((s) => s.trim());
-    items = items.filter((item) => statuses.includes(item.status));
-  }
-  if (q.dueDateFrom) {
-    items = items.filter((item) => item.performedDate >= q.dueDateFrom);
-  }
-  if (q.dueDateTo) {
-    items = items.filter((item) => item.performedDate <= q.dueDateTo);
-  }
-  if (q.owner) {
-    items = items.filter(
-      (item) =>
-        item.ownerId === q.owner ||
-        item.ownerName.toLowerCase().includes(q.owner.toLowerCase()),
-    );
-  }
-  if (q.search) {
-    items = filterByText(items, q.search, [
-      "complianceTitle",
-      "ownerName",
-      "status",
-    ]);
-  }
-
-  items.sort((a, b) => (a.performedDate < b.performedDate ? 1 : -1));
-
-  const page = parseNumber(q.page, 1);
-  const pageSize = parseNumber(q.pageSize, 20);
-  return jsonResponse(paginate(items, page, pageSize));
 }
 
 export async function handleCreateCompliance({
@@ -265,7 +217,6 @@ export async function handleCreateComplianceComment({
 export const complianceHandlers = [
   http.get("/api/compliance", handleGetComplianceList),
   http.get("/api/compliance/:id", handleGetComplianceDetail),
-  http.get("/api/compliance/history", handleGetComplianceHistory),
   http.post("/api/compliance", handleCreateCompliance),
   http.put("/api/compliance/:id", handleUpdateCompliance),
   http.delete("/api/compliance/:id", handleDeleteCompliance),
@@ -273,3 +224,6 @@ export const complianceHandlers = [
   http.get("/api/compliance/:id/comments", handleGetComplianceComments),
   http.post("/api/compliance/:id/comments", handleCreateComplianceComment),
 ];
+
+// Placeholder obligation handlers for Phase 3B
+export const obligationHandlers = [] as const;

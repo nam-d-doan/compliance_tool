@@ -10,6 +10,7 @@ import { activityHandlers } from "./activity_handlers";
 import { aiHandlers } from "./ai_handlers";
 import { commentHandlers } from "./comment_handlers";
 import { assignmentHandlers } from "./assignment_handlers";
+import { obligationHandlers } from "./obligation_handlers";
 
 export const handlers = [
   ...authHandlers,
@@ -24,4 +25,5 @@ export const handlers = [
   ...aiHandlers,
   ...commentHandlers,
   ...assignmentHandlers,
+  ...obligationHandlers,
 ];

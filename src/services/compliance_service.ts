@@ -2,7 +2,6 @@ import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/api";
 import type {
   ComplianceObligation,
-  ComplianceSubmission,
   ComplianceFilter,
   ComplianceComment,
   ComplianceTimelineEvent,
@@ -80,18 +79,5 @@ export const ComplianceService = {
       userId,
       userName,
     });
-  },
-
-  history(
-    filters: ComplianceFilter & {
-      page?: number;
-      pageSize?: number;
-      sortField?: string;
-      sortDirection?: string;
-    } = {},
-  ) {
-    return apiGet<Paginated<ComplianceSubmission>>(
-      `${API_ENDPOINTS.COMPLIANCE_HISTORY}${buildQuery(filters)}`,
-    );
   },
 };

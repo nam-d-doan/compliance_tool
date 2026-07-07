@@ -8,7 +8,6 @@ import { handleDashboard } from "./handlers/dashboard_handlers";
 import {
   handleGetComplianceList,
   handleGetComplianceDetail,
-  handleGetComplianceHistory,
   handleCreateCompliance,
   handleUpdateCompliance,
   handleDeleteCompliance,
@@ -89,6 +88,7 @@ import {
   handleGetAssignmentTimeline,
   handleBulkUpdateAssignments,
 } from "./handlers/assignment_handlers";
+import { handleBulkCreateObligations } from "./handlers/obligation_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
 type Route = {
@@ -120,11 +120,6 @@ const routes: Route[] = [
     methods: ["GET"],
     pattern: "/api/compliance",
     handler: handleGetComplianceList,
-  },
-  {
-    methods: ["GET"],
-    pattern: "/api/compliance/history",
-    handler: handleGetComplianceHistory,
   },
   {
     methods: ["POST"],
@@ -311,6 +306,13 @@ const routes: Route[] = [
     methods: ["PUT"],
     pattern: "/api/assignments/:id",
     handler: handleUpdateAssignment,
+  },
+
+  // Obligations
+  {
+    methods: ["POST"],
+    pattern: "/api/obligations/bulk",
+    handler: handleBulkCreateObligations,
   },
 
   // Reports

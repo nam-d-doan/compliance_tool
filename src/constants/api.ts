@@ -14,8 +14,6 @@ export const API_ENDPOINTS = {
   COMPLIANCE_GET: (id: string) => `/api/compliance/${id}`,
   COMPLIANCE_UPDATE: (id: string) => `/api/compliance/${id}`,
   COMPLIANCE_DELETE: (id: string) => `/api/compliance/${id}`,
-  COMPLIANCE_SUBMIT: "/api/compliance/submit",
-  COMPLIANCE_HISTORY: "/api/compliance/history",
   COMPLIANCE_TIMELINE: (id: string) => `/api/compliance/${id}/timeline`,
   COMPLIANCE_COMMENTS: (id: string) => `/api/compliance/${id}/comments`,
 
@@ -90,6 +88,9 @@ export const API_ENDPOINTS = {
   ASSIGNMENT_ACKNOWLEDGE: (id: string) => `/api/assignments/${id}/acknowledge`,
   ASSIGNMENT_CANCEL: (id: string) => `/api/assignments/${id}/cancel`,
   ASSIGNMENT_TIMELINE: (id: string) => `/api/assignments/${id}/timeline`,
+
+  // Obligation endpoints
+  OBLIGATION_BULK: "/api/obligations/bulk",
 
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",

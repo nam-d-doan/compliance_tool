@@ -1,9 +1,6 @@
 import type { BaseEntity } from "./base";
 import type { PriorityLevel } from "@/constants/status";
-import type {
-  ComplianceStatus,
-  ComplianceSubmissionStatus,
-} from "@/constants/status";
+import type { ComplianceStatus } from "@/constants/status";
 
 export interface ComplianceObligation extends BaseEntity {
   complianceId: string;
@@ -27,23 +24,7 @@ export interface ComplianceObligation extends BaseEntity {
   aiRiskScore: number;
   tags: string[];
   aiRecommendation?: string;
-  lastSubmissionId?: string;
-  lastSubmissionStatus?: ComplianceSubmissionStatus;
   progress: number;
-}
-
-export interface ComplianceSubmission extends BaseEntity {
-  complianceId: string;
-  complianceTitle: string;
-  ownerId: string;
-  ownerName: string;
-  performedDate: string;
-  status: ComplianceSubmissionStatus;
-  comments: string;
-  additionalNotes: string;
-  capRequired: boolean;
-  riskRating: PriorityLevel;
-  aiSuggestion?: string;
 }
 
 export interface ComplianceFilter {
