@@ -18,6 +18,12 @@ import {
   GitCompare,
   Zap,
   Loader2,
+  Archive,
+  Link2,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ExternalLink,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,11 +47,16 @@ import {
   useRegulationDetail,
   useRegulationTimeline,
   useRegulationComments,
+  useRegulationDependencies,
 } from "@/hooks/queries/useRegulationQueries";
 import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
 import { useRegulationImpact as useAIRegulationImpact } from "@/hooks/mutations/useAIMutations";
-import { useAddRegulationComment } from "@/hooks/mutations/useRegulationMutations";
+import {
+  useAddRegulationComment,
+  useArchiveRegulation,
+} from "@/hooks/mutations/useRegulationMutations";
 import { useAuthStore } from "@/stores";
+import { hasMinimumRole } from "@/constants/rbac";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type {
@@ -53,11 +64,14 @@ import type {
   AIInsight,
   AIExplanation as AIExplanationType,
   ActivityFeedItem,
+  RegulationDependencyItem,
+  Article,
 } from "@/types";
 
 const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "requirements", label: "Requirements" },
+  { id: "articles", label: "Articles" },
+  { id: "dependencies", label: "Dependencies" },
   { id: "impact", label: "Impact" },
   { id: "timeline", label: "Timeline" },
   { id: "comments", label: "Comments" },
@@ -77,26 +91,52 @@ const IMPACT_AREAS = [
 ] as const;
 
 function buildInsight(item: Regulation): AIInsight {
-  const score = item.aiImpactScore;
+  const score =
+    item.priority === "critical" ? 95 : item.priority === "high" ? 75 : 50;
   return {
     id: `ai-${item.id}`,
     title: "AI Impact Summary",
-    description: `This regulation has an AI impact score of ${score}/100, affecting ${item.affectedDepartments.length} departments and ${item.affectedBusinessUnits.length} business units.`,
+    description: `This ${item.priority} priority regulation contains ${item.articles.length} articles and may have broad operational impact.`,
     type: score >= 70 ? "risk" : score >= 40 ? "action" : "opportunity",
     confidence: Math.min(score / 100 + 0.05, 0.95),
-    recommendation: `Prioritize review of ${item.title} due to its ${score >= 70 ? "high" : score >= 40 ? "moderate" : "low"} predicted impact on operations.`,
+    recommendation: `Prioritize review of ${item.title} due to its ${item.priority} priority and ${item.articles.length} linked articles.`,
     reasoning: [
-      `Impact score of ${score} derived from affected departments, business units, and historical change patterns.`,
-      `Cross-referenced with ${item.requirements.length} requirements and linked compliance obligations.`,
+      `Priority level ${item.priority} indicates ${score >= 70 ? "high" : score >= 40 ? "moderate" : "low"} operational impact.`,
+      `Cross-referenced with ${item.articles.length} articles and linked compliance obligations.`,
       "Estimated effort is based on similar regulatory changes in the knowledge base.",
     ],
     references: [],
     entityType: "regulation",
     entityId: item.id,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
+    createdAt: item.createdDate,
+    updatedAt: item.updatedDate,
   };
 }
+
+const DEPENDENCY_TYPE_STYLES: Record<
+  RegulationDependencyItem["type"],
+  {
+    variant: "default" | "secondary" | "destructive" | "outline";
+    label: string;
+  }
+> = {
+  amends: { variant: "secondary", label: "Amends" },
+  repeals: { variant: "destructive", label: "Repeals" },
+  supersedes: { variant: "default", label: "Supersedes" },
+  references: { variant: "outline", label: "References" },
+};
+
+const ARTICLE_STATUS_STYLES: Record<
+  NonNullable<Article["status"]>,
+  {
+    variant: "default" | "secondary" | "destructive" | "outline";
+    label: string;
+  }
+> = {
+  active: { variant: "secondary", label: "Active" },
+  amended: { variant: "default", label: "Amended" },
+  repealed: { variant: "destructive", label: "Repealed" },
+};
 
 function ImpactGauge({ value, size = 80 }: { value: number; size?: number }) {
   const percent = Math.max(0, Math.min(100, value));
@@ -144,13 +184,35 @@ function ImpactGauge({ value, size = 80 }: { value: number; size?: number }) {
 export default function RegulationDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
+  const canArchive = hasMinimumRole(role, "executive");
+  const archive = useArchiveRegulation();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [explanationOpen, setExplanationOpen] = useState(false);
+
+  const handleArchive = () => {
+    if (!id || !item) return;
+    const isArchived = item.status === "Archived";
+    archive.mutate(id, {
+      onSuccess: () => {
+        toast.success(
+          isArchived ? "Regulation unarchived" : "Regulation archived",
+        );
+      },
+      onError: (err) => {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Failed to update archive status",
+        );
+      },
+    });
+  };
 
   const detail = useRegulationDetail(id);
   const timeline = useRegulationTimeline(id);
   const comments = useRegulationComments(id);
+  const dependencies = useRegulationDependencies(id);
   const obligations = useComplianceList({ regulation: id }, 1, 50);
   const aiImpact = useAIRegulationImpact();
   const addComment = useAddRegulationComment(id);
@@ -168,12 +230,12 @@ export default function RegulationDetailPage() {
             confidence: insight?.confidence ?? 0.75,
             reasoning: insight?.reasoning ?? [],
             references: [
-              { title: `${item.regulator} Official Guidance`, url: "#" },
+              { title: `${item.regulatoryBody} Official Guidance`, url: "#" },
               { title: "Internal Policy Mapping", url: "#" },
             ],
-            relatedDocuments: item.requirements.slice(0, 3),
+            relatedDocuments: item.articles.slice(0, 3).map((a) => a.title),
             historicalSimilarity: 0.72,
-            timestamp: item.updatedAt,
+            timestamp: item.updatedDate,
             modelVersion: "regulation-ai-v1",
           }
         : null,
@@ -226,7 +288,7 @@ export default function RegulationDetailPage() {
     >
       <PageHero
         title={item.title}
-        subtitle={`${item.reference} · ${item.regulator} · Effective ${format(new Date(item.effectiveDate), "MMM d, yyyy")} · ${item.version}`}
+        subtitle={`${item.regulatoryBody} · Effective ${format(new Date(item.effectiveDate), "MMM d, yyyy")} · Priority ${item.priority}`}
       >
         <div className="flex flex-col items-end gap-2">
           <Button
@@ -238,9 +300,64 @@ export default function RegulationDetailPage() {
             <ArrowLeft className="size-4" aria-hidden="true" />
             Back to library
           </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Badge
+              variant="outline"
+              className="border-white/30 bg-white/10 text-white"
+            >
+              {item.source === "external" ? (
+                <Globe className="size-3" aria-hidden="true" />
+              ) : (
+                <Building2 className="size-3" aria-hidden="true" />
+              )}
+              {item.source === "external" ? "External" : "Internal"}
+            </Badge>
+            {canArchive && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleArchive}
+                disabled={archive.isPending}
+                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+              >
+                {archive.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Archive className="size-4" aria-hidden="true" />
+                )}
+                {item.status === "Archived" ? "Unarchive" : "Archive"}
+              </Button>
+            )}
+          </div>
           <StatusBadge status={item.status} size="md" />
         </div>
       </PageHero>
+
+      {item.expirationDate &&
+        item.status !== "Archived" &&
+        new Date(item.expirationDate) < new Date() && (
+          <Card className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40">
+            <CardContent className="flex items-center gap-3 py-4">
+              <AlertTriangle className="size-5 text-amber-600 dark:text-amber-400" />
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                This regulation expired on{" "}
+                {format(new Date(item.expirationDate), "PPP")} and may no longer
+                be in effect.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+      {item.status === "Archived" && (
+        <Card className="border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900/40">
+          <CardContent className="flex items-center gap-3 py-4">
+            <Archive className="size-5 text-slate-600 dark:text-slate-400" />
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              This regulation is archived and is no longer active.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -274,7 +391,7 @@ export default function RegulationDetailPage() {
                           Executive Summary
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {item.summary}
+                          {item.description}
                         </p>
                       </div>
                     </div>
@@ -289,74 +406,56 @@ export default function RegulationDetailPage() {
                     <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       <Fact
                         icon={Building2}
-                        label="Regulator"
-                        value={item.regulator}
-                      />
-                      <Fact
-                        icon={Calendar}
-                        label="Publication Date"
-                        value={format(new Date(item.publicationDate), "PPP")}
+                        label="Regulatory Body"
+                        value={item.regulatoryBody}
                       />
                       <Fact
                         icon={Calendar}
                         label="Effective Date"
                         value={format(new Date(item.effectiveDate), "PPP")}
                       />
+                      <Fact
+                        icon={Calendar}
+                        label="Created Date"
+                        value={format(new Date(item.createdDate), "PPP")}
+                      />
                       <Fact icon={Tag} label="Category" value={item.category} />
-                      <Fact
-                        icon={Globe}
-                        label="Jurisdiction"
-                        value={item.jurisdiction}
-                      />
-                      <Fact
-                        icon={Building2}
-                        label="Industry"
-                        value={item.industry}
-                      />
-                      <Fact icon={Tag} label="Version" value={item.version} />
-                      <Fact
-                        icon={FileText}
-                        label="Supersedes"
-                        value={item.supersedes ?? "—"}
-                      />
+                      <Fact icon={Tag} label="Source" value={item.source} />
+                      <Fact icon={Tag} label="Priority" value={item.priority} />
                       <Fact
                         icon={Tag}
-                        label="Requirements"
-                        value={`${item.requirements.length}`}
+                        label="Articles"
+                        value={`${item.articles.length}`}
                       />
+                      {item.expirationDate && (
+                        <Fact
+                          icon={Calendar}
+                          label="Expiration Date"
+                          value={format(new Date(item.expirationDate), "PPP")}
+                        />
+                      )}
                     </dl>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Affected Scope</CardTitle>
+                    <CardTitle>Articles</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-                        Departments
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {item.affectedDepartments.map((d) => (
-                          <Badge key={d} variant="secondary">
-                            {d}
-                          </Badge>
-                        ))}
+                  <CardContent className="space-y-3">
+                    {item.articles.slice(0, 5).map((article) => (
+                      <div key={article.id} className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{article.number}</Badge>
+                          <span className="text-sm font-medium">
+                            {article.title}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {article.summary}
+                        </p>
                       </div>
-                    </div>
-                    <div>
-                      <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-                        Business Units
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {item.affectedBusinessUnits.map((b) => (
-                          <Badge key={b} variant="outline">
-                            {b}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
+                    ))}
                   </CardContent>
                 </Card>
 
@@ -374,40 +473,126 @@ export default function RegulationDetailPage() {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="requirements" className="mt-6">
+            <TabsContent value="articles" className="mt-6">
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
               >
-                {item.requirements.map((req, index) => (
-                  <Card key={index}>
-                    <CardContent className="flex gap-4 pt-6">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
-                        {index + 1}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Articles</CardTitle>
+                      <p className="text-xs text-muted-foreground">
+                        {item.articles.length} article
+                        {item.articles.length === 1 ? "" : "s"} in this
+                        regulation.
+                      </p>
+                    </div>
+                    <Badge variant="secondary">
+                      <FileText className="size-3" aria-hidden="true" />
+                      {item.articles.length}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent>
+                    {item.articles.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        No articles defined for this regulation.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-lg border border-border">
+                        <table className="w-full text-left text-sm">
+                          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr>
+                              <th className="w-16 px-3 py-2 font-medium">
+                                No.
+                              </th>
+                              <th className="px-3 py-2 font-medium">Title</th>
+                              <th className="px-3 py-2 font-medium">Summary</th>
+                              <th className="px-3 py-2 font-medium">
+                                Effective
+                              </th>
+                              <th className="px-3 py-2 font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {item.articles.map((article) => {
+                              const status = article.status ?? "active";
+                              const statusStyle =
+                                ARTICLE_STATUS_STYLES[status] ??
+                                ARTICLE_STATUS_STYLES.active;
+                              return (
+                                <tr
+                                  key={article.id}
+                                  className="align-top transition-colors hover:bg-muted/40"
+                                >
+                                  <td className="px-3 py-3">
+                                    <span className="inline-flex size-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                                      {article.number}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-3 font-medium text-foreground">
+                                    {article.title}
+                                  </td>
+                                  <td className="max-w-md px-3 py-3 text-muted-foreground">
+                                    <p className="line-clamp-3">
+                                      {article.summary}
+                                    </p>
+                                  </td>
+                                  <td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">
+                                    {article.effectiveDate
+                                      ? format(
+                                          new Date(article.effectiveDate),
+                                          "MMM d, yyyy",
+                                        )
+                                      : "—"}
+                                  </td>
+                                  <td className="px-3 py-3">
+                                    <Badge variant={statusStyle.variant}>
+                                      {statusStyle.label}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-foreground">
-                          {req}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {item.affectedDepartments.slice(0, 2).map((d) => (
-                            <Badge
-                              key={d}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {d}
-                            </Badge>
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Linked to {item.id} compliance mapping
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="dependencies" className="mt-6">
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-5"
+              >
+                <DependenciesSection
+                  title="References this regulation makes"
+                  description="Outgoing links to other regulations."
+                  icon={ArrowUpRight}
+                  items={
+                    dependencies.data?.filter(
+                      (d) => d.direction === "outgoing",
+                    ) ?? []
+                  }
+                  isLoading={dependencies.isPending}
+                  navigate={navigate}
+                />
+                <DependenciesSection
+                  title="References to this regulation"
+                  description="Incoming links from other regulations."
+                  icon={ArrowDownLeft}
+                  items={
+                    dependencies.data?.filter(
+                      (d) => d.direction === "incoming",
+                    ) ?? []
+                  }
+                  isLoading={dependencies.isPending}
+                  navigate={navigate}
+                />
               </motion.div>
             </TabsContent>
 
@@ -454,20 +639,11 @@ export default function RegulationDetailPage() {
                       <div className="space-y-5">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                           <div className="flex items-center gap-4">
-                            <ImpactGauge value={item.aiImpactScore} />
-                            <div>
-                              <p className="text-sm font-medium">
-                                Overall Impact Score
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {item.aiImpactScore}/100
-                              </p>
-                            </div>
+                            <ConfidenceIndicator
+                              confidence={impactResult.explanation.confidence}
+                              size="md"
+                            />
                           </div>
-                          <ConfidenceIndicator
-                            confidence={impactResult.explanation.confidence}
-                            size="md"
-                          />
                         </div>
 
                         <div className="space-y-3">
@@ -579,34 +755,25 @@ export default function RegulationDetailPage() {
         </div>
 
         <div className="space-y-4">
+          <KPICard label="Priority" value={item.priority} icon={BarChart3} />
           <KPICard
-            label="AI Impact Score"
-            value={item.aiImpactScore}
-            icon={BarChart3}
-            trend={{
-              direction: item.aiImpactScore >= 70 ? "up" : "down",
-              percent: item.aiImpactScore,
-              positive: item.aiImpactScore < 70,
-            }}
-          />
-          <KPICard
-            label="Requirements"
-            value={item.requirements.length}
+            label="Articles"
+            value={item.articles.length}
             icon={CheckCircle}
           />
           <KPICard
             label="Risk Level"
             value={
-              item.aiImpactScore >= 70
+              item.priority === "critical"
                 ? "High"
-                : item.aiImpactScore >= 40
+                : item.priority === "high"
                   ? "Medium"
                   : "Low"
             }
             icon={
-              item.aiImpactScore >= 70
+              item.priority === "critical"
                 ? ShieldAlert
-                : item.aiImpactScore >= 40
+                : item.priority === "high"
                   ? AlertTriangle
                   : CheckCircle
             }
@@ -669,24 +836,31 @@ export default function RegulationDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Tags</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {item.tags.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No tags.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {item.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {item.expirationDate && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  Auto-Archive
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {item.status === "Archived" ? (
+                  <p className="text-muted-foreground">
+                    This regulation was auto-archived based on its expiration
+                    date (VietLex citator stub).
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Auto-archive will be evaluated against the expiration date
+                    (VietLex citator stub).
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Expires {format(new Date(item.expirationDate), "PPP")}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </motion.div>
@@ -710,5 +884,120 @@ function Fact({
       </dt>
       <dd className="text-sm font-medium text-foreground">{value}</dd>
     </div>
+  );
+}
+
+function DependenciesSection({
+  title,
+  description,
+  icon: Icon,
+  items,
+  isLoading,
+  navigate,
+}: {
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: RegulationDependencyItem[];
+  isLoading: boolean;
+  navigate: (path: string) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="size-4" aria-hidden="true" />
+          </div>
+          <div>
+            <CardTitle className="text-base">{title}</CardTitle>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        <Badge variant="secondary">{items.length}</Badge>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2
+              className="size-5 animate-spin text-primary"
+              aria-hidden="true"
+            />
+          </div>
+        ) : items.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No dependencies in this direction.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Related Regulation</th>
+                  <th className="px-3 py-2 font-medium">Type</th>
+                  <th className="px-3 py-2 font-medium">Description</th>
+                  <th className="px-3 py-2 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {items.map((dep) => {
+                  const typeStyle = DEPENDENCY_TYPE_STYLES[dep.type];
+                  return (
+                    <tr
+                      key={dep.id}
+                      className="align-top transition-colors hover:bg-muted/40"
+                    >
+                      <td className="px-3 py-3">
+                        <button
+                          onClick={() =>
+                            navigate(`/regulation/${dep.relatedRegulationId}`)
+                          }
+                          className="group inline-flex max-w-xs items-start gap-1.5 text-left font-medium text-primary hover:underline"
+                        >
+                          <Link2
+                            className="mt-0.5 size-3.5 shrink-0 text-muted-foreground group-hover:text-primary"
+                            aria-hidden="true"
+                          />
+                          <span className="flex flex-col">
+                            <span className="truncate">
+                              {dep.relatedRegulationTitle ||
+                                dep.relatedRegulationId}
+                            </span>
+                            {dep.relatedRegulationTitle && (
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {dep.relatedRegulationId}
+                              </span>
+                            )}
+                          </span>
+                          <ExternalLink
+                            className="mt-0.5 size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </td>
+                      <td className="px-3 py-3">
+                        <Badge variant={typeStyle.variant}>
+                          {typeStyle.label}
+                        </Badge>
+                      </td>
+                      <td className="max-w-sm px-3 py-3 text-muted-foreground">
+                        <p className="line-clamp-2">{dep.description}</p>
+                      </td>
+                      <td className="max-w-xs px-3 py-3 text-xs text-muted-foreground">
+                        {dep.notes ? (
+                          <p className="line-clamp-2">{dep.notes}</p>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

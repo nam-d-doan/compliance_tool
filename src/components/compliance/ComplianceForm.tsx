@@ -128,7 +128,7 @@ export function ComplianceForm({
   const aiMutation = useMutation({
     mutationFn: async () => {
       const message = selectedRegulation
-        ? `Generate a concise compliance obligation description for regulation "${selectedRegulation.title}" (${selectedRegulation.reference}).`
+        ? `Generate a concise compliance obligation description for regulation "${selectedRegulation.title}".`
         : "Generate a concise compliance obligation description.";
       const response = await AIService.copilotMessage(
         message,
@@ -226,7 +226,7 @@ export function ComplianceForm({
                 <option value="">Select regulation</option>
                 {regulations.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.reference} - {r.title}
+                    {r.title}
                   </option>
                 ))}
               </select>

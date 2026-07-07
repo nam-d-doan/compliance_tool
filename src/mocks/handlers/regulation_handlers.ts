@@ -15,6 +15,10 @@ import type {
   RegulationImpact,
   RegulationComparison,
   ActivityFeedItem,
+  RegulationDependency,
+  RegulationDependencyItem,
+  VietLexDoc,
+  VietLexDocDetail,
 } from "@/types";
 
 interface CommentItem {
@@ -72,17 +76,12 @@ export async function handleGetRegulationList({
   }
   if (q.country) {
     items = items.filter((item) =>
-      item.jurisdiction.toLowerCase().includes(q.country.toLowerCase()),
+      item.regulatoryBody.toLowerCase().includes(q.country.toLowerCase()),
     );
   }
   if (q.regulator) {
     items = items.filter((item) =>
-      item.regulator.toLowerCase().includes(q.regulator.toLowerCase()),
-    );
-  }
-  if (q.industry) {
-    items = items.filter((item) =>
-      item.industry.toLowerCase().includes(q.industry.toLowerCase()),
+      item.regulatoryBody.toLowerCase().includes(q.regulator.toLowerCase()),
     );
   }
   if (q.category) {
@@ -90,20 +89,12 @@ export async function handleGetRegulationList({
       item.category.toLowerCase().includes(q.category.toLowerCase()),
     );
   }
-  if (q.department) {
-    items = items.filter((item) =>
-      item.affectedDepartments.some((d) =>
-        d.toLowerCase().includes(q.department.toLowerCase()),
-      ),
-    );
-  }
   if (q.search) {
     items = filterByText(items, q.search, [
-      "reference",
       "title",
-      "regulator",
+      "regulatoryBody",
       "category",
-      "summary",
+      "description",
     ]);
   }
 
@@ -122,6 +113,23 @@ export async function handleGetRegulationDetail({
   return jsonResponse(item);
 }
 
+function normalizeRegulationStatus(status?: string): Regulation["status"] {
+  const raw = (status ?? "published").toLowerCase();
+  if (raw === "draft") return "Draft";
+  if (raw === "updated") return "Updated";
+  if (raw === "archived") return "Archived";
+  return "Published";
+}
+
+function checkAutoArchive(item: Regulation): void {
+  if (item.status === "Published" && item.expirationDate) {
+    const expiration = new Date(item.expirationDate);
+    if (!Number.isNaN(expiration.getTime()) && expiration < new Date()) {
+      item.status = "Archived";
+    }
+  }
+}
+
 export async function handleCreateRegulation({
   request,
 }: {
@@ -129,30 +137,29 @@ export async function handleCreateRegulation({
 }) {
   await getDelay();
   const body = (await request.json()) as Partial<Regulation>;
+  if (!body.title) return badRequest("Title is required");
+  if (!body.category) return badRequest("Category is required");
+  if (!body.regulatoryBody) return badRequest("Regulatory body is required");
+  if (!body.effectiveDate) return badRequest("Effective date is required");
+
   const db = getDb();
   const now = new Date().toISOString();
   const newItem: Regulation = {
     id: `reg-${crypto.randomUUID()}`,
-    reference: body.reference ?? `REG-NEW-${String(Date.now()).slice(-4)}`,
-    title: body.title ?? "New Regulation",
-    regulator: body.regulator ?? "",
-    publicationDate: body.publicationDate ?? now,
-    effectiveDate: body.effectiveDate ?? now,
-    supersedes: body.supersedes,
-    status: body.status ?? "Published",
-    category: body.category ?? "General",
-    jurisdiction: body.jurisdiction ?? "",
-    industry: body.industry ?? "",
-    affectedDepartments: body.affectedDepartments ?? [],
-    affectedBusinessUnits: body.affectedBusinessUnits ?? [],
-    summary: body.summary ?? "",
-    requirements: body.requirements ?? [],
-    aiImpactScore: body.aiImpactScore ?? 50,
-    version: body.version ?? "v1.0",
-    tags: body.tags ?? [],
-    createdAt: now,
-    updatedAt: now,
+    title: body.title,
+    description: body.description ?? "",
+    category: body.category,
+    regulatoryBody: body.regulatoryBody,
+    effectiveDate: body.effectiveDate,
+    expirationDate: body.expirationDate,
+    status: normalizeRegulationStatus(body.status),
+    priority: body.priority ?? "medium",
+    source: body.source ?? "internal",
+    articles: body.articles ?? [],
+    createdDate: now,
+    updatedDate: now,
   };
+  checkAutoArchive(newItem);
   db.regulations.unshift(newItem);
   return jsonResponse(newItem, 201);
 }
@@ -166,12 +173,14 @@ export async function handleUpdateRegulation({
   const index = db.regulations.findIndex((i) => i.id === params.id);
   if (index === -1) return notFound("Regulation not found");
   const body = (await request.json()) as Partial<Regulation>;
-  db.regulations[index] = {
+  const updated: Regulation = {
     ...db.regulations[index],
     ...body,
-    updatedAt: new Date().toISOString(),
+    updatedDate: new Date().toISOString(),
   };
-  return jsonResponse(db.regulations[index]);
+  checkAutoArchive(updated);
+  db.regulations[index] = updated;
+  return jsonResponse(updated);
 }
 
 export async function handleDeleteRegulation({ params }: MockResolverContext) {
@@ -251,18 +260,20 @@ export async function handleCompareRegulations({
   const a = body.a ? findById(db.regulations, body.a) : undefined;
   const b = body.b ? findById(db.regulations, body.b) : undefined;
   if (!a || !b) return badRequest("Both regulation IDs are required");
+  const aArticleTitles = a.articles.map((article) => article.title);
+  const bArticleTitles = b.articles.map((article) => article.title);
   const comparison: RegulationComparison = {
     regulationA: a,
     regulationB: b,
-    added: a.requirements
-      .filter((r) => !b.requirements.includes(r))
+    added: aArticleTitles
+      .filter((title) => !bArticleTitles.includes(title))
       .slice(0, 3),
-    removed: b.requirements
-      .filter((r) => !a.requirements.includes(r))
+    removed: bArticleTitles
+      .filter((title) => !aArticleTitles.includes(title))
       .slice(0, 3),
-    modified: a.requirements.slice(0, 2),
+    modified: aArticleTitles.slice(0, 2),
     moved: [],
-    aiSummary: `Comparing ${a.reference} and ${b.reference}: ${a.requirements.length} requirements analyzed.`,
+    aiSummary: `Comparing ${a.title} and ${b.title}: ${a.articles.length} articles analyzed.`,
   };
   return jsonResponse(comparison);
 }
@@ -277,32 +288,303 @@ export async function handleRegulationImpact({
   const db = getDb();
   const regulation = body.id ? findById(db.regulations, body.id) : undefined;
   if (!regulation) return badRequest("Regulation ID is required");
+  const affectedDepartments = ["Risk & Compliance", "Legal", "Operations"];
+  const affectedBusinessUnits = ["Retail Banking", "Corporate Banking"];
   const impact: RegulationImpact = {
     regulationId: regulation.id,
     regulationTitle: regulation.title,
-    affectedDepartments: regulation.affectedDepartments,
+    affectedDepartments,
     affectedComplianceIds: db.compliance
       .filter((c) => c.regulationId === regulation.id)
       .map((c) => c.id),
     affectedPolicies: ["Policy A", "Policy B"],
-    affectedBusinessUnits: regulation.affectedBusinessUnits,
+    affectedBusinessUnits,
     affectedRisks: ["Operational Risk", "Compliance Risk", "Reputational Risk"],
     affectedControls: ["Control 1", "Control 2", "Control 3"],
-    aiSummary: `This regulation affects ${regulation.affectedDepartments.length} departments and ${regulation.affectedBusinessUnits.length} business units.`,
+    aiSummary: `This regulation affects ${affectedDepartments.length} departments and ${affectedBusinessUnits.length} business units.`,
     estimatedEffort: `${faker.number.int({ min: 2, max: 12 })} weeks`,
   };
   return jsonResponse(impact);
+}
+
+export async function handleArchiveRegulationToggle({
+  params,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const index = db.regulations.findIndex((i) => i.id === params.id);
+  if (index === -1) return notFound("Regulation not found");
+  const item = db.regulations[index];
+  const nextStatus = item.status === "Archived" ? "Published" : "Archived";
+  db.regulations[index] = {
+    ...item,
+    status: nextStatus,
+    updatedDate: new Date().toISOString(),
+  };
+  return jsonResponse(db.regulations[index]);
+}
+
+export async function handleBulkArchiveRegulations({
+  request,
+}: {
+  request: Request;
+}) {
+  await getDelay();
+  const body = (await request.json()) as { ids?: string[] };
+  const ids = body.ids ?? [];
+  if (ids.length === 0) return badRequest("No regulation IDs provided");
+
+  const db = getDb();
+  const now = new Date().toISOString();
+  let archived = 0;
+  ids.forEach((id) => {
+    const index = db.regulations.findIndex((i) => i.id === id);
+    if (index !== -1 && db.regulations[index].status !== "Archived") {
+      db.regulations[index] = {
+        ...db.regulations[index],
+        status: "Archived",
+        updatedDate: now,
+      };
+      archived++;
+    }
+  });
+  return jsonResponse({ success: true, archived });
+}
+
+const VIETLEX_DOCS: VietLexDoc[] = [
+  {
+    id: "vl-1",
+    docNumber: "Thông tư 19/2016/TT-NHNN",
+    title: "Quy định tỷ lệ an toàn vốn đối với các tổ chức tín dụng",
+    issuer: "Ngân hàng Nhà nước Việt Nam (SBV)",
+    date: "2016-06-30T00:00:00.000Z",
+  },
+  {
+    id: "vl-2",
+    docNumber: "Thông tư 22/2019/TT-NHNN",
+    title: "Quản lý rủi ro trong hoạt động ngân hàng",
+    issuer: "Ngân hàng Nhà nước Việt Nam (SBV)",
+    date: "2019-11-28T00:00:00.000Z",
+  },
+  {
+    id: "vl-3",
+    docNumber: "Thông tư 03/2021/TT-NHNN",
+    title: "Phòng, chống khủng bố tài chính trong lĩnh vực ngân hàng",
+    issuer: "Ngân hàng Nhà nước Việt Nam (SBV)",
+    date: "2021-04-01T00:00:00.000Z",
+  },
+  {
+    id: "vl-4",
+    docNumber: "Thông tư 96/2020/TT-UBCK",
+    title: "Quản lý hoạt động đầu tư chứng khoán của tổ chức",
+    issuer: "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
+    date: "2020-12-31T00:00:00.000Z",
+  },
+  {
+    id: "vl-5",
+    docNumber: "Thông tư 119/2020/TT-UBCK",
+    title: "Công bố thông tin trên thị trường chứng khoán",
+    issuer: "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
+    date: "2020-12-31T00:00:00.000Z",
+  },
+  {
+    id: "vl-6",
+    docNumber: "Thông tư 13/2017/TT-UBCK",
+    title: "Quản trị rủi ro đối với công ty chứng khoán",
+    issuer: "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
+    date: "2017-03-15T00:00:00.000Z",
+  },
+  {
+    id: "vl-7",
+    docNumber: "Quyết định 35/2018/QĐ-NHNN",
+    title: "Ban hành Biểu mẫu và phương pháp tính tỷ lệ an toàn vốn",
+    issuer: "Ngân hàng Nhà nước Việt Nam (SBV)",
+    date: "2018-12-28T00:00:00.000Z",
+  },
+  {
+    id: "vl-8",
+    docNumber: "Thông tư 52/2018/TT-NHNN",
+    title: "Giám sát ngân hàng dựa trên hoạt động và quản lý rủi ro",
+    issuer: "Ngân hàng Nhà nước Việt Nam (SBV)",
+    date: "2018-12-31T00:00:00.000Z",
+  },
+];
+
+export async function handleSearchVietLex({ request }: { request: Request }) {
+  await getDelay();
+  const url = new URL(request.url);
+  const q = parseQuery(url).q?.toLowerCase() ?? "";
+
+  const filtered = q
+    ? VIETLEX_DOCS.filter(
+        (d) =>
+          d.title.toLowerCase().includes(q) ||
+          d.docNumber.toLowerCase().includes(q) ||
+          d.issuer.toLowerCase().includes(q),
+      )
+    : VIETLEX_DOCS;
+
+  return jsonResponse(filtered);
+}
+
+export async function handleGetRegulationDependencies({
+  params,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const id = params.id as string;
+  const item = findById(db.regulations, id);
+  if (!item) return notFound("Regulation not found");
+
+  const dependencies = db.regulationDependencies.filter(
+    (d) => d.fromRegulationId === id || d.toRegulationId === id,
+  );
+
+  const result: RegulationDependencyItem[] = dependencies.map((d) => {
+    const direction: "outgoing" | "incoming" =
+      d.fromRegulationId === id ? "outgoing" : "incoming";
+    const relatedRegulationId =
+      direction === "outgoing" ? d.toRegulationId : d.fromRegulationId;
+    const relatedRegulation = findById(db.regulations, relatedRegulationId);
+    return {
+      ...d,
+      direction,
+      relatedRegulationId,
+      relatedRegulationTitle: relatedRegulation?.title,
+    };
+  });
+
+  return jsonResponse(result);
+}
+
+export async function handleCreateRegulationDependency({
+  request,
+}: {
+  request: Request;
+}) {
+  await getDelay();
+  const body = (await request.json()) as Partial<RegulationDependency>;
+  if (!body.fromRegulationId) return badRequest("fromRegulationId is required");
+  if (!body.toRegulationId) return badRequest("toRegulationId is required");
+  if (!body.type) return badRequest("type is required");
+
+  const db = getDb();
+  if (!findById(db.regulations, body.fromRegulationId)) {
+    return badRequest("Source regulation not found");
+  }
+  if (!findById(db.regulations, body.toRegulationId)) {
+    return badRequest("Target regulation not found");
+  }
+
+  const dependency: RegulationDependency = {
+    id: `dep-${crypto.randomUUID()}`,
+    fromRegulationId: body.fromRegulationId,
+    toRegulationId: body.toRegulationId,
+    type: body.type,
+    description: body.description ?? "",
+    notes: body.notes,
+    createdDate: new Date().toISOString(),
+  };
+  db.regulationDependencies.unshift(dependency);
+  return jsonResponse(dependency, 201);
+}
+
+export async function handleUpdateRegulationDependency({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const index = db.regulationDependencies.findIndex((d) => d.id === params.id);
+  if (index === -1) return notFound("Dependency not found");
+
+  const body = (await request.json()) as Partial<RegulationDependency>;
+  const updated: RegulationDependency = {
+    ...db.regulationDependencies[index],
+    ...body,
+  };
+  db.regulationDependencies[index] = updated;
+  return jsonResponse(updated);
+}
+
+export async function handleDeleteRegulationDependency({
+  params,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const index = db.regulationDependencies.findIndex((d) => d.id === params.id);
+  if (index === -1) return notFound("Dependency not found");
+  db.regulationDependencies.splice(index, 1);
+  return jsonResponse({ success: true });
+}
+
+export async function handleGetVietLexDetail({ params }: MockResolverContext) {
+  await getDelay();
+  const docNumber = decodeURIComponent(params.docNumber as string);
+  const doc = VIETLEX_DOCS.find((d) => d.docNumber === docNumber);
+  if (!doc) return notFound("Document not found");
+
+  const detail: VietLexDocDetail = {
+    ...doc,
+    body: `Văn bản ${doc.docNumber} quy định chi tiết các yêu cầu về ${doc.title.toLowerCase()}. Văn bản này áp dụng đối với các tổ chức tài chính hoạt động tại Việt Nam và được ban hành bởi ${doc.issuer}. Các tổ chức cần tuân thủ các quy định về quy trình, báo cáo và giám sát theo hướng dẫn của cơ quan quản lý.`,
+    articles: [
+      {
+        id: "art-1",
+        title: "Điều 1. Phạm vi điều chỉnh",
+        content:
+          "Quy định này áp dụng đối với các tổ chức tín dụng, chi nhánh ngân hàng nước ngoài và các tổ chức tài chính liên quan.",
+      },
+      {
+        id: "art-2",
+        title: "Điều 2. Giải thích từ ngữ",
+        content:
+          "Các thuật ngữ sử dụng trong văn bản được hiểu theo quy định của pháp luật ngân hàng và chứng khoán hiện hành.",
+      },
+      {
+        id: "art-3",
+        title: "Điều 3. Trách nhiệm tuân thủ",
+        content:
+          "Các tổ chức phải thiết lập quy trình nội bộ, phân công trách nhiệm và báo cáo định kỳ cho cơ quan quản lý.",
+      },
+      {
+        id: "art-4",
+        title: "Điều 4. Chế tài xử lý",
+        content:
+          "Vi phạm các quy định tại văn bản này sẽ bị xử lý theo quy định của pháp luật và thẩm quyền của cơ quan quản lý.",
+      },
+    ],
+  };
+
+  return jsonResponse(detail);
 }
 
 export const regulationHandlers = [
   http.get("/api/regulation", handleGetRegulationList),
   http.get("/api/regulation/:id", handleGetRegulationDetail),
   http.post("/api/regulation", handleCreateRegulation),
+  http.post("/api/regulations", handleCreateRegulation),
   http.put("/api/regulation/:id", handleUpdateRegulation),
+  http.patch("/api/regulations/:id/archive", handleArchiveRegulationToggle),
+  http.patch("/api/regulations/bulk-archive", handleBulkArchiveRegulations),
   http.delete("/api/regulation/:id", handleDeleteRegulation),
   http.get("/api/regulation/:id/timeline", handleGetRegulationTimeline),
   http.get("/api/regulation/:id/comments", handleGetRegulationComments),
   http.post("/api/regulation/:id/comments", handleCreateRegulationComment),
   http.post("/api/regulation/compare", handleCompareRegulations),
   http.post("/api/regulation/impact", handleRegulationImpact),
+  http.get(
+    "/api/regulations/:id/dependencies",
+    handleGetRegulationDependencies,
+  ),
+  http.post("/api/regulation-dependencies", handleCreateRegulationDependency),
+  http.patch(
+    "/api/regulation-dependencies/:id",
+    handleUpdateRegulationDependency,
+  ),
+  http.delete(
+    "/api/regulation-dependencies/:id",
+    handleDeleteRegulationDependency,
+  ),
+  http.get("/api/vietlex/search", handleSearchVietLex),
+  http.get("/api/vietlex/:docNumber", handleGetVietLexDetail),
 ];

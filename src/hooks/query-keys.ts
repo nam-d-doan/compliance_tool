@@ -37,6 +37,10 @@ export const regulationKeys = {
   detail: (id: string) => [...regulationKeys.details(), id] as const,
   comparison: () => [...regulationKeys.all, "comparison"] as const,
   impact: (id: string) => [...regulationKeys.detail(id), "impact"] as const,
+  dependencies: (id: string) =>
+    [...regulationKeys.detail(id), "dependencies"] as const,
+  vietlex: (query: string) =>
+    [...regulationKeys.all, "vietlex", query] as const,
 };
 
 export const reportKeys = {

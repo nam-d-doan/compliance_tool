@@ -239,6 +239,7 @@ export const REGULATION_STATUSES = [
   "Published",
   "Updated",
   "Archived",
+  "Draft",
 ] as const;
 
 export const USER_STATUSES = [

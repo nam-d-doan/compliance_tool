@@ -37,6 +37,9 @@ import {
   handleCreateRegulationComment,
   handleCompareRegulations,
   handleRegulationImpact,
+  handleSearchVietLex,
+  handleArchiveRegulationToggle,
+  handleBulkArchiveRegulations,
 } from "./handlers/regulation_handlers";
 import { handleGetReport } from "./handlers/report_handlers";
 import {
@@ -180,6 +183,11 @@ const routes: Route[] = [
   },
   {
     methods: ["POST"],
+    pattern: "/api/regulations",
+    handler: handleCreateRegulation,
+  },
+  {
+    methods: ["POST"],
     pattern: "/api/regulation/compare",
     handler: handleCompareRegulations,
   },
@@ -187,6 +195,11 @@ const routes: Route[] = [
     methods: ["POST"],
     pattern: "/api/regulation/impact",
     handler: handleRegulationImpact,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/vietlex/search",
+    handler: handleSearchVietLex,
   },
   {
     methods: ["GET"],
@@ -212,6 +225,16 @@ const routes: Route[] = [
     methods: ["PUT"],
     pattern: "/api/regulation/:id",
     handler: handleUpdateRegulation,
+  },
+  {
+    methods: ["PATCH"],
+    pattern: "/api/regulations/:id/archive",
+    handler: handleArchiveRegulationToggle,
+  },
+  {
+    methods: ["PATCH"],
+    pattern: "/api/regulations/bulk-archive",
+    handler: handleBulkArchiveRegulations,
   },
   {
     methods: ["DELETE"],

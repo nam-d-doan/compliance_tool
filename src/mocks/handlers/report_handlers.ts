@@ -445,7 +445,8 @@ function executiveReport(
       id: r.id,
       title: r.title,
       effectiveDate: r.effectiveDate,
-      impactScore: r.aiImpactScore,
+      impactScore:
+        r.priority === "critical" ? 95 : r.priority === "high" ? 75 : 50,
     })),
     departmentRanking: [...new Set(compliance.map((i) => i.department))]
       .slice(0, 5)

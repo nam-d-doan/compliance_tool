@@ -26,6 +26,7 @@ import type {
   CAPTimelineEvent,
   ComplianceComment,
   CAPComment,
+  RegulationDependency,
 } from "@/types";
 
 faker.seed(42);
@@ -67,27 +68,21 @@ const LOCATIONS = [
 ] as const;
 
 const REGULATORS = [
-  "SEC",
-  "FINRA",
-  "FCA",
-  "MAS",
-  "HKMA",
-  "ECB",
-  "APRA",
-  "Basel Committee",
-  "GDPR Authority",
-  "CCPA",
+  "Ngân hàng Nhà nước Việt Nam (SBV)",
+  "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
+  "Basel Committee on Banking Supervision",
 ] as const;
 
 const CATEGORIES = [
-  "AML/KYC",
-  "Data Privacy",
-  "Consumer Protection",
-  "Market Conduct",
-  "Operational Risk",
-  "Capital Adequacy",
-  "Cybersecurity",
-  "Financial Reporting",
+  "An toàn vốn",
+  "Quản lý rủi ro tín dụng",
+  "Rửa tiền",
+  "Bảo vệ người tiêu dùng",
+  "Quản lý rủi ro hoạt động",
+  "Báo cáo tài chính",
+  "Quản trị nội bộ",
+  "Dịch vụ chứng khoán",
+  "Phòng chống khủng bố tài chính",
 ] as const;
 
 const FREQUENCIES = [
@@ -173,8 +168,64 @@ function generateDemoUserProfiles(): UserProfile[] {
 }
 
 function generateRegulations(count = 80): Regulation[] {
+  // Realistic Vietnamese regulatory document numbers and titles
+  const sbvPrefixes = [
+    "Thông tư 19/2016/TT-NHNN",
+    "Thông tư 22/2019/TT-NHNN",
+    "Thông tư 03/2021/TT-NHNN",
+    "Thông tư 41/2016/TT-NHNN",
+    "Thông tư 39/2016/TT-NHNN",
+    "Quyết định 35/2018/QĐ-NHNN",
+    "Thông tư 52/2018/TT-NHNN",
+    "Thông tư 07/2019/TT-NHNN",
+  ];
+  const ubcknnPrefixes = [
+    "Thông tư 96/2020/TT-UBCK",
+    "Thông tư 119/2020/TT-UBCK",
+    "Thông tư 13/2017/TT-UBCK",
+    "Thông tư 21/2021/TT-UBCK",
+    "Quyết định 05/2021/QĐ-UBCK",
+    "Quyết định 12/2020/QĐ-UBCK",
+  ];
+  const baselPrefixes = [
+    "Basel III Framework",
+    "Basel IV Standards",
+    "Basel Committee Guidelines",
+  ];
+
+  const articleTitles = [
+    "Điều 1: Phạm vi điều chỉnh",
+    "Điều 2: Đối tượng áp dụng",
+    "Điều 3: Giải thích từ ngữ",
+    "Điều 4: Trách nhiệm của tổ chức tín dụng",
+    "Điều 5: Yêu cầu báo cáo",
+    "Điều 6: Xử lý vi phạm",
+    "Điều 7: Hiệu lực thi hành",
+    "Điều 8: Quy định chuyển tiếp",
+    "Điều 9: Trách nhiệm giải trình",
+    "Điều 10: Giám sát và thanh tra",
+    "Điều 11: Quản lý hồ sơ",
+    "Điều 12: Ngưỡng an toàn vốn tối thiểu",
+  ];
+
+  const sbvDescriptions = [
+    "Quy định của Ngân hàng Nhà nước về tỷ lệ an toàn vốn đối với các tổ chức tín dụng hoạt động tại Việt Nam.",
+    "Hướng dẫn triển khai các biện pháp quản lý rủi ro tín dụng và phân loại nợ theo quy định mới.",
+    "Yêu cầu báo cáo, lưu trữ và cung cấp thông tin phục vụ công tác giám sát ngân hàng.",
+  ];
+  const ubcknnDescriptions = [
+    "Quy định về quản lý hoạt động đầu tư chứng khoán và bảo vệ quyền lợi nhà đầu tư.",
+    "Hướng dẫn công bố thông tin, minh bạch giao dịch và xử lý vi phạm trên thị trường chứng khoán.",
+    "Yêu cầu về quản trị rủi ro đối với các công ty chứng khoán và quỹ đầu tư.",
+  ];
+  const baselDescriptions = [
+    "Khung quốc tế về tỷ lệ an toàn vốn, quản lý rủi ro và giám sát ngân hàng toàn cầu.",
+    "Tiêu chuẩn nguồn vốn và cách tính toán rủi ro tín dụng thống nhất cho các nhà băng.",
+  ];
+
   return Array.from({ length: count }, (_, i) => {
     const category = pick(CATEGORIES);
+    const regulatoryBody = pick(REGULATORS);
     const effectiveAt = randomDate(subDays(today, 365), addDays(today, 180));
     const publishedAt = subDays(
       effectiveAt,
@@ -185,58 +236,218 @@ function generateRegulations(count = 80): Regulation[] {
       { item: "Updated", weight: 25 },
       { item: "Archived", weight: 5 },
     ]);
+
+    // Determine source: Vietnamese regulators are 'internal', Basel is 'external'
+    const source: "internal" | "external" =
+      regulatoryBody === "Basel Committee on Banking Supervision"
+        ? "external"
+        : faker.helpers.arrayElement(["internal", "external"]);
+
+    // Build a realistic title based on regulator
+    let title: string;
+    if (regulatoryBody === "Ngân hàng Nhà nước Việt Nam (SBV)") {
+      const prefix = sbvPrefixes[i % sbvPrefixes.length];
+      title = `${prefix} - ${category}`;
+    } else if (regulatoryBody === "Ủy ban Chứng khoán Nhà nước (UBCKNN)") {
+      const prefix = ubcknnPrefixes[i % ubcknnPrefixes.length];
+      title = `${prefix} - ${category}`;
+    } else {
+      const prefix = baselPrefixes[i % baselPrefixes.length];
+      title = `${prefix} - ${category}`;
+    }
+
+    // Pick a regulator-specific description
+    let description: string;
+    if (regulatoryBody === "Ngân hàng Nhà nước Việt Nam (SBV)") {
+      description = pick(sbvDescriptions);
+    } else if (regulatoryBody === "Ủy ban Chứng khoán Nhà nước (UBCKNN)") {
+      description = pick(ubcknnDescriptions);
+    } else {
+      description = pick(baselDescriptions);
+    }
+
+    const articleCount = faker.number.int({ min: 3, max: 7 });
+    const articles = Array.from({ length: articleCount }, (__, j) => ({
+      id: faker.string.uuid(),
+      number: `${j + 1}`,
+      title: articleTitles[j % articleTitles.length],
+      summary: faker.lorem.paragraph(2),
+      effectiveDate: iso(effectiveAt),
+      status: "active" as const,
+    }));
+
     return {
       id: uid("reg"),
-      reference: `REG-${faker.string.alpha({ length: 3, casing: "upper" })}-${pad(i + 1)}`,
-      title: `${category} ${faker.company.buzzAdjective()} ${faker.company.buzzNoun()} Standard`,
-      regulator: pick(REGULATORS),
-      publicationDate: iso(publishedAt),
+      title,
+      description,
+      category,
+      regulatoryBody,
       effectiveDate: iso(effectiveAt),
-      supersedes: faker.datatype.boolean(0.2)
-        ? `REG-LEGACY-${pad(faker.number.int({ min: 1, max: 99 }))}`
+      expirationDate: faker.datatype.boolean(0.2)
+        ? iso(addDays(effectiveAt, faker.number.int({ min: 365, max: 1825 })))
         : undefined,
       status,
-      category,
-      jurisdiction: pick([
-        "US",
-        "UK",
-        "EU",
-        "Singapore",
-        "Hong Kong",
-        "Japan",
-        "Australia",
-        "Global",
-      ]),
-      industry: pick([
-        "Banking",
-        "Insurance",
-        "Investment Management",
-        "Payments",
-        "FinTech",
-      ]),
-      affectedDepartments: faker.helpers.arrayElements(DEPARTMENTS, {
-        min: 1,
-        max: 4,
-      }),
-      affectedBusinessUnits: faker.helpers.arrayElements(BUSINESS_UNITS, {
-        min: 1,
-        max: 3,
-      }),
-      summary: faker.lorem.paragraph(3),
-      requirements: Array.from(
-        { length: faker.number.int({ min: 3, max: 7 }) },
-        () => faker.lorem.sentence(),
-      ),
-      aiImpactScore: faker.number.int({ min: 20, max: 98 }),
-      version: `v${faker.number.int({ min: 1, max: 5 })}.${faker.number.int({ min: 0, max: 9 })}`,
-      tags: faker.helpers.arrayElements(
-        ["aml", "kyc", "privacy", "cyber", "reporting", "consumer", "risk"],
-        { min: 1, max: 3 },
-      ),
-      createdAt: iso(publishedAt),
-      updatedAt: iso(randomDate(publishedAt, effectiveAt)),
+      priority: faker.helpers.arrayElement(PRIORITY_LEVELS),
+      source,
+      articles,
+      createdDate: iso(publishedAt),
+      updatedDate: iso(randomDate(publishedAt, effectiveAt)),
     };
   });
+}
+
+/**
+ * Create realistic dependencies between generated regulations.
+ * Most links are between Vietnamese regulations; a few reference
+ * international Basel guidance to reflect local implementation.
+ */
+function generateRegulationDependencies(
+  regulations: Regulation[],
+): RegulationDependency[] {
+  // Find a regulation matching body + category. Falls back to any regulation
+  // from the same regulator so cross-references stay realistic even when the
+  // exact category distribution is sparse.
+  const find = (
+    body: string,
+    category: string,
+    fallback = true,
+  ): Regulation | undefined => {
+    const match = regulations.find(
+      (r) => r.regulatoryBody === body && r.category === category,
+    );
+    if (match || !fallback) return match;
+    return regulations.find((r) => r.regulatoryBody === body);
+  };
+
+  // Find two distinct regulations matching the same body + category.
+  // Falls back to any two regulations from the same regulator if the exact
+  // category has fewer than two matches.
+  const findPair = (
+    body: string,
+    category: string,
+  ): { from: Regulation | undefined; to: Regulation | undefined } => {
+    let matches = regulations.filter(
+      (r) => r.regulatoryBody === body && r.category === category,
+    );
+    if (matches.length < 2) {
+      matches = regulations.filter((r) => r.regulatoryBody === body);
+    }
+    return { from: matches[0], to: matches[1] };
+  };
+
+  const candidates: Array<{
+    from: Regulation | undefined;
+    to: Regulation | undefined;
+    type: RegulationDependency["type"];
+    description: string;
+    notes?: string;
+  }> = [
+    {
+      // SBV capital adequacy circular updates an older SBV decision
+      ...findPair("Ngân hàng Nhà nước Việt Nam (SBV)", "An toàn vốn"),
+      type: "amends",
+      description:
+        "Sửa đổi, bổ sung một số quy định về tỷ lệ an toàn vốn áp dụng cho tổ chức tín dụng.",
+      notes: "Thay thế ngưỡng CAR tối thiểu theo khung Basel III.",
+    },
+    {
+      // Newer SBV credit risk circular supersedes the older one
+      ...findPair(
+        "Ngân hàng Nhà nước Việt Nam (SBV)",
+        "Quản lý rủi ro tín dụng",
+      ),
+      type: "supersedes",
+      description:
+        "Thay thế toàn bộ quy định về phân loại nợ và trích lập dự phòng rủi ro tín dụng.",
+    },
+    {
+      // Current AML circular repeals an outdated SBV AML decision
+      ...findPair("Ngân hàng Nhà nước Việt Nam (SBV)", "Rửa tiền"),
+      type: "repeals",
+      description:
+        "Bãi bỏ quy định cũ về phòng chống rửa tiền sau khi ban hành thông tư mới.",
+    },
+    {
+      // SBV capital rule references the Basel framework it implements
+      from: find("Ngân hàng Nhà nước Việt Nam (SBV)", "An toàn vốn"),
+      to: find("Basel Committee on Banking Supervision", "An toàn vốn"),
+      type: "references",
+      description:
+        "Việt Nam áp dụng các nguyên tắc về tỷ lệ an toàn vốn theo khung Basel III.",
+      notes: "Basel là cơ sở quốc tế cho quy định nội địa.",
+    },
+    {
+      // UBCKNN consumer protection circular amends an earlier decision
+      ...findPair(
+        "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
+        "Bảo vệ người tiêu dùng",
+      ),
+      type: "amends",
+      description:
+        "Sửa đổi quy định về công bố thông tin và bảo vệ nhà đầu tư trên thị trường chứng khoán.",
+    },
+    {
+      // UBCKNN securities services circular references SBV banking rule
+      from: find("Ủy ban Chứng khoán Nhà nước (UBCKNN)", "Dịch vụ chứng khoán"),
+      to: find("Ngân hàng Nhà nước Việt Nam (SBV)", "Quản trị nội bộ"),
+      type: "references",
+      description:
+        "Tham chiếu yêu cầu quản trị nội bộ của ngân hàng khi công ty chứng khoán có giao dịch liên kết.",
+    },
+    {
+      // New SBV operational risk circular supersedes the old one
+      ...findPair(
+        "Ngân hàng Nhà nước Việt Nam (SBV)",
+        "Quản lý rủi ro hoạt động",
+      ),
+      type: "supersedes",
+      description:
+        "Thay thế quy định về quản lý rủi ro hoạt động và yêu cầu báo cáo sự cố.",
+    },
+    {
+      // SBV internal governance circular references Basel guidance
+      from: find("Ngân hàng Nhà nước Việt Nam (SBV)", "Quản trị nội bộ"),
+      to: find("Basel Committee on Banking Supervision", "Quản trị nội bộ"),
+      type: "references",
+      description:
+        "Áp dụng nguyên tắc quản trị ngân hàng tốt theo hướng dẫn của Basel.",
+    },
+    {
+      // SBV financial reporting circular amends older reporting decision
+      ...findPair("Ngân hàng Nhà nước Việt Nam (SBV)", "Báo cáo tài chính"),
+      type: "amends",
+      description:
+        "Cập nhật mẫu biểu và thời hạn báo cáo tài chính định kỳ của tổ chức tín dụng.",
+    },
+    {
+      // Basel risk standards referenced by SBV credit risk circular
+      from: find(
+        "Ngân hàng Nhà nước Việt Nam (SBV)",
+        "Quản lý rủi ro tín dụng",
+      ),
+      to: find(
+        "Basel Committee on Banking Supervision",
+        "Quản lý rủi ro tín dụng",
+      ),
+      type: "references",
+      description:
+        "Quy định nội địa về rủi ro tín dụng dựa trên tiêu chuẩn tiếp cận nội bảng của Basel.",
+    },
+  ];
+
+  // Build dependencies, skipping any candidate where a matching regulation
+  // could not be found and ensuring we don't link a regulation to itself.
+  return candidates
+    .filter((c) => c.from && c.to && c.from.id !== c.to.id)
+    .map((c, i) => ({
+      id: uid("dep"),
+      fromRegulationId: c.from!.id,
+      toRegulationId: c.to!.id,
+      type: c.type,
+      description: c.description,
+      notes: c.notes,
+      createdDate: iso(subDays(today, 30 + i * 5)),
+    }));
 }
 
 function generateComplianceObligations(
@@ -605,7 +816,10 @@ function generateTemplates(
       criticality: pick(PRIORITY_LEVELS),
       applicableRegulationIds: [regulation.id],
       status: pick(["draft", "published", "archived"]),
-      tags: regulation.tags,
+      tags: faker.helpers.arrayElements(
+        ["aml", "kyc", "privacy", "cyber", "reporting", "consumer", "risk"],
+        { min: 1, max: 3 },
+      ),
       createdAt: iso(subDays(today, 200)),
       updatedAt: iso(subDays(today, 20)),
     };
@@ -804,6 +1018,7 @@ function generateCommentsFor(entityId: string, entityType: string): unknown[] {
 export interface MockDb {
   users: UserProfile[];
   regulations: Regulation[];
+  regulationDependencies: RegulationDependency[];
   compliance: ComplianceObligation[];
   submissions: ComplianceSubmission[];
   caps: CAP[];
@@ -825,6 +1040,7 @@ export function getDb(): MockDb {
 
   const users = [...generateDemoUserProfiles(), ...generateStaffUsers()];
   const regulations = generateRegulations();
+  const regulationDependencies = generateRegulationDependencies(regulations);
   const compliance = generateComplianceObligations(regulations, users);
   const submissions = generateSubmissions(compliance, users);
   const caps = generateCAPs(compliance, users);
@@ -839,6 +1055,7 @@ export function getDb(): MockDb {
   dbInstance = {
     users,
     regulations,
+    regulationDependencies,
     compliance,
     submissions,
     caps,
@@ -857,6 +1074,7 @@ export function getDb(): MockDb {
     console.log("[MockDB] Generated", {
       users: users.length,
       regulations: regulations.length,
+      regulationDependencies: regulationDependencies.length,
       compliance: compliance.length,
       submissions: submissions.length,
       caps: caps.length,

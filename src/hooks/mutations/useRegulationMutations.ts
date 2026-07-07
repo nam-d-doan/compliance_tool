@@ -60,3 +60,45 @@ export function useAddRegulationComment(id: string) {
     },
   });
 }
+
+export function usePublishRegulation(filters: RegulationFilter = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      RegulationService.update(id, { status: "Published" }),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: regulationKeys.detail(id) });
+      queryClient.invalidateQueries({
+        queryKey: regulationKeys.dependencies(id),
+      });
+      queryClient.invalidateQueries({ queryKey: regulationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: regulationKeys.list(filters) });
+    },
+  });
+}
+
+export function useArchiveRegulation(filters: RegulationFilter = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => RegulationService.archive(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: regulationKeys.detail(id) });
+      queryClient.invalidateQueries({
+        queryKey: regulationKeys.dependencies(id),
+      });
+      queryClient.invalidateQueries({ queryKey: regulationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: regulationKeys.list(filters) });
+    },
+  });
+}
+
+export function useBulkArchiveRegulations(filters: RegulationFilter = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => RegulationService.bulkArchive(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: regulationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: regulationKeys.list(filters) });
+    },
+  });
+}

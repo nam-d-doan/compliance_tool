@@ -303,9 +303,7 @@ function TemplateForm({
                           field.onChange(next);
                         }}
                       />
-                      <span className="truncate">
-                        {reg.reference} - {reg.title}
-                      </span>
+                      <span className="truncate">{reg.title}</span>
                     </label>
                   );
                 })

@@ -32,6 +32,8 @@ export const API_ENDPOINTS = {
   // Regulation endpoints
   REGULATION_LIST: "/api/regulation",
   REGULATION_CREATE: "/api/regulation",
+  REGULATIONS_CREATE: "/api/regulations",
+  VIETLEX_SEARCH: "/api/vietlex/search",
   REGULATION_GET: (id: string) => `/api/regulation/${id}`,
   REGULATION_UPDATE: (id: string) => `/api/regulation/${id}`,
   REGULATION_DELETE: (id: string) => `/api/regulation/${id}`,
@@ -39,6 +41,12 @@ export const API_ENDPOINTS = {
   REGULATION_IMPACT: "/api/regulation/impact",
   REGULATION_TIMELINE: (id: string) => `/api/regulation/${id}/timeline`,
   REGULATION_COMMENTS: (id: string) => `/api/regulation/${id}/comments`,
+  REGULATION_ARCHIVE: (id: string) => `/api/regulations/${id}/archive`,
+  REGULATIONS_BULK_ARCHIVE: "/api/regulations/bulk-archive",
+  REGULATIONS_DEPENDENCIES: (id: string) =>
+    `/api/regulations/${id}/dependencies`,
+  REGULATION_DEPENDENCIES: "/api/regulation-dependencies",
+  VIETLEX_DETAIL: (docNumber: string) => `/api/vietlex/${docNumber}`,
 
   // Report endpoints
   REPORT_STATUS: "/api/reports/status",

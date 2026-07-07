@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   useReactTable,
@@ -15,16 +15,27 @@ import {
   LayoutGrid,
   Table as TableIcon,
   Eye,
+  Archive,
+  MoreHorizontal,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RegulationCard } from "@/components/regulation/RegulationCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -32,7 +43,14 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton, CardSkeleton } from "@/components/common/Skeletons";
 import { PageHero } from "@/components/common";
 import { useRegulationList } from "@/hooks/queries/useRegulationQueries";
+import {
+  useArchiveRegulation,
+  useBulkArchiveRegulations,
+} from "@/hooks/mutations/useRegulationMutations";
+import { useAuthStore } from "@/stores";
+import { hasMinimumRole } from "@/constants/rbac";
 import { REGULATION_STATUSES } from "@/constants/status";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Regulation, RegulationFilter } from "@/types";
 
@@ -82,6 +100,11 @@ const selectClass =
 
 export default function RegulationLibraryPage() {
   const navigate = useNavigate();
+  const { role } = useAuthStore();
+  const canArchive = hasMinimumRole(role, "executive");
+
+  const archive = useArchiveRegulation();
+  const bulkArchive = useBulkArchiveRegulations();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -97,6 +120,8 @@ export default function RegulationLibraryPage() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "effectiveDate", desc: false },
   ]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -114,10 +139,19 @@ export default function RegulationLibraryPage() {
     status,
     effectiveDateFrom,
     effectiveDateTo,
+    showArchived,
   ]);
 
   const sortField = sorting[0]?.id ?? "effectiveDate";
   const sortDirection = sorting[0]?.desc ? "desc" : "asc";
+
+  const effectiveStatus = useMemo(() => {
+    const selected = status ? [status] : [];
+    if (showArchived && !selected.includes("Archived")) {
+      selected.push("Archived");
+    }
+    return selected.length ? selected : undefined;
+  }, [status, showArchived]);
 
   const filters = useMemo(
     () => ({
@@ -126,7 +160,7 @@ export default function RegulationLibraryPage() {
       category: category || undefined,
       country: jurisdiction || undefined,
       industry: industry || undefined,
-      status: status || undefined,
+      status: effectiveStatus,
       effectiveDateFrom: effectiveDateFrom || undefined,
       effectiveDateTo: effectiveDateTo || undefined,
       sortField,
@@ -138,7 +172,7 @@ export default function RegulationLibraryPage() {
       category,
       jurisdiction,
       industry,
-      status,
+      effectiveStatus,
       effectiveDateFrom,
       effectiveDateTo,
       sortField,
@@ -152,8 +186,78 @@ export default function RegulationLibraryPage() {
     PAGE_SIZE,
   );
 
+  const handleArchiveToggle = useCallback(
+    (item: Regulation) => {
+      const isArchived = item.status === "Archived";
+      archive.mutate(item.id, {
+        onSuccess: () => {
+          toast.success(
+            isArchived ? "Regulation unarchived" : "Regulation archived",
+          );
+        },
+        onError: (err) => {
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : "Failed to update archive status",
+          );
+        },
+      });
+    },
+    [archive],
+  );
+
+  const handleBulkArchive = () => {
+    const ids = table.getSelectedRowModel().rows.map((r) => r.original.id);
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Archive ${ids.length} selected regulation${ids.length === 1 ? "" : "s"}?`,
+      )
+    ) {
+      return;
+    }
+    bulkArchive.mutate(ids, {
+      onSuccess: (res) => {
+        toast.success(
+          `${res.archived} regulation${res.archived === 1 ? "" : "s"} archived`,
+        );
+        setRowSelection({});
+      },
+      onError: (err) => {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to archive regulations",
+        );
+      },
+    });
+  };
+
   const columns = useMemo<ColumnDef<Regulation>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onCheckedChange={(checked) =>
+              table.toggleAllRowsSelected(Boolean(checked))
+            }
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(checked) => row.toggleSelected(Boolean(checked))}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Select row"
+          />
+        ),
+        size: 40,
+        enableSorting: false,
+      },
       {
         accessorKey: "reference",
         header: "Reference",
@@ -239,32 +343,62 @@ export default function RegulationLibraryPage() {
         id: "actions",
         header: "",
         size: 80,
-        cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/regulation/${row.original.id}`);
-            }}
-          >
-            <Eye className="size-4" aria-hidden="true" />
-            <span className="sr-only">View</span>
-          </Button>
-        ),
+        cell: ({ row }) => {
+          const item = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Actions"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/regulation/${item.id}`);
+                  }}
+                >
+                  <Eye className="size-4" aria-hidden="true" />
+                  View
+                </DropdownMenuItem>
+                {canArchive && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleArchiveToggle(item);
+                    }}
+                    disabled={archive.isPending}
+                  >
+                    <Archive className="size-4" aria-hidden="true" />
+                    {item.status === "Archived" ? "Unarchive" : "Archive"}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
       },
     ],
-    [navigate],
+    [navigate, canArchive, archive.isPending, handleArchiveToggle],
   );
 
   const table = useReactTable({
     data: data?.items ?? [],
     columns,
-    state: { sorting },
+    state: { sorting, rowSelection },
     onSortingChange: setSorting,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     manualSorting: true,
+    enableRowSelection: true,
+    getRowId: (row) => row.id,
   });
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 0;
@@ -373,16 +507,62 @@ export default function RegulationLibraryPage() {
               onChange={(e) => setEffectiveDateTo(e.target.value)}
               className="h-8"
             />
+            <label className="flex h-8 items-center gap-2 text-sm">
+              <Checkbox
+                id="showArchived"
+                checked={showArchived}
+                onCheckedChange={(checked) => setShowArchived(Boolean(checked))}
+              />
+              Show archived
+            </label>
           </div>
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {isPending
-            ? "Loading..."
-            : `${data?.total ?? 0} regulation${(data?.total ?? 0) === 1 ? "" : "s"} found`}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-muted-foreground">
+            {isPending
+              ? "Loading..."
+              : `${data?.total ?? 0} regulation${(data?.total ?? 0) === 1 ? "" : "s"} found`}
+          </p>
+          {canArchive && table.getSelectedRowModel().rows.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {table.getSelectedRowModel().rows.length} selected
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={bulkArchive.isPending}
+                  >
+                    Actions
+                    <ChevronDown className="size-3.5" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={handleBulkArchive}
+                    disabled={bulkArchive.isPending}
+                  >
+                    <Archive className="size-4" aria-hidden="true" />
+                    Archive Selected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRowSelection({})}
+              >
+                <X className="size-4" aria-hidden="true" />
+                Clear
+              </Button>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
           <Button
             variant={view === "grid" ? "secondary" : "ghost"}

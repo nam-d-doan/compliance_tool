@@ -246,6 +246,15 @@ export default function RegulationImpactPage() {
 
   const item = detail.data;
   const impactResult = aiImpact.data;
+  const impactScore = item
+    ? item.priority === "critical"
+      ? 95
+      : item.priority === "high"
+        ? 75
+        : item.priority === "medium"
+          ? 50
+          : 25
+    : 0;
 
   const explanation: AIExplanationType | null = useMemo(
     () =>
@@ -286,7 +295,7 @@ export default function RegulationImpactPage() {
     >
       <PageHero
         title="Impact Analysis"
-        subtitle={`Deep-dive AI impact assessment for ${item.reference}: ${item.title}`}
+        subtitle={`Deep-dive AI impact assessment for ${item.title}`}
       >
         <Button
           variant="ghost"
@@ -326,11 +335,11 @@ export default function RegulationImpactPage() {
           {impactResult && (
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="flex flex-col items-center justify-center gap-3 rounded-xl bg-card p-6 ring-1 ring-border">
-                <ImpactGauge value={item.aiImpactScore} />
+                <ImpactGauge value={impactScore} />
                 <div className="text-center">
                   <p className="text-sm font-medium">Overall Impact Score</p>
                   <p className="text-xs text-muted-foreground">
-                    {item.aiImpactScore}/100
+                    {impactScore}/100
                   </p>
                 </div>
                 <ConfidenceIndicator
@@ -360,9 +369,9 @@ export default function RegulationImpactPage() {
                       Risk Level
                     </span>
                     <p className="text-sm font-medium">
-                      {item.aiImpactScore >= 70
+                      {item.priority === "critical"
                         ? "High"
-                        : item.aiImpactScore >= 40
+                        : item.priority === "high"
                           ? "Medium"
                           : "Low"}
                     </p>
@@ -512,7 +521,7 @@ export default function RegulationImpactPage() {
             </CardHeader>
             <CardContent>
               <DependencyGraph
-                regulation={item.reference}
+                regulation={item.title}
                 obligations={obligationItems.map((o) => o.complianceId)}
                 departments={impactResult.impact.affectedDepartments}
               />

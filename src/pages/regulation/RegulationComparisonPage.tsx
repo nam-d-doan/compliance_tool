@@ -33,15 +33,13 @@ import type { Regulation, AIExplanation as AIExplanationType } from "@/types";
 const PAGE_SIZE = 100;
 
 const ATTRIBUTES: {
-  key: keyof Regulation | "requirementsCount";
+  key: keyof Regulation | "articlesCount";
   label: string;
   format?: (value: unknown) => React.ReactNode;
 }[] = [
-  { key: "reference", label: "Reference" },
   { key: "title", label: "Title" },
-  { key: "regulator", label: "Regulator" },
+  { key: "regulatoryBody", label: "Regulatory Body" },
   { key: "category", label: "Category" },
-  { key: "jurisdiction", label: "Jurisdiction" },
   {
     key: "effectiveDate",
     label: "Effective Date",
@@ -52,37 +50,13 @@ const ATTRIBUTES: {
     label: "Status",
     format: (v) => <StatusBadge status={v as string} size="sm" />,
   },
-  { key: "summary", label: "Summary" },
-  { key: "requirementsCount", label: "Requirements" },
+  { key: "description", label: "Description" },
+  { key: "articlesCount", label: "Articles" },
   {
-    key: "affectedDepartments",
-    label: "Affected Departments",
+    key: "priority",
+    label: "Priority",
     format: (v) => (
-      <div className="flex flex-wrap gap-1">
-        {(v as string[]).map((d) => (
-          <Badge key={d} variant="secondary" className="text-xs">
-            {d}
-          </Badge>
-        ))}
-      </div>
-    ),
-  },
-  {
-    key: "aiImpactScore",
-    label: "AI Impact Score",
-    format: (v) => (
-      <span
-        className={cn(
-          "font-medium",
-          (v as number) >= 80
-            ? "text-red-600 dark:text-red-400"
-            : (v as number) >= 50
-              ? "text-amber-600 dark:text-amber-400"
-              : "text-emerald-600 dark:text-emerald-400",
-        )}
-      >
-        {v as number}
-      </span>
+      <span className="font-medium capitalize">{v as string}</span>
     ),
   },
 ];
@@ -106,26 +80,17 @@ function DiffIcon({
 function getDiffState(
   a: unknown,
   b: unknown,
-  key: keyof Regulation | "requirementsCount",
+  key: keyof Regulation | "articlesCount",
 ): "same" | "different" | "added" | "removed" {
-  if (key === "affectedDepartments") {
-    const aArr = Array.isArray(a) ? a : [];
-    const bArr = Array.isArray(b) ? b : [];
-    if (aArr.length === 0 && bArr.length > 0) return "removed";
-    if (aArr.length > 0 && bArr.length === 0) return "added";
-    if (JSON.stringify(aArr.sort()) === JSON.stringify(bArr.sort()))
-      return "same";
-    return "different";
-  }
   if (JSON.stringify(a) === JSON.stringify(b)) return "same";
   return "different";
 }
 
 function getAttributeValue(
   item: Regulation,
-  key: keyof Regulation | "requirementsCount",
+  key: keyof Regulation | "articlesCount",
 ): unknown {
-  if (key === "requirementsCount") return item.requirements.length;
+  if (key === "articlesCount") return item.articles.length;
   return item[key];
 }
 
@@ -155,17 +120,17 @@ export default function RegulationComparisonPage() {
               "Review key differences before updating compliance mappings.",
             confidence: 0.88,
             reasoning: [
-              `Compared ${comparison.data.regulationA.reference} and ${comparison.data.regulationB.reference}.`,
+              `Compared ${comparison.data.regulationA.title} and ${comparison.data.regulationB.title}.`,
               `${comparison.data.added.length} requirements added, ${comparison.data.removed.length} removed, ${comparison.data.modified.length} modified.`,
               "AI summary highlights jurisdictional and scope differences.",
             ],
             references: [
               {
-                title: comparison.data.regulationA.reference,
+                title: comparison.data.regulationA.title,
                 url: `/regulation/${comparison.data.regulationA.id}`,
               },
               {
-                title: comparison.data.regulationB.reference,
+                title: comparison.data.regulationB.title,
                 url: `/regulation/${comparison.data.regulationB.id}`,
               },
             ],
@@ -229,7 +194,7 @@ export default function RegulationComparisonPage() {
                 <option value="">Select regulation A</option>
                 {regulations.data?.items.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.reference} — {r.title}
+                    {r.title} — {r.title}
                   </option>
                 ))}
               </select>
@@ -246,7 +211,7 @@ export default function RegulationComparisonPage() {
                 <option value="">Select regulation B</option>
                 {regulations.data?.items.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.reference} — {r.title}
+                    {r.title} — {r.title}
                   </option>
                 ))}
               </select>
@@ -340,10 +305,10 @@ export default function RegulationComparisonPage() {
                         Attribute
                       </th>
                       <th className="px-4 py-3 text-left font-medium">
-                        {itemA.reference}
+                        {itemA.title}
                       </th>
                       <th className="px-4 py-3 text-left font-medium">
-                        {itemB.reference}
+                        {itemB.title}
                       </th>
                       <th className="px-4 py-3 text-left font-medium">Δ</th>
                     </tr>
@@ -384,7 +349,7 @@ export default function RegulationComparisonPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">
-                  Added in {itemA.reference}
+                  Added in {itemA.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -404,7 +369,7 @@ export default function RegulationComparisonPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">
-                  Removed from {itemB.reference}
+                  Removed from {itemB.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -425,7 +390,7 @@ export default function RegulationComparisonPage() {
 
           <div className="flex justify-center">
             <Button asChild>
-              <Link to={`/regulation/${itemA.id}`}>View {itemA.reference}</Link>
+              <Link to={`/regulation/${itemA.id}`}>View {itemA.title}</Link>
             </Button>
           </div>
         </div>

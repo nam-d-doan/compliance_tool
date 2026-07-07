@@ -1,10 +1,14 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/api";
 import type {
   Regulation,
   RegulationFilter,
   RegulationComparison,
   RegulationImpact,
+  RegulationDependency,
+  RegulationDependencyItem,
+  VietLexDoc,
+  VietLexDocDetail,
   Paginated,
   ActivityFeedItem,
 } from "@/types";
@@ -55,6 +59,17 @@ export const RegulationService = {
     return apiDelete<{ success: boolean }>(API_ENDPOINTS.REGULATION_DELETE(id));
   },
 
+  archive(id: string) {
+    return apiPatch<Regulation>(API_ENDPOINTS.REGULATION_ARCHIVE(id), {});
+  },
+
+  bulkArchive(ids: string[]) {
+    return apiPatch<{ success: boolean; archived: number }>(
+      API_ENDPOINTS.REGULATIONS_BULK_ARCHIVE,
+      { ids },
+    );
+  },
+
   timeline(id: string) {
     return apiGet<ActivityFeedItem[]>(API_ENDPOINTS.REGULATION_TIMELINE(id));
   },
@@ -82,5 +97,41 @@ export const RegulationService = {
 
   impact(id: string) {
     return apiPost<RegulationImpact>(API_ENDPOINTS.REGULATION_IMPACT, { id });
+  },
+
+  getDependencies(regulationId: string) {
+    return apiGet<RegulationDependencyItem[]>(
+      API_ENDPOINTS.REGULATIONS_DEPENDENCIES(regulationId),
+    );
+  },
+
+  createDependency(data: Partial<RegulationDependency>) {
+    return apiPost<RegulationDependency>(
+      API_ENDPOINTS.REGULATION_DEPENDENCIES,
+      data,
+    );
+  },
+
+  updateDependency(id: string, data: Partial<RegulationDependency>) {
+    return apiPatch<RegulationDependency>(
+      `${API_ENDPOINTS.REGULATION_DEPENDENCIES}/${id}`,
+      data,
+    );
+  },
+
+  deleteDependency(id: string) {
+    return apiDelete<{ success: boolean }>(
+      `${API_ENDPOINTS.REGULATION_DEPENDENCIES}/${id}`,
+    );
+  },
+
+  getVietLexDocument(docNumber: string) {
+    return apiGet<VietLexDocDetail>(API_ENDPOINTS.VIETLEX_DETAIL(docNumber));
+  },
+
+  searchVietLex(query: string) {
+    return apiGet<VietLexDoc[]>(
+      `${API_ENDPOINTS.VIETLEX_SEARCH}?q=${encodeURIComponent(query)}`,
+    );
   },
 };

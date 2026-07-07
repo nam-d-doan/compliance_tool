@@ -1,24 +1,21 @@
-import type { BaseEntity } from "./base";
+import type { Article } from "./article";
+import type { PriorityLevel } from "@/constants/status";
 import type { RegulationStatus } from "@/constants/status";
 
-export interface Regulation extends BaseEntity {
-  reference: string;
+export interface Regulation {
+  id: string;
   title: string;
-  regulator: string;
-  publicationDate: string;
-  effectiveDate: string;
-  supersedes?: string;
-  status: RegulationStatus;
+  description: string;
   category: string;
-  jurisdiction: string;
-  industry: string;
-  affectedDepartments: string[];
-  affectedBusinessUnits: string[];
-  summary: string;
-  requirements: string[];
-  aiImpactScore: number;
-  version: string;
-  tags: string[];
+  regulatoryBody: string;
+  effectiveDate: string;
+  expirationDate?: string;
+  status: RegulationStatus;
+  priority: PriorityLevel;
+  source: "internal" | "external";
+  articles: Article[];
+  createdDate: string;
+  updatedDate: string;
 }
 
 export interface RegulationFilter {
@@ -65,7 +62,29 @@ export interface RegulationComparison {
 
 export interface RegulationDependency {
   id: string;
-  regulationId: string;
-  dependsOnRegulationId: string;
+  fromRegulationId: string;
+  toRegulationId: string;
   type: "amends" | "repeals" | "supersedes" | "references";
+  description: string;
+  notes?: string;
+  createdDate: string;
+}
+
+export interface RegulationDependencyItem extends RegulationDependency {
+  direction: "outgoing" | "incoming";
+  relatedRegulationId: string;
+  relatedRegulationTitle?: string;
+}
+
+export interface VietLexDoc {
+  id: string;
+  docNumber: string;
+  title: string;
+  issuer: string;
+  date: string; // ISO
+}
+
+export interface VietLexDocDetail extends VietLexDoc {
+  body: string;
+  articles: { id: string; title: string; content: string }[];
 }

@@ -67,6 +67,9 @@ const RegulationComparisonPage = lazy(
 const RegulationImpactPage = lazy(
   () => import("@/pages/regulation/RegulationImpactPage"),
 );
+const RegulationCreatePage = lazy(
+  () => import("@/pages/regulation/RegulationCreatePage"),
+);
 const ReportsIndexPage = lazy(() => import("@/pages/reports/ReportsIndexPage"));
 const ReportsStatusPage = lazy(
   () => import("@/pages/reports/ReportsStatusPage"),
@@ -151,6 +154,7 @@ export const router = createBrowserRouter([
           route("/cap/:id", <CAPDetailPage />, "Detail"),
 
           route("/regulation", <RegulationLibraryPage />, "Regulations"),
+          route("/regulation/create", <RegulationCreatePage />, "Create"),
           route("/regulation/compare", <RegulationComparisonPage />, "Compare"),
           route("/regulation/:id/impact", <RegulationImpactPage />, "Impact"),
           route("/regulation/:id", <RegulationDetailPage />, "Detail"),

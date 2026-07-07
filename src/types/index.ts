@@ -1,5 +1,6 @@
 // Type exports
 export * from "./base";
+export type { Article } from "./article";
 export type { LoginCredentials, AuthUser, AuthState } from "./user";
 export type {
   ComplianceObligation,
@@ -22,6 +23,9 @@ export type {
   RegulationImpact,
   RegulationComparison,
   RegulationDependency,
+  RegulationDependencyItem,
+  VietLexDoc,
+  VietLexDocDetail,
 } from "./regulation";
 export type {
   Report,

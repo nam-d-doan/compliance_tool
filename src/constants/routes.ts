@@ -60,6 +60,7 @@ export const ROUTES = {
     DETAIL: "/regulation/:id",
     COMPARISON: "/regulation/compare",
     IMPACT: "/regulation/:id/impact",
+    CREATE: "/regulation/create",
   },
 
   // Reports routes
@@ -120,6 +121,8 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
     "admin",
   ],
   [ROUTES.CAP.LIST]: ["reviewer", "approver", "owner", "executive", "admin"],
+
+  [ROUTES.REGULATION.CREATE]: ["admin"],
 
   [ROUTES.ADMIN.USERS]: ["admin"],
   [ROUTES.ADMIN.ROLES]: ["admin"],
@@ -220,6 +223,22 @@ export function buildNavTree(role: Role | null): NavSection[] {
           path: ROUTES.REGULATION.LIBRARY,
           section: "Compliance",
           requiredPermission: "regulation:read",
+          children: [
+            {
+              label: "Library",
+              icon: List,
+              path: ROUTES.REGULATION.LIBRARY,
+              section: "Compliance",
+              requiredPermission: "regulation:read",
+            },
+            {
+              label: "Create",
+              icon: PlusCircle,
+              path: ROUTES.REGULATION.CREATE,
+              section: "Compliance",
+              requiredPermission: "regulation:create",
+            },
+          ],
         },
       ],
     },

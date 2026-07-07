@@ -59,3 +59,21 @@ export function useRegulationImpact(id: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function useRegulationDependencies(id: string) {
+  return useQuery({
+    queryKey: regulationKeys.dependencies(id),
+    queryFn: () => RegulationService.getDependencies(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useVietLexSearch(query: string) {
+  return useQuery({
+    queryKey: regulationKeys.vietlex(query),
+    queryFn: () => RegulationService.searchVietLex(query),
+    enabled: query.trim().length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+}

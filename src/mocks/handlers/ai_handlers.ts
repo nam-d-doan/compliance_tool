@@ -253,10 +253,12 @@ export async function handleAiRegulationImpact({
     : undefined;
   if (!regulation) return badRequest("Regulation ID is required");
 
+  const affectedDepartments = ["Risk & Compliance", "Legal", "Operations"];
+  const affectedBusinessUnits = ["Retail Banking", "Corporate Banking"];
   const impact: RegulationImpact = {
     regulationId: regulation.id,
     regulationTitle: regulation.title,
-    affectedDepartments: regulation.affectedDepartments,
+    affectedDepartments,
     affectedComplianceIds: db.compliance
       .filter((c) => c.regulationId === regulation.id)
       .map((c) => c.id),
@@ -265,10 +267,10 @@ export async function handleAiRegulationImpact({
       "Customer Onboarding Policy",
       "Incident Response Policy",
     ],
-    affectedBusinessUnits: regulation.affectedBusinessUnits,
+    affectedBusinessUnits,
     affectedRisks: ["Compliance Risk", "Operational Risk", "Reputational Risk"],
     affectedControls: ["Control KYC-01", "Control PRIV-04", "Control OPS-12"],
-    aiSummary: `AI analysis estimates ${regulation.affectedDepartments.length} departments and ${regulation.affectedBusinessUnits.length} business units will be affected. Implementation effort is moderate-to-high.`,
+    aiSummary: `AI analysis estimates ${affectedDepartments.length} departments and ${affectedBusinessUnits.length} business units will be affected. Implementation effort is moderate-to-high.`,
     estimatedEffort: "8-12 weeks",
   };
   return jsonResponse({
