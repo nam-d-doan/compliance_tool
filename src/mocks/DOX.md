@@ -1,8 +1,8 @@
-# src/mocks/ — MSW Mock API Contract
+# src/mocks/ — Mock API Contract
 
 ## Purpose
 
-MSW v2 mock API layer for development. Intercepts `/api/*` requests in the browser via a service worker. Bypassed in production builds.
+Dual-mode mock API layer. Development uses a lightweight `window.fetch` override (`directApi.ts`) so `/api/*` requests never touch a service worker. Production/demo builds can opt into the MSW service worker via `VITE_ENABLE_MSW=1`.
 
 ## Ownership
 
@@ -10,20 +10,21 @@ Frontend-owned. Changes here must stay in sync with `services/` and `constants/a
 
 ## Local Contracts
 
-### MSW Worker Lifecycle
+### Dual-Mode Lifecycle
 
-- `browser.ts` — `setupWorker(...handlers)` from `msw/browser`. Imported dynamically by `src/main.tsx` in dev only (`import.meta.env.PROD` guard).
-- `main.tsx` calls `worker.start({ onUnhandledRequest: 'bypass' })` before rendering. Unhandled requests (assets, HMR) pass through silently.
+- `directApi.ts` — dev-mode fetch override. Imported dynamically by `src/main.tsx` when `import.meta.env.DEV` is true. Adds a 100–300 ms network delay before invoking the same handler functions used by MSW.
+- `browser.ts` — `setupWorker(...handlers)` from `msw/browser`. Imported dynamically by `src/main.tsx` only when `import.meta.env.PROD && import.meta.env.VITE_ENABLE_MSW === '1'`.
+- `main.tsx` also unregisters any stale `mockServiceWorker.js` registration in dev, so previous MSW workers stop controlling the page.
 - `public/mockServiceWorker.js` — generated MSW service worker. Do not hand-edit. Regenerate via `pnpm dlx msw init public/ --save`.
 
 ### Handler Dual-Export Pattern
 
 Each handler file (`handlers/[domain]_handlers.ts`) exports:
 
-1. **Individual async functions** (e.g., `handleLogin`) — take `{ request, params }` (MSW resolver context). Used internally.
+1. **Individual async functions** (e.g., `handleLogin`) — take `{ request, params }` (MSW resolver context). Used by both MSW and `directApi.ts`.
 2. **MSW handler array** (e.g., `authHandlers = [http.post('/api/auth/login', handleLogin), ...]`) — registered in `handlers/index.ts` and spread into `browser.ts` worker.
 
-Both exports use the same functions. The individual functions are MSW-compatible (they destructure `{ request }` from MSW's resolver context).
+Both exports use the same functions. The individual functions are MSW-compatible (they destructure `{ request }` from MSW's resolver context). When called from `directApi.ts`, `params` is built from the request pathname.
 
 ### Mock DB
 
@@ -48,11 +49,12 @@ Both exports use the same functions. The individual functions are MSW-compatible
 
 ### Do NOT
 
-- Do not create alternative mock mechanisms (e.g., fetch override). The previous `directApi.ts` approach was removed — use MSW exclusively.
-- Do not start the worker in production. The `import.meta.env.PROD` guard in `main.tsx` handles this.
+- Do not start the MSW service worker in regular dev mode. Use `directApi.ts` instead.
+- Do not start the worker in production unless `VITE_ENABLE_MSW=1` is set. The guard in `src/main.tsx` handles this.
+- Do not hand-edit `public/mockServiceWorker.js`. Regenerate via `pnpm dlx msw init public/ --save`.
 
 ## Verification
 
-- Dev server (`pnpm dev`) — console shows `[MSW] Mock worker started`.
-- Network tab — `/api/*` requests intercepted by `mockServiceWorker.js`.
+- Dev server (`pnpm dev`) — console shows `[DirectMock] Mock API initialized`. No `mockServiceWorker.js` entry in the Network tab or Application > Service Workers.
+- Production demo (`VITE_ENABLE_MSW=1 pnpm preview`) — console shows `[MSW] Mock worker started` and `/api/*` requests are intercepted by `mockServiceWorker.js`.
 - Mock data renders in UI (login with `admin@demo.com` / `demo1234`).

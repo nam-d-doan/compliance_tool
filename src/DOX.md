@@ -68,4 +68,4 @@ MSW Handlers (mocks/handlers/) → Services (services/) → React Query (hooks/)
 
 - `pnpm build` — TypeScript compiles, Vite bundles.
 - `pnpm lint` — oxlint passes (excludes `components/ui/`).
-- Dev server (`pnpm dev`) — MSW worker starts, mock data renders.
+- Dev server (`pnpm dev`) — direct fetch override (`src/mocks/directApi.ts`) initializes; mock data renders without a service worker.
