@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ObligationService } from "@/services";
 import { obligationKeys, assignmentKeys } from "@/hooks/query-keys";
-import type { BulkCreateObligationsInput, BulkCreateObligationsResult } from "@/types";
+import type {
+  BulkCreateObligationsInput,
+  BulkCreateObligationsResult,
+} from "@/types";
 
 /**
  * Bulk-create obligations via POST /api/obligations/bulk.

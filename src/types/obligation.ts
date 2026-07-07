@@ -1,9 +1,5 @@
 export type ObligationStatus =
-  | "draft"
-  | "submitted"
-  | "review_required"
-  | "cap_in_progress"
-  | "completed";
+  "draft" | "submitted" | "review_required" | "cap_in_progress" | "completed";
 
 export type ObligationRiskLevel = "low" | "medium" | "high" | "critical";
 

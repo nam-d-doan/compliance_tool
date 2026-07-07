@@ -45,8 +45,7 @@ function buildObligation(
     title: item.title,
     description: item.description ?? "",
     ownerDepartmentId: item.ownerDepartmentId,
-    ownerDepartmentName:
-      item.ownerDepartmentName ?? item.ownerDepartmentId,
+    ownerDepartmentName: item.ownerDepartmentName ?? item.ownerDepartmentId,
     dueDate: item.dueDate,
     riskLevel: normalizeRisk(item.riskLevel),
     status,
@@ -90,10 +89,7 @@ export async function handleBulkCreateObligations({
 
   db.obligations.unshift(...items);
 
-  return jsonResponse(
-    { success: true, created: items.length, items },
-    201,
-  );
+  return jsonResponse({ success: true, created: items.length, items }, 201);
 }
 
 export const obligationHandlers = [

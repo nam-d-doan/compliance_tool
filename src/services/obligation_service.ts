@@ -1,6 +1,9 @@
 import { apiPost } from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/api";
-import type { BulkCreateObligationsInput, BulkCreateObligationsResult } from "@/types";
+import type {
+  BulkCreateObligationsInput,
+  BulkCreateObligationsResult,
+} from "@/types";
 
 export const ObligationService = {
   bulkCreate(data: BulkCreateObligationsInput) {
