@@ -1,5 +1,6 @@
 import { RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -25,6 +26,7 @@ function App() {
         <TooltipProvider delay={0}>
           <RouterProvider router={router} />
           <Toaster position="top-right" richColors closeButton />
+          <SpeedInsights />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
