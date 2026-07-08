@@ -139,9 +139,7 @@ export function NCCForm({
             aria-invalid={errors.dueDate ? "true" : "false"}
           />
           {errors.dueDate && (
-            <p className="text-xs text-destructive">
-              {errors.dueDate.message}
-            </p>
+            <p className="text-xs text-destructive">{errors.dueDate.message}</p>
           )}
         </div>
 
@@ -208,9 +206,7 @@ export function NCCForm({
             )}
           />
           {errors.ownerId && (
-            <p className="text-xs text-destructive">
-              {errors.ownerId.message}
-            </p>
+            <p className="text-xs text-destructive">{errors.ownerId.message}</p>
           )}
         </div>
 

@@ -8,6 +8,12 @@ import {
 
 export interface StatusBadgeProps {
   status: string;
+  /**
+   * "ncc" selects the NCC status vocabulary, where "Open" means an active
+   * non-compliance case (amber = attention) rather than a CAP "Open"
+   * (blue = active). Leave undefined for the default vocabulary.
+   */
+  kind?: "ncc";
   variant?: StatusVariant;
   size?: StatusSize;
   className?: string;
@@ -15,11 +21,12 @@ export interface StatusBadgeProps {
 
 export function StatusBadge({
   status,
+  kind,
   variant = "default",
   size = "sm",
   className,
 }: StatusBadgeProps) {
-  const style = getStatusStyle(status);
+  const style = getStatusStyle(status, kind);
   const Icon = style.icon;
 
   const baseClasses =

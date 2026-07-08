@@ -136,7 +136,7 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
   review_required: {
     label: "Review Required",
     icon: AlertCircle,
-    ...red,
+    ...amber,
   },
   cap_in_progress: {
     label: "CAP In Progress",
@@ -176,21 +176,34 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
 };
 
 export const PRIORITY_STYLES: Record<PriorityLevel, StatusStyle> = {
-  low: { label: "Low", icon: ArrowDown, ...slate },
-  medium: { label: "Medium", icon: Minus, ...blue },
-  high: { label: "High", icon: ArrowUp, ...amber },
+  low: { label: "Low", icon: ArrowDown, ...emerald },
+  medium: { label: "Medium", icon: Minus, ...amber },
+  high: { label: "High", icon: ArrowUp, ...orange },
   critical: { label: "Critical", icon: ShieldAlert, ...red },
 };
 
-export function getStatusStyle(status: string): StatusStyle {
+/**
+ * NCC "Open" carries a different meaning than CAP "Open": an open
+ * non-compliance case is an active issue requiring resolution (amber =
+ * attention), whereas a CAP "Open" is a freshly-started action plan (blue =
+ * active). These overrides apply only when StatusBadge is given kind="ncc".
+ */
+const NCC_STATUS_STYLES: Record<string, StatusStyle> = {
+  open: { label: "Open", icon: AlertCircle, ...amber },
+  closed: { label: "Closed", icon: CheckCircle2, ...emerald },
+};
+
+export function getStatusStyle(status: string, kind?: "ncc"): StatusStyle {
   const key = status.trim().toLowerCase();
-  return (
-    STATUS_STYLES[key] ?? {
-      ...neutral,
-      label: status.trim() || "Unknown",
-      icon: Circle,
-    }
-  );
+  const fallback: StatusStyle = {
+    ...neutral,
+    label: status.trim() || "Unknown",
+    icon: Circle,
+  };
+  if (kind === "ncc") {
+    return NCC_STATUS_STYLES[key] ?? STATUS_STYLES[key] ?? fallback;
+  }
+  return STATUS_STYLES[key] ?? fallback;
 }
 
 export function getPriorityStyle(priority: PriorityLevel): StatusStyle {

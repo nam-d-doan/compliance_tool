@@ -52,6 +52,7 @@ import { hasMinimumRole } from "@/constants/rbac";
 import { REGULATION_STATUSES } from "@/constants/status";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { riskScoreTextClasses } from "@/lib/risk-score";
 import type { Regulation, RegulationFilter } from "@/types";
 
 const REGULATORS = [
@@ -302,14 +303,7 @@ export default function RegulationLibraryPage() {
           const score = getValue<number>();
           return (
             <span
-              className={cn(
-                "text-xs font-medium",
-                score >= 80
-                  ? "text-red-600 dark:text-red-400"
-                  : score >= 50
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-emerald-600 dark:text-emerald-400",
-              )}
+              className={cn("text-xs font-medium", riskScoreTextClasses(score))}
             >
               {score}
             </span>

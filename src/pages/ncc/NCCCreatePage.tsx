@@ -47,8 +47,7 @@ export default function NCCCreatePage() {
         toast.success("Non-compliance case created");
         navigate(`/ncc/${data.id}`);
       },
-      onError: (err) =>
-        toast.error(err.message || "Failed to create case"),
+      onError: (err) => toast.error(err.message || "Failed to create case"),
     });
   };
 

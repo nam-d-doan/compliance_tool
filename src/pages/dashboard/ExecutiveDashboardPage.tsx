@@ -37,6 +37,10 @@ import {
 } from "@/hooks/queries";
 import { useExecutiveSummary } from "@/hooks/queries/useAIQueries";
 import { EmptyState } from "@/components/common/EmptyState";
+import {
+  CHART_COLORS,
+  RISK_CHART_COLORS,
+} from "@/components/charts/chart-theme";
 
 const TREND_MONTHS = ["Aug", "Sep", "Oct", "Nov", "Dec", "Jan"];
 const TREND_VALUES = [91, 92, 90, 93, 94, 95];
@@ -101,16 +105,10 @@ export default function ExecutiveDashboardPage() {
     complianceItems.forEach((item) => {
       counts.set(item.criticality, (counts.get(item.criticality) ?? 0) + 1);
     });
-    const colors: Record<string, string> = {
-      low: "#10b981",
-      medium: "#3b82f6",
-      high: "#f59e0b",
-      critical: "#ef4444",
-    };
     return Array.from(counts.entries()).map(([name, value]) => ({
       name,
       value,
-      color: colors[name] ?? "#94a3b8",
+      color: RISK_CHART_COLORS[name] ?? "#94a3b8",
     }));
   }, [complianceItems]);
 
@@ -206,8 +204,16 @@ export default function ExecutiveDashboardPage() {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    <stop
+                      offset="5%"
+                      stopColor={CHART_COLORS[4]}
+                      stopOpacity={0.3}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={CHART_COLORS[4]}
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -217,7 +223,7 @@ export default function ExecutiveDashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#8b5cf6"
+                  stroke={CHART_COLORS[4]}
                   strokeWidth={2}
                   fill="url(#complianceGradient)"
                 />
@@ -254,7 +260,11 @@ export default function ExecutiveDashboardPage() {
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="value"
+                    fill={CHART_COLORS[0]}
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -314,7 +324,11 @@ export default function ExecutiveDashboardPage() {
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="value"
+                    fill={CHART_COLORS[2]}
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}

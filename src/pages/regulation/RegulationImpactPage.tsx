@@ -30,6 +30,7 @@ import { useRegulationDetail } from "@/hooks/queries/useRegulationQueries";
 import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
 import { useRegulationImpact as useAIRegulationImpact } from "@/hooks/mutations/useAIMutations";
 import { cn } from "@/lib/utils";
+import { riskScoreStrokeClasses } from "@/lib/risk-score";
 import { toast } from "sonner";
 import type { AIExplanation as AIExplanationType } from "@/types";
 
@@ -65,12 +66,7 @@ function ImpactGauge({ value, size = 120 }: { value: number; size?: number }) {
   const radius = (size - 16) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - percent / 100);
-  const color =
-    percent >= 80
-      ? "text-red-500 dark:text-red-400"
-      : percent >= 50
-        ? "text-amber-500 dark:text-amber-400"
-        : "text-emerald-500 dark:text-emerald-400";
+  const color = riskScoreStrokeClasses(percent);
 
   return (
     <div

@@ -206,7 +206,7 @@ interface NeedAttentionCardProps {
 
 /**
  * Explodes the "Need Attention" count into its three driving types with
- * colour coding: overdue → red, critical-risk → orange, review_required → orange.
+ * colour coding: overdue → red, critical-risk → red, review_required → amber.
  */
 function NeedAttentionCard({ stats, delay = 0 }: NeedAttentionCardProps) {
   const breakdown = [
@@ -221,15 +221,15 @@ function NeedAttentionCard({ stats, delay = 0 }: NeedAttentionCardProps) {
       label: "Critical risk",
       value: stats.critical,
       icon: ShieldAlert,
-      tone: "text-orange-600 dark:text-orange-400",
-      dot: "bg-orange-500",
+      tone: "text-red-600 dark:text-red-400",
+      dot: "bg-red-500",
     },
     {
       label: "Review required",
       value: stats.reviewRequired,
       icon: Eye,
-      tone: "text-orange-600 dark:text-orange-400",
-      dot: "bg-orange-500",
+      tone: "text-amber-600 dark:text-amber-400",
+      dot: "bg-amber-500",
     },
   ];
 

@@ -24,6 +24,7 @@ import {
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import { useDashboard, useComplianceList } from "@/hooks/queries";
+import { CHART_COLORS } from "@/components/charts/chart-theme";
 
 function useReviewerData() {
   const dashboard = useDashboard("reviewer");
@@ -109,13 +110,13 @@ export default function ReviewerDashboardPage() {
                 <Line
                   type="monotone"
                   dataKey="completed"
-                  stroke="#10b981"
+                  stroke={CHART_COLORS[1]}
                   strokeWidth={2}
                 />
                 <Line
                   type="monotone"
                   dataKey="assigned"
-                  stroke="#3b82f6"
+                  stroke={CHART_COLORS[0]}
                   strokeWidth={2}
                 />
               </LineChart>

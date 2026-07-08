@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { cn } from "@/lib/utils";
+import { riskScoreTextClasses } from "@/lib/risk-score";
 import type { ComplianceObligation } from "@/types";
 
 export interface ComplianceCardProps {
@@ -82,11 +83,7 @@ export function ComplianceCard({
               <span
                 className={cn(
                   "font-medium",
-                  item.aiRiskScore >= 80
-                    ? "text-red-600 dark:text-red-400"
-                    : item.aiRiskScore >= 50
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-emerald-600 dark:text-emerald-400",
+                  riskScoreTextClasses(item.aiRiskScore),
                 )}
               >
                 {item.aiRiskScore}

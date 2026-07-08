@@ -1,4 +1,10 @@
-import { isBefore, isSameDay, parseISO, startOfDay } from "date-fns";
+import {
+  differenceInCalendarDays,
+  isBefore,
+  isSameDay,
+  parseISO,
+  startOfDay,
+} from "date-fns";
 
 /** True when the due date's calendar day is strictly before today. */
 export function isOverdueDueDate(dueDate: string, completed = false): boolean {
@@ -19,14 +25,25 @@ export function isDueToday(dueDate: string): boolean {
   }
 }
 
-export type DueDateTone = "overdue" | "today" | "default";
+export type DueDateTone = "overdue" | "soon" | "default";
+
+/** A due date within this many calendar days (inclusive of today) is "soon". */
+export const DUE_DATE_SOON_DAYS = 7;
 
 export function getDueDateTone(
   dueDate: string,
   completed = false,
 ): DueDateTone {
   if (isOverdueDueDate(dueDate, completed)) return "overdue";
-  if (isDueToday(dueDate)) return "today";
+  try {
+    const days = differenceInCalendarDays(
+      startOfDay(parseISO(dueDate)),
+      startOfDay(new Date()),
+    );
+    if (days >= 0 && days <= DUE_DATE_SOON_DAYS) return "soon";
+  } catch {
+    /* fall through to default */
+  }
   return "default";
 }
 
@@ -35,7 +52,7 @@ export function dueDateCellClasses(dueDate: string, completed = false): string {
   switch (getDueDateTone(dueDate, completed)) {
     case "overdue":
       return "font-semibold text-red-700 dark:text-red-400 bg-red-500/10";
-    case "today":
+    case "soon":
       return "font-medium text-amber-700 dark:text-amber-400 bg-amber-500/15";
     default:
       return "text-muted-foreground";
@@ -44,4 +61,4 @@ export function dueDateCellClasses(dueDate: string, completed = false): string {
 
 /** Color-guide text shown in the Due Date column header tooltip. */
 export const DUE_DATE_COLOR_GUIDE =
-  "Red = overdue (past due date). Amber = due today.";
+  "Red = overdue (past due date). Amber = due within 7 days.";

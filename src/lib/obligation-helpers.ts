@@ -1,4 +1,5 @@
 import type { Obligation, CAP } from "@/types";
+import { getDueDateTone } from "@/lib/due-date";
 
 /** Reference "now" — captured once per call chain so tab/badge math is stable. */
 function now(): Date {
@@ -248,11 +249,18 @@ export function countNeedsCapsForOwner(
 
 /** Tailwind class string for the due-date chip colour by urgency. */
 export function dueDateTone(obligation: Obligation, ref: Date = now()): string {
-  if (isOverdue(obligation, ref))
-    return "text-red-600 dark:text-red-400 bg-red-500/10";
-  const d = daysUntilDue(obligation, ref);
-  if (d <= 7) return "text-orange-600 dark:text-orange-400 bg-orange-500/10";
-  return "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10";
+  // Delegate the tier to the shared due-date logic so thresholds and colours
+  // stay in sync with DueDateCell. `ref` is kept for API compatibility; the
+  // shared logic uses "today" (the widget always calls without a ref).
+  const completed = obligation.status === "completed";
+  switch (getDueDateTone(obligation.dueDate, completed)) {
+    case "overdue":
+      return "text-red-600 dark:text-red-400 bg-red-500/10";
+    case "soon":
+      return "text-amber-600 dark:text-amber-400 bg-amber-500/15";
+    default:
+      return "text-muted-foreground";
+  }
 }
 
 /** Human label for the due chip: "Overdue" / "N days left" / "Due today". */

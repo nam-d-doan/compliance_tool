@@ -25,7 +25,10 @@ export async function handleGetEWSReport({ request }: { request: Request }) {
     const to = q.to ? parseISO(q.to) : new Date();
     items = items.filter((ncc) => {
       try {
-        return isWithinInterval(parseISO(ncc.createdAt), { start: from, end: to });
+        return isWithinInterval(parseISO(ncc.createdAt), {
+          start: from,
+          end: to,
+        });
       } catch {
         return false;
       }
@@ -139,7 +142,13 @@ export async function handleGetEWSReport({ request }: { request: Request }) {
   // By region (branches only)
   const regionMap = new Map<
     string,
-    { region: string; total: number; open: number; overdue: number; closed: number }
+    {
+      region: string;
+      total: number;
+      open: number;
+      overdue: number;
+      closed: number;
+    }
   >();
   items
     .filter((n) => n.ownerUnitType === "branch" && n.ownerUnitRegion)
@@ -222,9 +231,7 @@ export async function handleGetEWSReport({ request }: { request: Request }) {
         overdueRate: rate,
         totalOpen: u.open,
         severity: (rate > 30 ? "high" : rate > 15 ? "medium" : "low") as
-          | "high"
-          | "medium"
-          | "low",
+          "high" | "medium" | "low",
       };
     })
     .filter((a) => a.severity !== "low")
@@ -244,6 +251,4 @@ export async function handleGetEWSReport({ request }: { request: Request }) {
   return jsonResponse(report);
 }
 
-export const ewsHandlers = [
-  http.get("/api/reports/ews", handleGetEWSReport),
-];
+export const ewsHandlers = [http.get("/api/reports/ews", handleGetEWSReport)];

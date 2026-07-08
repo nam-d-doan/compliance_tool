@@ -200,7 +200,7 @@ export default function NCCDetailPage() {
                 <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">
                   {item.title}
                 </h1>
-                <StatusBadge status={item.status} size="md" />
+                <StatusBadge status={item.status} kind="ncc" size="md" />
                 <PriorityBadge priority={item.severity} size="md" />
               </div>
               <p className="text-sm text-blue-100">{item.nccId}</p>
@@ -313,11 +313,7 @@ export default function NCCDetailPage() {
                             : item.ownerUnitName
                         }
                       />
-                      <Fact
-                        icon={User}
-                        label="Owner"
-                        value={item.ownerName}
-                      />
+                      <Fact icon={User} label="Owner" value={item.ownerName} />
                       <Fact
                         icon={Calendar}
                         label="Due Date"
@@ -399,9 +395,7 @@ export default function NCCDetailPage() {
                       <Paperclip className="size-4" aria-hidden="true" />
                       Attachments
                       {item.fileIds.length > 0 && (
-                        <Badge variant="secondary">
-                          {item.fileIds.length}
-                        </Badge>
+                        <Badge variant="secondary">{item.fileIds.length}</Badge>
                       )}
                     </CardTitle>
                   </CardHeader>
@@ -443,11 +437,7 @@ export default function NCCDetailPage() {
                 positive: daysToDue >= 0,
               }}
             />
-            <KPICard
-              label="Status"
-              value={item.status}
-              icon={CheckCircle}
-            />
+            <KPICard label="Status" value={item.status} icon={CheckCircle} />
             <KPICard
               label="Severity"
               value={severityLabel}
@@ -519,9 +509,7 @@ export default function NCCDetailPage() {
                 onClick={handleClose}
                 disabled={update.isPending || !resolution.trim()}
               >
-                {update.isPending
-                  ? "Closing..."
-                  : "Close Case"}
+                {update.isPending ? "Closing..." : "Close Case"}
               </Button>
             </div>
           </div>

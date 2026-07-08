@@ -90,7 +90,9 @@ export default function EWSReportPage() {
         subtitle="Trending analysis of non-compliance metrics across units and regions."
       >
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-blue-100">Date range</label>
+          <label className="text-xs font-medium text-blue-100">
+            Date range
+          </label>
           <div className="flex items-center gap-2">
             <input
               type="date"

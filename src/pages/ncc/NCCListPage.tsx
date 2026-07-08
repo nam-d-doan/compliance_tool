@@ -160,19 +160,18 @@ export default function NCCListPage() {
 
   const hasActiveFilters = Boolean(
     filters.search ||
-      filters.status ||
-      filters.severity ||
-      filters.ownerUnitId ||
-      filters.dueDateFrom ||
-      filters.dueDateTo,
+    filters.status ||
+    filters.severity ||
+    filters.ownerUnitId ||
+    filters.dueDateFrom ||
+    filters.dueDateTo,
   );
 
   const handleDelete = (ncc: NonComplianceCase) => {
     if (!window.confirm(`Delete ${ncc.nccId}?`)) return;
     deleteNcc.mutate(ncc.id, {
       onSuccess: () => toast.success("Non-compliance case deleted"),
-      onError: (err) =>
-        toast.error(err.message || "Failed to delete case"),
+      onError: (err) => toast.error(err.message || "Failed to delete case"),
     });
   };
 
@@ -396,11 +395,13 @@ export default function NCCListPage() {
                       <PriorityBadge priority={ncc.severity} size="sm" />
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={ncc.status} size="sm" />
+                      <StatusBadge status={ncc.status} kind="ncc" size="sm" />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="line-clamp-1">{ncc.ownerUnitName}</span>
+                        <span className="line-clamp-1">
+                          {ncc.ownerUnitName}
+                        </span>
                         {ncc.ownerUnitType === "branch" &&
                           ncc.ownerUnitRegion && (
                             <span className="text-xs text-muted-foreground">

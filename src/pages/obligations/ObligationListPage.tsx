@@ -48,6 +48,7 @@ import { hasPermission } from "@/constants/rbac";
 import { COMPLIANCE_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
 import { cn } from "@/lib/utils";
 import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
+import { riskScoreTextClasses } from "@/lib/risk-score";
 import type { ComplianceObligation, ComplianceFilter } from "@/types";
 
 const BUSINESS_UNITS = [
@@ -242,14 +243,7 @@ export default function ObligationListPage() {
           const score = getValue<number>();
           return (
             <span
-              className={cn(
-                "text-xs font-medium",
-                score >= 80
-                  ? "text-red-600 dark:text-red-400"
-                  : score >= 50
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-emerald-600 dark:text-emerald-400",
-              )}
+              className={cn("text-xs font-medium", riskScoreTextClasses(score))}
             >
               {score}
             </span>

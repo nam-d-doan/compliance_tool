@@ -58,6 +58,7 @@ import { useAuthStore } from "@/stores";
 import { hasMinimumRole } from "@/constants/rbac";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { riskScoreStrokeClasses } from "@/lib/risk-score";
 import type {
   Regulation,
   AIInsight,
@@ -142,12 +143,7 @@ function ImpactGauge({ value, size = 80 }: { value: number; size?: number }) {
   const radius = (size - 12) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - percent / 100);
-  const color =
-    percent >= 80
-      ? "text-red-500 dark:text-red-400"
-      : percent >= 50
-        ? "text-amber-500 dark:text-amber-400"
-        : "text-emerald-500 dark:text-emerald-400";
+  const color = riskScoreStrokeClasses(percent);
 
   return (
     <div

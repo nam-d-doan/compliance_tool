@@ -29,6 +29,7 @@ import {
   useAdminAuditLogs,
   useAdminAIConfig,
 } from "@/hooks/queries/useAdminQueries";
+import { CHART_COLORS } from "@/components/charts/chart-theme";
 
 function useAdminData() {
   const dashboard = useDashboard("admin");
@@ -168,7 +169,11 @@ export default function AdminDashboardPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="value"
+                  fill={CHART_COLORS[0]}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -190,7 +195,7 @@ export default function AdminDashboardPage() {
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="#f59e0b"
+                  stroke={CHART_COLORS[2]}
                   strokeWidth={2}
                 />
               </LineChart>
@@ -211,7 +216,11 @@ export default function AdminDashboardPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="queries" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="queries"
+                  fill={CHART_COLORS[4]}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

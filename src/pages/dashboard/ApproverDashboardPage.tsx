@@ -26,6 +26,7 @@ import {
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import { EmptyState } from "@/components/common/EmptyState";
+import { CHART_COLORS } from "@/components/charts/chart-theme";
 import {
   useDashboard,
   useComplianceList,
@@ -83,8 +84,6 @@ export default function ApproverDashboardPage() {
     ],
     [],
   );
-
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
   if (isLoading) {
     return (
@@ -144,7 +143,11 @@ export default function ApproverDashboardPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="value"
+                  fill={CHART_COLORS[4]}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -173,7 +176,7 @@ export default function ApproverDashboardPage() {
                     {approvalStatusData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={colors[index % colors.length]}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
                       />
                     ))}
                   </Pie>
