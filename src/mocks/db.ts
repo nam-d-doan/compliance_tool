@@ -1,14 +1,7 @@
 import { faker } from "@faker-js/faker";
-import { addDays, subDays, formatISO, isBefore, isAfter } from "date-fns";
+import { addDays, subDays, formatISO } from "date-fns";
 import { DEMO_USERS } from "@/constants/demo-users";
-import {
-  COMPLIANCE_STATUSES,
-  CAP_STATUSES,
-  USER_STATUSES,
-  PRIORITY_LEVELS,
-  ASSIGNMENT_STATUSES,
-  OBLIGATION_STATUSES,
-} from "@/constants/status";
+import { CAP_STATUSES, USER_STATUSES } from "@/constants/status";
 import type {
   UserProfile,
   RoleEntity,
@@ -33,22 +26,34 @@ import type {
   FileAttachment,
   NonComplianceCase,
 } from "@/types";
+import {
+  CURATED_REGULATIONS,
+  CURATED_DEPENDENCIES,
+  CURATED_COMPLIANCE_OBLIGATIONS,
+  CURATED_ASSIGNMENTS,
+  CURATED_OBLIGATIONS,
+  CURATED_CAPS,
+} from "@/mocks/curated-data";
 
 faker.seed(42);
 
 const today = new Date();
 
 const DEPARTMENTS = [
-  "Risk & Compliance",
-  "Legal",
-  "Operations",
+  "Risk Management",
+  "Compliance",
+  "AML Compliance",
+  "Internal Audit",
+  "Internal Control",
+  "Treasury & ALM",
   "Finance",
-  "Treasury",
+  "Credit Risk",
+  "Information Technology",
+  "Operations",
+  "Legal",
   "Retail Banking",
   "Corporate Banking",
-  "IT Security",
-  "Human Resources",
-  "Internal Audit",
+  "Board Office",
 ] as const;
 
 const BUSINESS_UNITS = [
@@ -74,6 +79,7 @@ const LOCATIONS = [
 
 const REGULATORS = [
   "Ngân hàng Nhà nước Việt Nam (SBV)",
+  "Quốc hội Việt Nam (National Assembly)",
   "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
   "Basel Committee on Banking Supervision",
 ] as const;
@@ -88,6 +94,9 @@ const CATEGORIES = [
   "Quản trị nội bộ",
   "Dịch vụ chứng khoán",
   "Phòng chống khủng bố tài chính",
+  "Bảo mật thông tin",
+  "Quản lý rủi ro thanh khoản",
+  "Quản lý rủi ro gian lận",
 ] as const;
 
 const FREQUENCIES = [
@@ -172,428 +181,89 @@ function generateDemoUserProfiles(): UserProfile[] {
   }));
 }
 
-const ARTICLE_THEMES = [
-  "Phạm vi điều chỉnh",
-  "Đối tượng áp dụng",
-  "Giải thích từ ngữ",
-  "Trách nhiệm của tổ chức tín dụng",
-  "Yêu cầu báo cáo",
-  "Xử lý vi phạm",
-  "Hiệu lực thi hành",
-  "Quy định chuyển tiếp",
-  "Trách nhiệm giải trình",
-  "Giám sát và thanh tra",
-  "Quản lý hồ sơ",
-  "Ngưỡng an toàn vốn tối thiểu",
-  "Tỷ lệ an toàn vốn",
-  "Quản lý rủi ro tín dụng",
-  "Phân loại nợ",
-  "Trích lập dự phòng",
-  "Phòng chống rửa tiền",
-  "Nhận diện khách hàng",
-  "Giao dịch đáng ngờ",
-  "Bảo mật thông tin",
-  "An toàn thông tin",
-  "Quản trị nội bộ",
-  "Hội đồng quản trị",
-  "Ban kiểm soát",
-  "Công bố thông tin",
-  "Minh bạch giao dịch",
-  "Bảo vệ người tiêu dùng",
-  "Giải quyết khiếu nại",
-  "Quản lý rủi ro hoạt động",
-  "Báo cáo sự cố",
-  "Kế hoạch kinh doanh",
-  "Kiểm toán nội bộ",
-  "Kiểm soát nội bộ",
-  "Tuân thủ pháp luật",
-  "Đạo đức kinh doanh",
-  "Xung đột lợi ích",
-  "Giao dịch liên kết",
-  "Cấp tín dụng",
-  "Giám sát chi phí",
-  "Quản lý tài sản",
-  "Thanh khoản",
-  "Tỷ lệ nợ xấu",
-  "Tái cấp vốn",
-  "Giao dịch ngoại hối",
-  "Phái sinh tài chính",
-  "Kinh doanh chứng khoán",
-  "Quản lý danh mục",
-  "Bán hàng đa cấp",
-  "Thu hồi nợ",
-  "Xử lý tài sản bảo đảm",
-  "Tổ chức tín dụng phi ngân hàng",
-  "Hợp tác xã tín dụng",
-  "Công ty tài chính",
-  "Cho thuê tài chính",
-  "Bảo hiểm tiền gửi",
-  "Giải quyết phá sản",
-  "Cơ cấu lại tín dụng",
-  "Miễn giảm lãi vay",
-  "Gia hạn nợ",
-  "Cấp tín dụng mới",
-  "Giám sát đặc biệt",
-  "Kiểm soát đặc biệt",
-  "Đình chỉ hoạt động",
-  "Thu hồi giấy phép",
-  "Bắt buộc chuyển nhượng",
-  "Phong tỏa tài sản",
-  "Khởi tố hình sự",
-  "Hợp tác quốc tế",
-  "Trao đổi thông tin",
-  "Thỏa thuận song phương",
-  "Chuẩn mực kế toán",
-  "Báo cáo tài chính",
-  "Kiểm toán báo cáo tài chính",
-  "Phân tích tài chính",
-  "Giới hạn giao dịch",
-  "Hạn mức tín dụng",
-  "Tỷ lệ bảo đảm",
-  "Định giá tài sản",
-  "Thẩm định dự án",
-  "Quản lý nợ công",
-  "Rủi ro lãi suất",
-  "Rủi ro tỷ giá",
-  "Rủi ro thanh khoản",
-  "Rủi ro tập trung",
-  "Rủi ro danh mục",
-];
-
-function generateArticles(count: number, effectiveAt: Date): Article[] {
-  return Array.from({ length: count }, (_, j) => {
-    const theme = ARTICLE_THEMES[j % ARTICLE_THEMES.length];
-    return {
-      id: faker.string.uuid(),
-      number: `${j + 1}`,
-      title: `Điều ${j + 1}: ${theme}`,
-      summary: faker.lorem.paragraph(2),
-      effectiveDate: iso(effectiveAt),
-      status: "active" as const,
-    };
-  });
-}
-
-function generateRegulations(count = 8): Regulation[] {
-  // Realistic Vietnamese regulatory document numbers and titles
-  const sbvPrefixes = [
-    "Thông tư 19/2016/TT-NHNN",
-    "Thông tư 22/2019/TT-NHNN",
-    "Thông tư 03/2021/TT-NHNN",
-    "Thông tư 41/2016/TT-NHNN",
-    "Thông tư 39/2016/TT-NHNN",
-    "Quyết định 35/2018/QĐ-NHNN",
-    "Thông tư 52/2018/TT-NHNN",
-    "Thông tư 07/2019/TT-NHNN",
-  ];
-  const ubcknnPrefixes = [
-    "Thông tư 96/2020/TT-UBCK",
-    "Thông tư 119/2020/TT-UBCK",
-    "Thông tư 13/2017/TT-UBCK",
-    "Thông tư 21/2021/TT-UBCK",
-    "Quyết định 05/2021/QĐ-UBCK",
-    "Quyết định 12/2020/QĐ-UBCK",
-  ];
-  const baselPrefixes = [
-    "Basel III Framework",
-    "Basel IV Standards",
-    "Basel Committee Guidelines",
-  ];
-
-  const sbvDescriptions = [
-    "Quy định của Ngân hàng Nhà nước về tỷ lệ an toàn vốn đối với các tổ chức tín dụng hoạt động tại Việt Nam.",
-    "Hướng dẫn triển khai các biện pháp quản lý rủi ro tín dụng và phân loại nợ theo quy định mới.",
-    "Yêu cầu báo cáo, lưu trữ và cung cấp thông tin phục vụ công tác giám sát ngân hàng.",
-  ];
-  const ubcknnDescriptions = [
-    "Quy định về quản lý hoạt động đầu tư chứng khoán và bảo vệ quyền lợi nhà đầu tư.",
-    "Hướng dẫn công bố thông tin, minh bạch giao dịch và xử lý vi phạm trên thị trường chứng khoán.",
-    "Yêu cầu về quản trị rủi ro đối với các công ty chứng khoán và quỹ đầu tư.",
-  ];
-  const baselDescriptions = [
-    "Khung quốc tế về tỷ lệ an toàn vốn, quản lý rủi ro và giám sát ngân hàng toàn cầu.",
-    "Tiêu chuẩn nguồn vốn và cách tính toán rủi ro tín dụng thống nhất cho các nhà băng.",
-  ];
-
-  return Array.from({ length: count }, (_, i) => {
-    const category = pick(CATEGORIES);
-    const regulatoryBody = pick(REGULATORS);
-    const effectiveAt = randomDate(subDays(today, 365), addDays(today, 180));
+function generateRegulations(): Regulation[] {
+  return CURATED_REGULATIONS.map((spec) => {
+    const effectiveAt = new Date(spec.effectiveDate);
     const publishedAt = subDays(
       effectiveAt,
-      faker.number.int({ min: 30, max: 180 }),
+      faker.number.int({ min: 60, max: 180 }),
     );
-
-    // Determine source: Vietnamese regulators are 'internal', Basel is 'external'
-    const source: "internal" | "external" =
-      regulatoryBody === "Basel Committee on Banking Supervision"
-        ? "external"
-        : faker.helpers.arrayElement(["internal", "external"]);
-
-    // Build a realistic title based on regulator
-    let title: string;
-    if (regulatoryBody === "Ngân hàng Nhà nước Việt Nam (SBV)") {
-      const prefix = sbvPrefixes[i % sbvPrefixes.length];
-      title = `${prefix} - ${category}`;
-    } else if (regulatoryBody === "Ủy ban Chứng khoán Nhà nước (UBCKNN)") {
-      const prefix = ubcknnPrefixes[i % ubcknnPrefixes.length];
-      title = `${prefix} - ${category}`;
-    } else {
-      const prefix = baselPrefixes[i % baselPrefixes.length];
-      title = `${prefix} - ${category}`;
-    }
-
-    // Pick a regulator-specific description
-    let description: string;
-    if (regulatoryBody === "Ngân hàng Nhà nước Việt Nam (SBV)") {
-      description = pick(sbvDescriptions);
-    } else if (regulatoryBody === "Ủy ban Chứng khoán Nhà nước (UBCKNN)") {
-      description = pick(ubcknnDescriptions);
-    } else {
-      description = pick(baselDescriptions);
-    }
-
-    // First regulation is the flagship large regulation with ~80 articles;
-    // remaining regulations are still substantial (10-20 articles each).
-    const isFlagship = i === 0;
-    const articleCount = isFlagship
-      ? faker.number.int({ min: 78, max: 84 })
-      : faker.number.int({ min: 10, max: 20 });
-    const articles = generateArticles(articleCount, effectiveAt);
-
-    const expirationDate = faker.datatype.boolean(0.3)
-      ? iso(addDays(effectiveAt, faker.number.int({ min: 365, max: 1825 })))
-      : undefined;
-
-    let status: Regulation["status"] = "Effective";
-    if (expirationDate && isBefore(new Date(expirationDate), today)) {
-      status = "Expired";
-    } else if (isFlagship) {
-      status = "Effective";
-    } else if (faker.datatype.boolean(0.15)) {
-      status = "Superseded";
-    }
-
+    const articles: Article[] = spec.articles.map((a, j) => ({
+      id: `${spec.id}-art-${j + 1}`,
+      number: a.number,
+      title: a.title,
+      summary: a.summary,
+      effectiveDate: spec.effectiveDate,
+      status: "active" as const,
+    }));
     return {
-      id: uid("reg"),
-      title,
-      description,
-      category,
-      regulatoryBody,
-      effectiveDate: iso(effectiveAt),
-      expirationDate,
-      status,
-      priority: faker.helpers.arrayElement(PRIORITY_LEVELS),
-      source,
+      id: spec.id,
+      title: spec.title,
+      description: spec.description,
+      category: spec.category,
+      regulatoryBody: spec.regulatoryBody,
+      effectiveDate: spec.effectiveDate,
+      expirationDate: spec.expirationDate,
+      status: spec.status as Regulation["status"],
+      priority: spec.priority as Regulation["priority"],
+      source: spec.source,
       articles,
       createdDate: iso(publishedAt),
-      updatedDate: iso(randomDate(publishedAt, effectiveAt)),
+      updatedDate: iso(randomDate(publishedAt, today)),
     };
   });
 }
 
 /**
- * Create realistic dependencies between generated regulations.
- * Most links are between Vietnamese regulations; a few reference
- * international Basel guidance to reflect local implementation.
+ * Build regulation dependencies from curated data. Each dependency links
+ * two regulations by stable ID (supersedes, amends, references, repeals).
  */
 function generateRegulationDependencies(
   regulations: Regulation[],
 ): RegulationDependency[] {
-  // Find a regulation matching body + category. Falls back to any regulation
-  // from the same regulator so cross-references stay realistic even when the
-  // exact category distribution is sparse.
-  const find = (
-    body: string,
-    category: string,
-    fallback = true,
-  ): Regulation | undefined => {
-    const match = regulations.find(
-      (r) => r.regulatoryBody === body && r.category === category,
-    );
-    if (match || !fallback) return match;
-    return regulations.find((r) => r.regulatoryBody === body);
-  };
-
-  // Find two distinct regulations matching the same body + category.
-  // Falls back to any two regulations from the same regulator if the exact
-  // category has fewer than two matches.
-  const findPair = (
-    body: string,
-    category: string,
-  ): { from: Regulation | undefined; to: Regulation | undefined } => {
-    let matches = regulations.filter(
-      (r) => r.regulatoryBody === body && r.category === category,
-    );
-    if (matches.length < 2) {
-      matches = regulations.filter((r) => r.regulatoryBody === body);
-    }
-    return { from: matches[0], to: matches[1] };
-  };
-
-  const candidates: Array<{
-    from: Regulation | undefined;
-    to: Regulation | undefined;
-    type: RegulationDependency["type"];
-    description: string;
-    notes?: string;
-  }> = [
-    {
-      // SBV capital adequacy circular updates an older SBV decision
-      ...findPair("Ngân hàng Nhà nước Việt Nam (SBV)", "An toàn vốn"),
-      type: "amends",
-      description:
-        "Sửa đổi, bổ sung một số quy định về tỷ lệ an toàn vốn áp dụng cho tổ chức tín dụng.",
-      notes: "Thay thế ngưỡng CAR tối thiểu theo khung Basel III.",
-    },
-    {
-      // Newer SBV credit risk circular supersedes the older one
-      ...findPair(
-        "Ngân hàng Nhà nước Việt Nam (SBV)",
-        "Quản lý rủi ro tín dụng",
-      ),
-      type: "supersedes",
-      description:
-        "Thay thế toàn bộ quy định về phân loại nợ và trích lập dự phòng rủi ro tín dụng.",
-    },
-    {
-      // Current AML circular repeals an outdated SBV AML decision
-      ...findPair("Ngân hàng Nhà nước Việt Nam (SBV)", "Rửa tiền"),
-      type: "repeals",
-      description:
-        "Bãi bỏ quy định cũ về phòng chống rửa tiền sau khi ban hành thông tư mới.",
-    },
-    {
-      // SBV capital rule references the Basel framework it implements
-      from: find("Ngân hàng Nhà nước Việt Nam (SBV)", "An toàn vốn"),
-      to: find("Basel Committee on Banking Supervision", "An toàn vốn"),
-      type: "references",
-      description:
-        "Việt Nam áp dụng các nguyên tắc về tỷ lệ an toàn vốn theo khung Basel III.",
-      notes: "Basel là cơ sở quốc tế cho quy định nội địa.",
-    },
-    {
-      // UBCKNN consumer protection circular amends an earlier decision
-      ...findPair(
-        "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
-        "Bảo vệ người tiêu dùng",
-      ),
-      type: "amends",
-      description:
-        "Sửa đổi quy định về công bố thông tin và bảo vệ nhà đầu tư trên thị trường chứng khoán.",
-    },
-    {
-      // UBCKNN securities services circular references SBV banking rule
-      from: find("Ủy ban Chứng khoán Nhà nước (UBCKNN)", "Dịch vụ chứng khoán"),
-      to: find("Ngân hàng Nhà nước Việt Nam (SBV)", "Quản trị nội bộ"),
-      type: "references",
-      description:
-        "Tham chiếu yêu cầu quản trị nội bộ của ngân hàng khi công ty chứng khoán có giao dịch liên kết.",
-    },
-    {
-      // New SBV operational risk circular supersedes the old one
-      ...findPair(
-        "Ngân hàng Nhà nước Việt Nam (SBV)",
-        "Quản lý rủi ro hoạt động",
-      ),
-      type: "supersedes",
-      description:
-        "Thay thế quy định về quản lý rủi ro hoạt động và yêu cầu báo cáo sự cố.",
-    },
-    {
-      // SBV internal governance circular references Basel guidance
-      from: find("Ngân hàng Nhà nước Việt Nam (SBV)", "Quản trị nội bộ"),
-      to: find("Basel Committee on Banking Supervision", "Quản trị nội bộ"),
-      type: "references",
-      description:
-        "Áp dụng nguyên tắc quản trị ngân hàng tốt theo hướng dẫn của Basel.",
-    },
-    {
-      // SBV financial reporting circular amends older reporting decision
-      ...findPair("Ngân hàng Nhà nước Việt Nam (SBV)", "Báo cáo tài chính"),
-      type: "amends",
-      description:
-        "Cập nhật mẫu biểu và thời hạn báo cáo tài chính định kỳ của tổ chức tín dụng.",
-    },
-    {
-      // Basel risk standards referenced by SBV credit risk circular
-      from: find(
-        "Ngân hàng Nhà nước Việt Nam (SBV)",
-        "Quản lý rủi ro tín dụng",
-      ),
-      to: find(
-        "Basel Committee on Banking Supervision",
-        "Quản lý rủi ro tín dụng",
-      ),
-      type: "references",
-      description:
-        "Quy định nội địa về rủi ro tín dụng dựa trên tiêu chuẩn tiếp cận nội bảng của Basel.",
-    },
-  ];
-
-  // Build dependencies, skipping any candidate where a matching regulation
-  // could not be found and ensuring we don't link a regulation to itself.
-  return candidates
-    .filter((c) => c.from && c.to && c.from.id !== c.to.id)
-    .map((c, i) => ({
-      id: uid("dep"),
-      fromRegulationId: c.from!.id,
-      toRegulationId: c.to!.id,
-      type: c.type,
-      description: c.description,
-      notes: c.notes,
-      createdDate: iso(subDays(today, 30 + i * 5)),
-    }));
+  const byId = new Map(regulations.map((r) => [r.id, r]));
+  return CURATED_DEPENDENCIES.filter(
+    (d) => byId.has(d.from) && byId.has(d.to),
+  ).map((d, i) => ({
+    id: uid("dep"),
+    fromRegulationId: d.from,
+    toRegulationId: d.to,
+    type: d.type,
+    description: d.description,
+    notes: d.notes,
+    createdDate: iso(subDays(today, 30 + i * 5)),
+  }));
 }
 
 function generateComplianceObligations(
   regulations: Regulation[],
   users: UserProfile[],
-  count = 120,
 ): ComplianceObligation[] {
-  return Array.from({ length: count }, (_, i) => {
-    const regulation = pick(regulations);
-    const owner = pick(users.filter((u) => u.role === "owner"));
-    const approver = pick(
-      users.filter((u) => u.role === "approver" || u.role === "admin"),
-    );
-    const reviewers = faker.helpers.arrayElements(
-      users.filter((u) => u.role === "reviewer"),
-      { min: 0, max: 2 },
-    );
+  const regById = new Map(regulations.map((r) => [r.id, r]));
+  const ownerUsers = users.filter((u) => u.role === "owner");
+  const approverUsers = users.filter(
+    (u) => u.role === "approver" || u.role === "admin",
+  );
+  const reviewerUsers = users.filter((u) => u.role === "reviewer");
 
-    const dueOffset = weightedPick([
-      { item: faker.number.int({ min: -120, max: -31 }), weight: 10 },
-      { item: faker.number.int({ min: -30, max: 30 }), weight: 20 },
-      { item: faker.number.int({ min: 31, max: 90 }), weight: 25 },
-      { item: faker.number.int({ min: 91, max: 365 }), weight: 30 },
-      { item: faker.number.int({ min: -730, max: -121 }), weight: 15 },
-    ]);
-    const dueDate = addDays(today, dueOffset);
+  return CURATED_COMPLIANCE_OBLIGATIONS.map((spec, i) => {
+    const regulation = regById.get(spec.regulationId) ?? regulations[0];
+    const owner = pick(ownerUsers.length ? ownerUsers : users);
+    const approver = pick(approverUsers.length ? approverUsers : users);
+    const reviewers = faker.helpers.arrayElements(reviewerUsers, {
+      min: 0,
+      max: 2,
+    });
+    const dueDate = addDays(today, spec.dueOffset);
     const createdAt = subDays(dueDate, faker.number.int({ min: 60, max: 365 }));
-
-    let status = pick(COMPLIANCE_STATUSES);
-    if (
-      isBefore(dueDate, today) &&
-      !["Completed", "Approved", "Archived"].includes(status)
-    ) {
-      status = weightedPick<ComplianceObligation["status"]>([
-        { item: "Pending Review", weight: 40 },
-        { item: "Submitted", weight: 35 },
-        { item: "Rejected", weight: 25 },
-      ]);
-    }
-    if (isAfter(dueDate, addDays(today, 14)) && faker.datatype.boolean(0.3)) {
-      status = "Draft";
-    }
 
     return {
       id: uid("cmp"),
       complianceId: `COMP-${today.getFullYear()}-${pad(i + 1)}`,
-      title: `${regulation.category} ${faker.company.buzzPhrase()}`,
-      description: faker.lorem.paragraph(2),
+      title: spec.title,
+      description: spec.description,
       businessUnit: pick(BUSINESS_UNITS),
-      department: pick(DEPARTMENTS),
+      department: spec.department,
       location: pick(LOCATIONS),
       regulationId: regulation.id,
       regulationName: regulation.title,
@@ -602,34 +272,19 @@ function generateComplianceObligations(
       approverId: approver.id,
       approverName: approver.name,
       reviewerIds: reviewers.map((r) => r.id),
-      frequency: pick(FREQUENCIES),
-      criticality: faker.helpers.weightedArrayElement([
-        { weight: 10, value: "low" },
-        { weight: 30, value: "medium" },
-        { weight: 40, value: "high" },
-        { weight: 20, value: "critical" },
-      ]),
+      frequency: spec.frequency,
+      criticality: spec.criticality,
       dueDate: iso(dueDate),
-      penalty: faker.helpers.arrayElement([
-        "Up to $1M fine",
-        "Operational suspension",
-        "Regulatory censure",
-        "Mandatory remediation",
-        "Reputational damage",
-        "Up to $50K daily fine",
-      ]),
-      status,
+      penalty: spec.penalty,
+      status: spec.status as ComplianceObligation["status"],
       aiRiskScore: faker.number.int({ min: 15, max: 98 }),
-      tags: faker.helpers.arrayElements(
-        ["aml", "kyc", "privacy", "cyber", "reporting", "consumer", "risk"],
-        { min: 1, max: 3 },
-      ),
+      tags: spec.tags,
       aiRecommendation: faker.datatype.boolean(0.4)
         ? faker.lorem.sentence()
         : undefined,
-      progress: faker.number.int({ min: 0, max: 100 }),
+      progress: spec.progress,
       createdAt: iso(createdAt),
-      updatedAt: iso(randomDate(createdAt, dueDate)),
+      updatedAt: iso(randomDate(createdAt, today)),
     };
   });
 }
@@ -638,49 +293,6 @@ function generateObligations(
   assignments: Assignment[],
   users: UserProfile[],
 ): Obligation[] {
-  const articleThemes = [
-    "Phạm vi điều chỉnh",
-    "Đối tượng áp dụng",
-    "Trách nhiệm của tổ chức tín dụng",
-    "Yêu cầu báo cáo",
-    "Xử lý vi phạm",
-    "Hiệu lực thi hành",
-    "Trách nhiệm giải trình",
-    "Giám sát và thanh tra",
-    "Quản lý hồ sơ",
-    "Ngưỡng an toàn vốn tối thiểu",
-    "Tỷ lệ an toàn vốn",
-    "Quản lý rủi ro tín dụng",
-    "Phân loại nợ",
-    "Trích lập dự phòng",
-    "Phòng chống rửa tiền",
-    "Nhận diện khách hàng",
-    "Giao dịch đáng ngờ",
-    "Bảo mật thông tin",
-    "An toàn thông tin",
-    "Quản trị nội bộ",
-    "Hội đồng quản trị",
-    "Ban kiểm soát",
-    "Công bố thông tin",
-    "Minh bạch giao dịch",
-    "Bảo vệ quyền lợi khách hàng",
-    "Giải quyết khiếu nại",
-    "Quản lý rủi ro hoạt động",
-    "Báo cáo sự cố",
-    "Kiểm toán nội bộ",
-    "Kiểm soát nội bộ",
-    "Tuân thủ pháp luật",
-    "Đạo đức kinh doanh",
-    "Xung đột lợi ích",
-    "Giao dịch liên kết",
-    "Cấp tín dụng",
-    "Giám sát chi phí",
-    "Quản lý tài sản",
-    "Thanh khoản",
-    "Tỷ lệ nợ xấu",
-    "Tái cấp vốn",
-  ];
-
   // Owner pool: prefer real owner-role users. The demo owner ("demo-owner")
   // is weighted heavily so the owner dashboard is always populated when
   // logging in as Sarah Mitchell.
@@ -693,123 +305,84 @@ function generateObligations(
         ? pick(ownerUsers)
         : pick(users);
 
-  const total = faker.number.int({ min: 60, max: 80 });
-  const obligations: Obligation[] = [];
-
-  for (let i = 0; i < total; i++) {
-    const assignment = assignments[i % assignments.length];
+  return CURATED_OBLIGATIONS.map((spec) => {
+    const assignment = assignments[spec.assignmentIndex] ?? assignments[0];
     const owner = pickOwner();
-    const createdAt = randomDate(subDays(today, 90), subDays(today, 7));
-    const dueOffset = faker.number.int({ min: -30, max: 120 });
-    const dueDate = addDays(createdAt, dueOffset);
+    const dueDate = addDays(today, spec.dueOffset);
+    const createdAt = subDays(today, faker.number.int({ min: 30, max: 90 }));
     const updatedAt = randomDate(createdAt, today);
-    const theme = articleThemes[i % articleThemes.length];
-    const articleNumber = (i % 50) + 1;
 
-    let status: Obligation["status"] = pick(OBLIGATION_STATUSES);
-    if (dueOffset < 0 && status === "draft") {
-      status = faker.helpers.arrayElement([
-        "submitted",
-        "review_required",
-        "cap_in_progress",
-      ]);
-    }
-
-    obligations.push({
+    return {
       id: uid("obg"),
       assignmentId: assignment.id,
       assignmentTitle: assignment.title,
-      articleRef: `Điều ${articleNumber}`,
-      title: `${theme} — ${faker.company.buzzPhrase()}`,
-      description: faker.lorem.paragraph(2),
+      articleRef: spec.articleRef,
+      title: spec.title,
+      description: spec.description,
       ownerDepartmentId: assignment.assignedDepartmentIds[0] ?? "",
       ownerDepartmentName: assignment.assignedDepartmentNames?.[0],
       ownerId: owner.id,
       ownerName: owner.name,
       dueDate: iso(dueDate),
-      riskLevel: faker.helpers.weightedArrayElement([
-        { weight: 15, value: "low" },
-        { weight: 35, value: "medium" },
-        { weight: 35, value: "high" },
-        { weight: 15, value: "critical" },
-      ]),
-      status,
+      riskLevel: spec.riskLevel,
+      status: spec.status as Obligation["status"],
       createdDate: iso(createdAt),
       updatedDate: iso(updatedAt),
-    });
-  }
-
-  return obligations;
+    };
+  });
 }
 
 function generateCAPs(
   compliance: ComplianceObligation[],
   users: UserProfile[],
-  count = 60,
 ): CAP[] {
-  return Array.from({ length: count }, (_, i) => {
-    const item = pick(compliance);
-    const owner = pick(users.filter((u) => u.role === "owner"));
-    const approver = pick(
-      users.filter((u) => u.role === "approver" || u.role === "admin"),
-    );
+  const ownerUsers = users.filter((u) => u.role === "owner");
+  const approverUsers = users.filter(
+    (u) => u.role === "approver" || u.role === "admin",
+  );
+
+  return CURATED_CAPS.map((spec, i) => {
+    const item = compliance[spec.complianceIndex] ?? compliance[0];
+    const owner = pick(ownerUsers.length ? ownerUsers : users);
+    const approver = pick(approverUsers.length ? approverUsers : users);
     // Link 1-3 obligations per CAP: `item` is the primary, plus 0-2 extras.
     const extras = faker.helpers.arrayElements(
       compliance.filter((c) => c.id !== item.id),
       faker.number.int({ min: 0, max: 2 }),
     );
     const obligationIds = [item.id, ...extras.map((e) => e.id)];
-    const createdAt = randomDate(subDays(today, 180), subDays(today, 7));
-    const dueDate = addDays(createdAt, faker.number.int({ min: 30, max: 180 }));
-    const status = isBefore(dueDate, today)
-      ? weightedPick<CAP["status"]>([
-          { item: "Closed", weight: 40 },
-          { item: "In Progress", weight: 20 },
-          { item: "Open", weight: 5 },
-        ])
-      : weightedPick<CAP["status"]>([
-          { item: "Open", weight: 30 },
-          { item: "In Progress", weight: 50 },
-          { item: "Pending Approval", weight: 15 },
-          { item: "Closed", weight: 5 },
-        ]);
+    const createdAt = randomDate(subDays(today, 180), subDays(today, 14));
+    const dueDate = addDays(today, spec.dueOffset);
+    const status = spec.status as CAP["status"];
     const progress =
       status === "Closed" ? 100 : faker.number.int({ min: 10, max: 90 });
-    const actionCount = faker.number.int({ min: 2, max: 6 });
-    const actions: CAPAction[] = Array.from(
-      { length: actionCount },
-      (__, j) => ({
-        id: uid("act"),
-        capId: "",
-        title: `Action ${j + 1}: ${faker.lorem.sentence(3)}`,
-        ownerId: owner.id,
-        ownerName: owner.name,
-        deadline: iso(
-          addDays(
-            createdAt,
-            ((j + 1) / actionCount) * faker.number.int({ min: 20, max: 120 }),
-          ),
+    const actionCount = spec.actionTitles.length;
+    const actions: CAPAction[] = spec.actionTitles.map((actionTitle, j) => ({
+      id: uid("act"),
+      capId: "",
+      title: actionTitle,
+      ownerId: owner.id,
+      ownerName: owner.name,
+      deadline: iso(
+        addDays(
+          createdAt,
+          ((j + 1) / actionCount) * faker.number.int({ min: 20, max: 120 }),
         ),
-        status: pick(CAP_STATUSES),
-        progress: faker.number.int({ min: 0, max: 100 }),
-        attachments: [],
-        comments: [],
-        order: j,
-        createdAt: iso(createdAt),
-        updatedAt: iso(randomDate(createdAt, today)),
-      }),
-    );
+      ),
+      status: pick(CAP_STATUSES),
+      progress: faker.number.int({ min: 0, max: 100 }),
+      attachments: [],
+      comments: [],
+      order: j,
+      createdAt: iso(createdAt),
+      updatedAt: iso(randomDate(createdAt, today)),
+    }));
     return {
       id: uid("cap"),
       capId: `CAP-${today.getFullYear()}-${pad(i + 1)}`,
-      title: `Remediate ${item.title}`,
-      description: faker.lorem.paragraph(3),
-      priority: faker.helpers.weightedArrayElement([
-        { weight: 10, value: "low" },
-        { weight: 30, value: "medium" },
-        { weight: 40, value: "high" },
-        { weight: 20, value: "critical" },
-      ]),
+      title: spec.title,
+      description: spec.description,
+      priority: spec.priority,
       risk: item.criticality,
       ownerId: owner.id,
       ownerName: owner.name,
@@ -820,20 +393,18 @@ function generateCAPs(
       location: item.location,
       dueDate: iso(dueDate),
       status,
-      estimatedCost: faker.number.int({ min: 5000, max: 500000 }),
-      actualCost: faker.number.int({ min: 0, max: 500000 }),
-      rootCause: faker.lorem.sentence(),
+      estimatedCost: spec.estimatedCost,
+      actualCost: faker.number.int({ min: 0, max: spec.estimatedCost }),
+      rootCause: spec.rootCause,
       obligationIds,
       complianceTitle: item.title,
       actions,
       aiSuggestions: [
         {
-          rootCause: faker.lorem.sentence(),
-          recommendedActions: Array.from({ length: 3 }, () =>
-            faker.lorem.sentence(4),
-          ),
+          rootCause: spec.rootCause,
+          recommendedActions: spec.actionTitles.slice(0, 3),
           timeline: `${faker.number.int({ min: 2, max: 12 })} weeks`,
-          priority: pick(PRIORITY_LEVELS),
+          priority: spec.priority,
           estimatedEffort: `${faker.number.int({ min: 20, max: 200 })} hours`,
           confidence: faker.number.float({ min: 0.72, max: 0.94 }),
           rationale: faker.lorem.sentence(),
@@ -1208,11 +779,20 @@ function generateOrganizationSettings(): OrganizationSettings {
       "Japan",
     ],
     hoDepartments: [
-      { id: "dept-credit", name: "Khối Quản lý Tín dụng" },
-      { id: "dept-legal", name: "Khối Pháp chế" },
+      { id: "dept-board", name: "Hội đồng Quản trị" },
       { id: "dept-risk", name: "Khối Quản lý Rủi ro" },
+      { id: "dept-compliance", name: "Khối Tuân thủ" },
+      { id: "dept-aml", name: "Khối Phòng chống Rửa tiền" },
+      { id: "dept-credit", name: "Khối Quản lý Tín dụng" },
+      { id: "dept-treasury", name: "Khối Kho bạc & ALM" },
+      { id: "dept-finance", name: "Khối Tài chính" },
       { id: "dept-operations", name: "Khối Vận hành" },
+      { id: "dept-it", name: "Khối Công nghệ thông tin" },
+      { id: "dept-legal", name: "Khối Pháp chế" },
       { id: "dept-audit", name: "Khối Kiểm toán nội bộ" },
+      { id: "dept-internal-control", name: "Khối Kiểm soát nội bộ" },
+      { id: "dept-retail", name: "Khối Ngân hàng Bán lẻ" },
+      { id: "dept-corporate", name: "Khối Ngân hàng Doanh nghiệp" },
     ],
     branches: [
       { id: "branch-hn", name: "Chi nhánh Hà Nội", region: "Miền Bắc" },
@@ -1374,56 +954,38 @@ function generateAssignments(
   regulations: Regulation[],
   users: UserProfile[],
   hoDepartments: { id: string; name: string }[],
-  count = 15,
 ): Assignment[] {
+  const regById = new Map(regulations.map((r) => [r.id, r]));
+  const deptById = new Map(hoDepartments.map((d) => [d.id, d.name]));
   const assignors = users.filter((u) =>
     ["admin", "owner", "approver"].includes(u.role),
   );
-  return Array.from({ length: count }, (_, i) => {
-    const regulation = pick(regulations);
+
+  return CURATED_ASSIGNMENTS.map((spec) => {
+    const regulation = regById.get(spec.regulationId) ?? regulations[0];
     const assignor = assignors.length ? pick(assignors) : pick(users);
-    const departments = faker.helpers.arrayElements(hoDepartments, {
-      min: 1,
-      max: 3,
-    });
+    const departments = spec.departmentIds
+      .map((id) => ({ id, name: deptById.get(id) ?? id }))
+      .filter((d) => d.name !== d.id);
     const createdAt = subDays(today, faker.number.int({ min: 14, max: 120 }));
-    const dueOffset = weightedPick([
-      { item: faker.number.int({ min: -60, max: -1 }), weight: 15 },
-      { item: faker.number.int({ min: 0, max: 14 }), weight: 20 },
-      { item: faker.number.int({ min: 15, max: 60 }), weight: 35 },
-      { item: faker.number.int({ min: 61, max: 180 }), weight: 25 },
-      { item: faker.number.int({ min: -180, max: -61 }), weight: 5 },
-    ]);
-    const dueDate = addDays(createdAt, dueOffset);
+    const dueDate = addDays(today, spec.dueOffset);
     const updatedAt = randomDate(createdAt, today);
-    let status: Assignment["status"] = pick(ASSIGNMENT_STATUSES);
-    if (
-      isBefore(dueDate, today) &&
-      !["completed", "cancelled"].includes(status)
-    ) {
-      status = weightedPick<Assignment["status"]>([
-        { item: "in_progress", weight: 40 },
-        { item: "acknowledged", weight: 30 },
-        { item: "published", weight: 20 },
-        { item: "cancelled", weight: 10 },
-      ]);
-    }
     return {
       id: uid("asn"),
-      title: `${regulation.category} — ${faker.company.buzzPhrase()}`,
-      description: faker.lorem.paragraph(2),
+      title: spec.title,
+      description: spec.description,
       regulationId: regulation.id,
       regulationTitle: regulation.title,
       assignorId: assignor.id,
       assignorName: assignor.name,
       assignedDepartmentIds: departments.map((d) => d.id),
       assignedDepartmentNames: departments.map((d) => d.name),
-      status,
-      priority: faker.helpers.arrayElement(PRIORITY_LEVELS),
+      status: spec.status as Assignment["status"],
+      priority: spec.priority,
       dueDate: iso(dueDate),
       createdDate: iso(createdAt),
       updatedDate: iso(updatedAt),
-      notes: faker.datatype.boolean(0.3) ? faker.lorem.sentence() : undefined,
+      notes: spec.notes,
     };
   });
 }

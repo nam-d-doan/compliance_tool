@@ -17,6 +17,7 @@ import {
   Building2,
   BrainCircuit,
   Settings,
+  ClipboardCheck,
 } from "lucide-react";
 
 // Route definitions with paths and permissions
@@ -281,7 +282,7 @@ export function buildNavTree(role: Role | null): NavSection[] {
             },
             {
               label: "All Assignments",
-              icon: List,
+              icon: ClipboardCheck,
               path: ROUTES.ASSIGNMENTS.LIST,
               section: "Compliance",
               requiredPermission: "assignment:read",
