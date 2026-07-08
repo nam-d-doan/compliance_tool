@@ -29,7 +29,10 @@ import {
   useAdminAuditLogs,
   useAdminAIConfig,
 } from "@/hooks/queries/useAdminQueries";
-import { CHART_COLORS } from "@/components/charts/chart-theme";
+import {
+  CHART_COLORS,
+  type ChartDataPoint,
+} from "@/components/charts/chart-theme";
 
 function useAdminData() {
   const dashboard = useDashboard("admin");
@@ -185,7 +188,11 @@ export default function AdminDashboardPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={auditEvents.length ? auditEvents : aiUsage}
+                data={
+                  (auditEvents.length
+                    ? auditEvents
+                    : aiUsage) as ChartDataPoint[]
+                }
                 margin={{ top: 8, right: 16, bottom: 0, left: -16 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

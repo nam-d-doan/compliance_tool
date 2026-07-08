@@ -119,7 +119,7 @@ export function AreaChartCard({
               />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
-                formatter={(value: number) => [formatChartValue(value), ""]}
+                formatter={(value) => [formatChartValue(value as number), ""]}
               />
               <Legend
                 wrapperStyle={{

@@ -1,2 +1,5 @@
 allowBuilds:
   msw: true
+minimumReleaseAgeExclude:
+  - '@types/node@26.1.1'
+  - msw@2.15.0

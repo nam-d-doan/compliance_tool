@@ -102,8 +102,8 @@ export function PieChartCard({
               </Pie>
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
-                formatter={(value: number, name: string) => [
-                  formatChartValue(value),
+                formatter={(value, name) => [
+                  formatChartValue(value as number),
                   name,
                 ]}
               />
