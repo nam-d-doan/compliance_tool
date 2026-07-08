@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { useNotifications } from "@/hooks/queries";
+import {
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+} from "@/hooks/mutations";
+import type { Notification } from "@/types";
+import { formatDistanceToNow } from "date-fns";
 import {
   Bell,
   Check,
@@ -18,60 +25,34 @@ import {
   ScrollText,
   Sparkles,
   Megaphone,
+  Loader2,
+  type LucideIcon,
 } from "lucide-react";
 
-interface Notification {
-  id: string;
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  timestamp: string;
-  read: boolean;
-  category: string;
-}
+// API notification `type` -> icon + display label. Keeps the drawer driven by
+// real data instead of a hardcoded list, so the badge count and the drawer
+// contents always agree (both read from /api/notifications).
+const TYPE_ICON: Record<Notification["type"], LucideIcon> = {
+  approval: Check,
+  compliance: AlertTriangle,
+  cap: ScrollText,
+  ai: Sparkles,
+  system: Megaphone,
+};
 
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  {
-    id: "1",
-    icon: AlertTriangle,
-    title: "Overdue obligation filing",
-    description: "GDPR Article 30 registration is 3 days overdue.",
-    timestamp: "1 hr ago",
-    read: false,
-    category: "Compliance",
-  },
-  {
-    id: "2",
-    icon: Sparkles,
-    title: "AI recommendation",
-    description: "AI detected 12 likely overdue submissions in Retail Banking.",
-    timestamp: "5 hr ago",
-    read: false,
-    category: "AI",
-  },
-  {
-    id: "5",
-    icon: ScrollText,
-    title: "CAP due date approaching",
-    description: "CAP-2024-011 remediation is due tomorrow.",
-    timestamp: "Yesterday",
-    read: true,
-    category: "CAP",
-  },
-  {
-    id: "6",
-    icon: Megaphone,
-    title: "System maintenance",
-    description: "Scheduled maintenance on Sunday 02:00 UTC.",
-    timestamp: "2 days ago",
-    read: true,
-    category: "System",
-  },
-];
+const TYPE_LABEL: Record<Notification["type"], string> = {
+  approval: "Approval",
+  compliance: "Compliance",
+  cap: "CAP",
+  ai: "AI",
+  system: "System",
+};
 
 // Category -> tinted icon chip. Mirrors the established pattern in
 // TimelineEvent.tsx so colors stay correct in light + dark mode.
 const CATEGORY_STYLES: Record<string, string> = {
+  Approval:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   Compliance: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   AI: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
   CAP: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -91,24 +72,23 @@ export function NotificationDrawer({
   open,
   onOpenChange,
 }: NotificationDrawerProps) {
-  const [notifications, setNotifications] = useState<Notification[]>(
-    INITIAL_NOTIFICATIONS,
-  );
   const [filter, setFilter] = useState<NotificationFilter>("all");
 
+  // Fetch a generous page so the drawer lists everything the mock generates.
+  // The TopNav badge reads the same endpoint (filtered to unread) and shares
+  // the notificationKeys.list() cache prefix, so mark-read mutations refresh
+  // both the drawer list and the badge count.
+  const { data, isLoading } = useNotifications(1, 50);
+  const markReadMutation = useMarkNotificationRead();
+  const markAllMutation = useMarkAllNotificationsRead();
+
+  const notifications = data?.items ?? [];
   const unreadCount = notifications.filter((n) => !n.read).length;
   const visibleNotifications =
     filter === "unread" ? notifications.filter((n) => !n.read) : notifications;
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
-  };
+  const markAllAsRead = () => markAllMutation.mutate();
+  const markAsRead = (id: string) => markReadMutation.mutate(id);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -150,12 +130,18 @@ export function NotificationDrawer({
         </SheetHeader>
 
         <ScrollArea className="min-h-0 flex-1">
-          {visibleNotifications.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center px-6 py-20 text-muted-foreground">
+              <Loader2 className="size-5 animate-spin" />
+            </div>
+          ) : visibleNotifications.length === 0 ? (
             <EmptyState filter={filter} />
           ) : (
             <div className="flex flex-col gap-2 px-6 py-4">
               {visibleNotifications.map((notification, index) => {
-                const Icon = notification.icon;
+                const Icon = TYPE_ICON[notification.type] ?? Bell;
+                const category =
+                  TYPE_LABEL[notification.type] ?? notification.type;
                 return (
                   <motion.button
                     key={notification.id}
@@ -178,8 +164,7 @@ export function NotificationDrawer({
                     <span
                       className={cn(
                         "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                        CATEGORY_STYLES[notification.category] ??
-                          DEFAULT_CATEGORY_STYLE,
+                        CATEGORY_STYLES[category] ?? DEFAULT_CATEGORY_STYLE,
                       )}
                     >
                       <Icon className="size-5" />
@@ -208,11 +193,16 @@ export function NotificationDrawer({
                         {notification.description}
                       </p>
                       <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground/70">
-                        <span>{notification.timestamp}</span>
+                        <span>
+                          {formatDistanceToNow(
+                            new Date(notification.createdAt),
+                            { addSuffix: true },
+                          )}
+                        </span>
                         <span aria-hidden="true" className="opacity-50">
                           &middot;
                         </span>
-                        <span>{notification.category}</span>
+                        <span>{category}</span>
                       </div>
                     </div>
                   </motion.button>
@@ -227,7 +217,7 @@ export function NotificationDrawer({
             variant="outline"
             className="w-full"
             onClick={markAllAsRead}
-            disabled={unreadCount === 0}
+            disabled={unreadCount === 0 || markAllMutation.isPending}
           >
             <Check className="size-4" />
             Mark all as read

@@ -7,16 +7,20 @@ interface ObligationProgressRingProps {
   /** Diameter in px. */
   size?: number;
   className?: string;
+  /** Caption under the ring. Defaults to "Obligations completed". */
+  label?: string;
 }
 
 /**
- * Circular progress ring showing completed/total obligations as a percentage.
+ * Circular progress ring showing completed/total as a percentage.
  * Uses an animated SVG stroke-dashoffset; ring is yellow per the Phase 6 spec.
+ * Generic over the entity — pass `label` to caption it (e.g. "CAPs closed").
  */
 export function ObligationProgressRing({
   ring,
   size = 140,
   className,
+  label = "Obligations completed",
 }: ObligationProgressRingProps) {
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
@@ -28,7 +32,7 @@ export function ObligationProgressRing({
     <div
       className={cn("flex flex-col items-center justify-center", className)}
       role="img"
-      aria-label={`${ring.percent}% complete — ${ring.completed} of ${ring.total} obligations`}
+      aria-label={`${ring.percent}% — ${ring.completed} of ${ring.total} · ${label}`}
     >
       <div className="relative" style={{ width: size, height: size }}>
         <svg
@@ -68,9 +72,7 @@ export function ObligationProgressRing({
           </span>
         </div>
       </div>
-      <p className="mt-2 text-xs font-medium text-muted-foreground">
-        Obligations completed
-      </p>
+      <p className="mt-2 text-xs font-medium text-muted-foreground">{label}</p>
     </div>
   );
 }

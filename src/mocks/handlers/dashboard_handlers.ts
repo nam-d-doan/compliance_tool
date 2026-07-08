@@ -32,9 +32,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           1000,
       ) / 10
     : 0;
-  const openCaps = caps.filter((i) =>
-    ["Open", "In Progress"].includes(i.status),
-  ).length;
+  const openCaps = caps.filter((i) => i.status !== "Closed").length;
 
   const common: DashboardKPI[] = [
     {

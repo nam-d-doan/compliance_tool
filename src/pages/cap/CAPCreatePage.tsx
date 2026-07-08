@@ -146,7 +146,7 @@ export default function CAPCreatePage() {
     handleGenerate();
   };
 
-  const buildPayload = (values: CAPFormValues, status: "Draft" | "Open") => {
+  const buildPayload = (values: CAPFormValues) => {
     const owner = owners.find((u) => u.id === values.ownerId);
     const approver = approvers.find((u) => u.id === values.approverId);
     const firstObligation = complianceItems.find((c) =>
@@ -166,7 +166,7 @@ export default function CAPCreatePage() {
       businessUnit: values.businessUnit,
       location: values.location,
       dueDate: new Date(values.dueDate).toISOString(),
-      status,
+      status: "Open" as const,
       rootCause: values.rootCause,
       estimatedCost: values.estimatedCost,
       actualCost: 0,
@@ -203,22 +203,12 @@ export default function CAPCreatePage() {
   };
 
   const handleSubmit = (values: CAPFormValues) => {
-    create.mutate(buildPayload(values, "Open"), {
+    create.mutate(buildPayload(values), {
       onSuccess: (data) => {
         toast.success("CAP created");
         navigate(`/cap/${data.id}`);
       },
       onError: (err) => toast.error(err.message || "Failed to create CAP"),
-    });
-  };
-
-  const handleDraft = (values: CAPFormValues) => {
-    create.mutate(buildPayload(values, "Draft"), {
-      onSuccess: (data) => {
-        toast.success("CAP saved as draft");
-        navigate(`/cap/${data.id}`);
-      },
-      onError: (err) => toast.error(err.message || "Failed to save draft"),
     });
   };
 
@@ -444,10 +434,8 @@ export default function CAPCreatePage() {
                   usersQuery.isPending || complianceQuery.isPending
                 }
                 onSubmit={handleSubmit}
-                onDraft={handleDraft}
                 isSubmitting={create.isPending}
                 submitLabel="Create CAP"
-                draftLabel="Save as Draft"
                 defaultValues={
                   prefilledObligationIds.length > 0
                     ? { obligationIds: prefilledObligationIds }

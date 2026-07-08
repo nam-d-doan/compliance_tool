@@ -247,6 +247,101 @@ export function countNeedsCapsForOwner(
   return getNeedsCapsForOwner(obligations, caps, ref).length;
 }
 
+/**
+ * Reverse map: obligation id -> every CAP that references it. Complements
+ * buildObligationCapMap (which keeps only the first CAP) by returning the full
+ * list, needed to derive an obligation's effective status from ALL its CAPs.
+ */
+export function buildCapObligationMap(caps: CAP[]): Map<string, CAP[]> {
+  const map = new Map<string, CAP[]>();
+  for (const cap of caps) {
+    for (const id of cap.obligationIds ?? []) {
+      const arr = map.get(id) ?? [];
+      arr.push(cap);
+      map.set(id, arr);
+    }
+  }
+  return map;
+}
+
+/**
+ * Derive an obligation's effective status from its linked CAPs:
+ *  - No CAPs         -> keep the stored status.
+ *  - CAPs, all Closed -> "completed".
+ *  - CAPs, not all   -> "cap_in_progress".
+ * Owner-facing rule: an obligation is done only once every linked action plan
+ * is closed.
+ */
+export function getEffectiveObligationStatus(
+  obligation: Obligation,
+  capMap: Map<string, CAP[]>,
+): Obligation["status"] {
+  const linked = capMap.get(obligation.id) ?? [];
+  if (linked.length === 0) return obligation.status;
+  if (linked.every((c) => c.status === "Closed")) return "completed";
+  return "cap_in_progress";
+}
+
+export interface ObligationPriorityStats {
+  low: number;
+  medium: number;
+  high: number;
+  critical: number;
+}
+
+/** Count obligations by risk level. */
+export function getObligationPriorityStats(
+  obligations: Obligation[],
+): ObligationPriorityStats {
+  const stats: ObligationPriorityStats = {
+    low: 0,
+    medium: 0,
+    high: 0,
+    critical: 0,
+  };
+  for (const obg of obligations) stats[obg.riskLevel]++;
+  return stats;
+}
+
+export interface ObligationStatusStats {
+  draft: number;
+  submitted: number;
+  review_required: number;
+  cap_in_progress: number;
+  completed: number;
+}
+
+/** Count obligations by EFFECTIVE status (completed = all linked CAPs Closed). */
+export function getObligationStatusStats(
+  obligations: Obligation[],
+  capMap: Map<string, CAP[]>,
+): ObligationStatusStats {
+  const stats: ObligationStatusStats = {
+    draft: 0,
+    submitted: 0,
+    review_required: 0,
+    cap_in_progress: 0,
+    completed: 0,
+  };
+  for (const obg of obligations) {
+    stats[getEffectiveObligationStatus(obg, capMap)]++;
+  }
+  return stats;
+}
+
+/**
+ * Obligations that need attention (overdue / critical / review_required) and
+ * have NO linked CAP yet -- the orphans the owner must create an action plan
+ * for. Drives the consolidated "Items requiring attention" section.
+ */
+export function getOrphanedAttentionObligations(
+  obligations: Obligation[],
+  capMap: Map<string, CAP[]>,
+  ref: Date = now(),
+): Obligation[] {
+  return obligations.filter((o) => needsAttention(o, ref) && !capMap.has(o.id));
+}
+
 /** Tailwind class string for the due-date chip colour by urgency. */
 export function dueDateTone(obligation: Obligation, ref: Date = now()): string {
   // Delegate the tier to the shared due-date logic so thresholds and colours

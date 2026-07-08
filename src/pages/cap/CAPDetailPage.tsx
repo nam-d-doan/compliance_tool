@@ -217,12 +217,8 @@ export default function CAPDetailPage() {
 
   const approvers = useMemo(() => {
     if (!item) return [];
-    const status: "approved" | "rejected" | "pending" =
-      item.status === "Closed"
-        ? "approved"
-        : item.status === "Rejected"
-          ? "rejected"
-          : "pending";
+    const status: "approved" | "pending" =
+      item.status === "Closed" ? "approved" : "pending";
     return [
       {
         user: { id: item.approverId, name: item.approverName },
@@ -259,8 +255,8 @@ export default function CAPDetailPage() {
 
   const handleReject = () => {
     update.mutate(
-      { status: "Rejected", progress: 0 },
-      { onSuccess: () => toast.success("CAP rejected") },
+      { status: "Open" },
+      { onSuccess: () => toast.success("CAP returned for revision") },
     );
   };
 
@@ -749,8 +745,7 @@ export default function CAPDetailPage() {
                   canApprove={
                     canApprove &&
                     item.approverId === user?.id &&
-                    item.status !== "Closed" &&
-                    item.status !== "Rejected"
+                    item.status === "Pending Approval"
                   }
                   onApprove={handleApprove}
                   onReject={handleReject}

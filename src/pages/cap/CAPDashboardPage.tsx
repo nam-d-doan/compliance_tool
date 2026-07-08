@@ -80,10 +80,7 @@ export default function CAPDashboardPage() {
 
     const openItems = caps.filter((c) => c.status !== "Closed");
     const overdueItems = caps.filter((c) =>
-      isOverdueDueDate(
-        c.dueDate,
-        c.status === "Closed" || c.status === "Rejected",
-      ),
+      isOverdueDueDate(c.dueDate, c.status === "Closed"),
     );
     const pendingItems = caps.filter((c) => c.status === "Pending Approval");
     const closedThisMonthItems = caps.filter(

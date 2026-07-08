@@ -62,10 +62,7 @@ export function DashboardNeedsAttentionList({
       .filter(
         (c) =>
           c.status !== "Closed" &&
-          (isOverdueDueDate(
-            c.dueDate,
-            ["Closed", "Rejected"].includes(c.status),
-          ) ||
+          (isOverdueDueDate(c.dueDate, false) ||
             c.priority === "critical" ||
             c.priority === "high"),
       )

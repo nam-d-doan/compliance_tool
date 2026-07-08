@@ -231,14 +231,7 @@ export const OBLIGATION_STATUSES = [
   "completed",
 ] as const;
 
-export const CAP_STATUSES = [
-  "Draft",
-  "Open",
-  "In Progress",
-  "Pending Approval",
-  "Closed",
-  "Rejected",
-] as const;
+export const CAP_STATUSES = ["Open", "Pending Approval", "Closed"] as const;
 
 export const REGULATION_STATUSES = [
   "Effective",

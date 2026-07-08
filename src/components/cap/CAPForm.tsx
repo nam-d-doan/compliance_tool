@@ -44,10 +44,8 @@ export interface CAPFormProps {
   obligationOptions: { id: string; title: string }[];
   optionsLoading?: boolean;
   onSubmit: (values: CAPFormValues) => void;
-  onDraft?: (values: CAPFormValues) => void;
   isSubmitting?: boolean;
   submitLabel?: string;
-  draftLabel?: string;
   onCancel?: () => void;
   className?: string;
   /** Attachments. When `onFilesChange` is provided a file upload section is
@@ -75,10 +73,8 @@ export function CAPForm({
   obligationOptions,
   optionsLoading,
   onSubmit,
-  onDraft,
   isSubmitting,
   submitLabel = "Create CAP",
-  draftLabel = "Save as Draft",
   onCancel,
   className,
   files,
@@ -391,16 +387,6 @@ export function CAPForm({
             disabled={isSubmitting}
           >
             Cancel
-          </Button>
-        )}
-        {onDraft && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleSubmit(onDraft)}
-            disabled={isSubmitting}
-          >
-            {draftLabel}
           </Button>
         )}
         <Button type="submit" disabled={isSubmitting}>

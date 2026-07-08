@@ -10,5 +10,7 @@ export { DashboardReviewQueue } from "./DashboardReviewQueue";
 export { DashboardAdminStats } from "./DashboardAdminStats";
 export { DashboardAssignmentsCard } from "./DashboardAssignmentsCard";
 export { MyObligationsWidget } from "./MyObligationsWidget";
+export { MyCAPsWidget } from "./MyCAPsWidget";
+export { ObligationOverviewCard } from "./ObligationOverviewCard";
 export { NeedsCAPAlerts } from "./NeedsCAPAlerts";
 export { ObligationProgressRing } from "./ObligationProgressRing";

@@ -249,12 +249,10 @@ function calendarReport(db: ReturnType<typeof getDb>): Report {
 function capReport(db: ReturnType<typeof getDb>): Report {
   const items = db.caps;
   const total = items.length;
-  const open = items.filter((i) =>
-    ["Open", "In Progress"].includes(i.status),
-  ).length;
+  const open = items.filter((i) => i.status !== "Closed").length;
   const closed = items.filter((i) => i.status === "Closed").length;
   const overdue = items.filter((i) =>
-    isOverdueDueDate(i.dueDate, ["Closed", "Rejected"].includes(i.status)),
+    isOverdueDueDate(i.dueDate, i.status === "Closed"),
   ).length;
   const avgDays = items.length
     ? Math.round(
@@ -342,11 +340,8 @@ function capReport(db: ReturnType<typeof getDb>): Report {
           label: "Open",
           data: departments.map(
             (d) =>
-              items.filter(
-                (i) =>
-                  i.department === d &&
-                  ["Open", "In Progress"].includes(i.status),
-              ).length,
+              items.filter((i) => i.department === d && i.status !== "Closed")
+                .length,
           ),
           color: "#3b82f6",
         },
@@ -357,10 +352,7 @@ function capReport(db: ReturnType<typeof getDb>): Report {
               items.filter(
                 (i) =>
                   i.department === d &&
-                  isOverdueDueDate(
-                    i.dueDate,
-                    ["Closed", "Rejected"].includes(i.status),
-                  ),
+                  isOverdueDueDate(i.dueDate, i.status === "Closed"),
               ).length,
           ),
           color: "#ef4444",
@@ -460,11 +452,10 @@ function executiveReport(
         dueDate: i.dueDate,
       })),
     capOverview: {
-      open: caps.filter((i) => ["Open", "In Progress"].includes(i.status))
-        .length,
+      open: caps.filter((i) => i.status !== "Closed").length,
       completed: caps.filter((i) => i.status === "Closed").length,
       overdue: caps.filter((i) =>
-        isOverdueDueDate(i.dueDate, ["Closed", "Rejected"].includes(i.status)),
+        isOverdueDueDate(i.dueDate, i.status === "Closed"),
       ).length,
       averageResolutionDays: caps.length ? 42 : 0,
     },

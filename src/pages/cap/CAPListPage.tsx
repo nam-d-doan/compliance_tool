@@ -125,12 +125,9 @@ export default function CAPListPage() {
         }
         case "status": {
           const order: Record<CAPStatus, number> = {
-            Draft: 1,
-            Open: 2,
-            "In Progress": 3,
-            "Pending Approval": 4,
-            Closed: 5,
-            Rejected: 6,
+            Open: 1,
+            "Pending Approval": 2,
+            Closed: 3,
           };
           return dir * (order[a.status] - order[b.status]);
         }
@@ -409,9 +406,7 @@ export default function CAPListPage() {
                     <td className="whitespace-nowrap px-4 py-3">
                       <DueDateCell
                         dueDate={cap.dueDate}
-                        completed={
-                          cap.status === "Closed" || cap.status === "Rejected"
-                        }
+                        completed={cap.status === "Closed"}
                       />
                     </td>
                     <td className="px-4 py-3">
