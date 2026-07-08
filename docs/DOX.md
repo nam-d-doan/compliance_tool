@@ -15,9 +15,9 @@ Project-level. Specs are authored during planning; architecture docs are maintai
   - `folder-structure.md` — intended folder layout and tech stack setup steps. May drift from actual structure; treat as reference, not source of truth.
   - `design-language.md` — visual design patterns extracted from FDM demos. Binding for UI work.
 - **`deployment.md`** — deployment guide covering:
-  - Cloudflare Tunnel for local sharing/demos
-  - Vercel for production deployment
-  - Configuration steps and troubleshooting
+  - Vercel as the primary production deployment method
+  - Build settings, environment variables, and custom domain configuration
+  - CI/CD workflow and production optimizations
 - **HTML demo files** (`FDM_*.html`) — reference demos from a prior project. Not part of the build; kept for design reference only.
 - **PDF** (`Business_user_guide2025 3.pdf`) — business user guide. Gitignored (`*.pdf` in `.gitignore`); not tracked.
 

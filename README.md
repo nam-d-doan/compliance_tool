@@ -36,20 +36,12 @@ pnpm install
 pnpm run dev
 ```
 
-### Quick Share with Cloudflare Tunnel
-
-```bash
-# Terminal 1: Start dev server
-pnpm run dev
-
-# Terminal 2: Create tunnel (requires cloudflared)
-cloudflared tunnel --url http://localhost:5173
-```
-
 ## Deployment
 
-For detailed deployment instructions, see [Deployment Guide](docs/deployment.md).
+This app deploys to [Vercel](https://vercel.com) as the primary deployment method.
+For detailed step-by-step instructions, see the [Deployment Guide](docs/deployment.md).
 
 The guide covers:
-- **Cloudflare Tunnel**: Quick local sharing for demos
-- **Vercel**: Production deployment from GitHub
+
+- **Vercel**: Production deployment from GitHub with automatic HTTPS and global CDN
+- Build settings, environment variables, and custom domain configuration
