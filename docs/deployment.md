@@ -68,7 +68,7 @@ https://your-project-name.vercel.app
 
 ## Environment Variables
 
-The app uses MSW (Mock Service Worker) for API mocking. To make it work in production:
+The app uses MSW (Mock Service Worker) for API mocking. To make it work in production, configure this in the **Vercel dashboard** — do not commit a local `.env.production` file:
 
 1. Go to your Vercel project → "Settings" → "Environment Variables"
 2. Add the following variable:
