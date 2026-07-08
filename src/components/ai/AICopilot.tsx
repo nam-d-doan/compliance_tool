@@ -544,11 +544,11 @@ export function AICopilot() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={openPanel}
-            className="fixed right-4 bottom-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-primary/20 transition-shadow hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/50 sm:right-6 sm:bottom-6"
+            className="fixed right-4 bottom-4 z-40 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-primary/20 transition-shadow hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/50 sm:right-6 sm:bottom-6"
             aria-label="Open AI Copilot"
           >
-            <span className="absolute inset-0 animate-ping rounded-full bg-primary/30 opacity-75" />
-            <Sparkles className="relative size-6" aria-hidden="true" />
+            <span className="absolute inset-0 animate-ping rounded-full bg-primary/20 opacity-50" />
+            <Sparkles className="relative size-5" aria-hidden="true" />
           </motion.button>
         )}
       </AnimatePresence>

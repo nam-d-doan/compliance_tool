@@ -27,6 +27,13 @@ export const API_ENDPOINTS = {
   CAP_TIMELINE: (id: string) => `/api/cap/${id}/timeline`,
   CAP_COMMENTS: (id: string) => `/api/cap/${id}/comments`,
 
+  // NCC (Non-Compliance Case) endpoints
+  NCC_LIST: "/api/ncc",
+  NCC_CREATE: "/api/ncc",
+  NCC_GET: (id: string) => `/api/ncc/${id}`,
+  NCC_UPDATE: (id: string) => `/api/ncc/${id}`,
+  NCC_DELETE: (id: string) => `/api/ncc/${id}`,
+
   // Regulation endpoints
   REGULATION_LIST: "/api/regulations",
   REGULATION_CREATE: "/api/regulations",
@@ -56,6 +63,7 @@ export const API_ENDPOINTS = {
   REPORT_UPDATE: (id: string) => `/api/reports/${id}`,
   REPORT_DELETE: (id: string) => `/api/reports/${id}`,
   REPORT_BY_TYPE: (type: string) => `/api/reports/${type}`,
+  EWS_REPORT: "/api/reports/ews",
 
   // Dashboard endpoints
   DASHBOARD: (role: string) => `/api/dashboard/${role}`,
@@ -74,8 +82,6 @@ export const API_ENDPOINTS = {
   ADMIN_ROLES: "/api/admin/roles",
   ADMIN_ROLE: (id: string) => `/api/admin/roles/${id}`,
   ADMIN_ORG: "/api/admin/organization",
-  ADMIN_TEMPLATES: "/api/admin/templates",
-  ADMIN_TEMPLATE: (id: string) => `/api/admin/templates/${id}`,
   ADMIN_AUDIT_LOGS: "/api/admin/audit-logs",
   ADMIN_AI_CONFIG: "/api/admin/ai-config",
 

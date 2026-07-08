@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores";
 import { useObligationList, useCAPList } from "@/hooks/queries";
 import { getNeedsCapsForOwner } from "@/lib/obligation-helpers";
 import { ROUTES } from "@/constants/routes";
+import { cn } from "@/lib/utils";
 
 /**
  * TopNav button shown to owners: surfaces the count of obligations that need a
@@ -58,7 +59,9 @@ export function NeedsCapNavButton() {
           className="relative"
           aria-label={`Needs CAP — ${count} item${count === 1 ? "" : "s"}`}
         >
-          <ClipboardCheck className="size-5" />
+          <ClipboardCheck
+            className={cn("size-5", count > 0 && "animate-shake")}
+          />
           {count > 0 && (
             <Badge
               variant="destructive"

@@ -1,5 +1,6 @@
 import { http } from "msw";
 import { getDb } from "@/mocks/db";
+import { isOverdueDueDate } from "@/lib/due-date";
 import {
   getDelay,
   jsonResponse,
@@ -17,7 +18,9 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
   const compliance = db.compliance;
   const caps = db.caps;
 
-  const overdue = compliance.filter((i) => i.status === "Overdue").length;
+  const overdue = compliance.filter((i) =>
+    isOverdueDueDate(i.dueDate, ["Completed", "Approved"].includes(i.status)),
+  ).length;
   const pendingApproval = compliance.filter((i) =>
     ["Pending Review", "Submitted"].includes(i.status),
   ).length;
@@ -83,7 +86,12 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           id: "top-risks",
           title: "Top Risks",
           value: compliance.filter(
-            (i) => i.criticality === "critical" && i.status === "Overdue",
+            (i) =>
+              i.criticality === "critical" &&
+              isOverdueDueDate(
+                i.dueDate,
+                ["Completed", "Approved"].includes(i.status),
+              ),
           ).length,
           previousPeriod: 5,
           trend: "down",
@@ -172,7 +180,6 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "Audit Events",
           value: db.auditLogs.length,
         },
-        { id: "templates", title: "Templates", value: db.templates.length },
       ];
     default:
       return common;

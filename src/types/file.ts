@@ -22,10 +22,13 @@ export interface FileAttachment extends BaseEntity {
   uploadedById: string;
   /** Linked CAP ID, when the file belongs to a specific CAP. */
   capId?: string;
+  /** Linked Non-Compliance Case ID, when the file belongs to an NCC. */
+  nccId?: string;
 }
 
 export interface FileFilter {
   capId?: string;
+  nccId?: string;
   /** Fetch a specific set of files by ID (joined comma-separated on the wire). */
   ids?: string[];
   search?: string;

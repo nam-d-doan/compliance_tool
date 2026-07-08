@@ -3,7 +3,6 @@ import { API_ENDPOINTS } from "@/constants/api";
 import type {
   UserProfile,
   RoleEntity,
-  Template,
   AuditLog,
   AIConfig,
   Organization,
@@ -71,35 +70,6 @@ export const AdminService = {
 
   updateOrganization(data: Partial<OrganizationSettings>) {
     return apiPut<OrganizationSettings>(API_ENDPOINTS.ADMIN_ORG, data);
-  },
-
-  templates(
-    page = 1,
-    pageSize = 20,
-    filters: { status?: string; search?: string } = {},
-  ) {
-    const params = new URLSearchParams({
-      page: String(page),
-      pageSize: String(pageSize),
-    });
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.set(key, value);
-    });
-    return apiGet<Paginated<Template>>(
-      `${API_ENDPOINTS.ADMIN_TEMPLATES}?${params.toString()}`,
-    );
-  },
-
-  createTemplate(data: Partial<Template>) {
-    return apiPost<Template>(API_ENDPOINTS.ADMIN_TEMPLATES, data);
-  },
-
-  updateTemplate(id: string, data: Partial<Template>) {
-    return apiPut<Template>(API_ENDPOINTS.ADMIN_TEMPLATE(id), data);
-  },
-
-  deleteTemplate(id: string) {
-    return apiDelete<{ success: boolean }>(API_ENDPOINTS.ADMIN_TEMPLATE(id));
   },
 
   auditLogs(

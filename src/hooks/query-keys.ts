@@ -1,6 +1,7 @@
 import type {
   ComplianceFilter,
   CAPFilter,
+  NCCFilter,
   RegulationFilter,
   ReportFilter,
   AssignmentFilter,
@@ -28,6 +29,14 @@ export const capKeys = {
   detail: (id: string) => [...capKeys.details(), id] as const,
   timeline: (id: string) => [...capKeys.detail(id), "timeline"] as const,
   comments: (id: string) => [...capKeys.detail(id), "comments"] as const,
+};
+
+export const nccKeys = {
+  all: ["ncc"] as const,
+  lists: () => [...nccKeys.all, "list"] as const,
+  list: (filters: NCCFilter) => [...nccKeys.lists(), filters] as const,
+  details: () => [...nccKeys.all, "detail"] as const,
+  detail: (id: string) => [...nccKeys.details(), id] as const,
 };
 
 export const regulationKeys = {
@@ -68,9 +77,10 @@ export const obligationKeys = {
 export const fileKeys = {
   all: ["files"] as const,
   lists: () => [...fileKeys.all, "list"] as const,
-  list: (filters: { capId?: string; search?: string }) =>
+  list: (filters: { capId?: string; nccId?: string; search?: string }) =>
     [...fileKeys.lists(), filters] as const,
   byCap: (capId: string) => [...fileKeys.all, "cap", capId] as const,
+  byNcc: (nccId: string) => [...fileKeys.all, "ncc", nccId] as const,
 };
 
 export const reportKeys = {
@@ -79,14 +89,18 @@ export const reportKeys = {
     [...reportKeys.all, type, filters ?? {}] as const,
 };
 
+export const ewsKeys = {
+  all: ["ews"] as const,
+  report: (filters?: { from?: string; to?: string }) =>
+    [...ewsKeys.all, "report", filters ?? {}] as const,
+};
+
 export const adminKeys = {
   all: ["admin"] as const,
   users: () => [...adminKeys.all, "users"] as const,
   user: (id: string) => [...adminKeys.users(), id] as const,
   roles: () => [...adminKeys.all, "roles"] as const,
   organization: () => [...adminKeys.all, "organization"] as const,
-  templates: () => [...adminKeys.all, "templates"] as const,
-  template: (id: string) => [...adminKeys.templates(), id] as const,
   auditLogs: () => [...adminKeys.all, "audit-logs"] as const,
   aiConfig: () => [...adminKeys.all, "ai-config"] as const,
 };

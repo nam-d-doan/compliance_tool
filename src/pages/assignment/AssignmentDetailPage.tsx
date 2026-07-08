@@ -203,7 +203,7 @@ export default function AssignmentDetailPage() {
     >
       <PageHero
         title={a.title}
-        subtitle={`Assigned to ${a.assignedDepartmentName ?? a.assignedDepartmentId}${a.assignedOfficeName ? ` · ${a.assignedOfficeName}` : ""}`}
+        subtitle={`Assigned to ${(a.assignedDepartmentNames?.length ? a.assignedDepartmentNames : a.assignedDepartmentIds).join(", ")}`}
       >
         <div className="flex flex-col items-end gap-2">
           <Button
@@ -349,15 +349,11 @@ export default function AssignmentDetailPage() {
                     <Fact
                       icon={Building2}
                       label="Department"
-                      value={a.assignedDepartmentName ?? a.assignedDepartmentId}
+                      value={(a.assignedDepartmentNames?.length
+                        ? a.assignedDepartmentNames
+                        : a.assignedDepartmentIds
+                      ).join(", ")}
                     />
-                    {a.assignedOfficeName && (
-                      <Fact
-                        icon={Building2}
-                        label="Office"
-                        value={a.assignedOfficeName}
-                      />
-                    )}
                     <Fact
                       icon={Calendar}
                       label="Due Date"

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-React 19 + TypeScript SPA source. Domain-driven module organization: each business domain (compliance, evidence, cap, license, regulation, reports, admin) has its own types, services, hooks, components, and pages.
+React 19 + TypeScript SPA source. Domain-driven module organization: each business domain (compliance, evidence, cap, ncc, license, regulation, reports, admin) has its own types, services, hooks, components, and pages. The EWS (Early Warning System) report lives under the reports domain and reads NCC data for trending analysis.
 
 ## Ownership
 
@@ -37,7 +37,7 @@ MSW Handlers (mocks/handlers/) → Services (services/) → React Query (hooks/)
 
 - `routes/index.tsx` — single `createBrowserRouter` with lazy-loaded pages.
 - Public: `/login`, `/forgot-password`, `/mfa`.
-- Protected (under `ProtectedRoute` + `MainLayout`): `/dashboard/*`, `/obligations/*`, `/evidence/*`, `/cap/*`, `/license/*`, `/regulation/*`, `/reports/*`, `/admin/*`, `/profile`, `/settings`.
+- Protected (under `ProtectedRoute` + `MainLayout`): `/dashboard/*`, `/obligations/*`, `/evidence/*`, `/cap/*`, `/ncc/*`, `/license/*`, `/regulation/*`, `/reports/*`, `/admin/*`, `/profile`, `/settings`.
 
 ### API Client
 

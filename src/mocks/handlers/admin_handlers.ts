@@ -11,7 +11,6 @@ import {
 import type {
   UserProfile,
   RoleEntity,
-  Template,
   AIConfig,
   OrganizationSettings,
 } from "@/types";
@@ -172,71 +171,6 @@ export async function handleUpdateOrganization({
   return jsonResponse(db.organizationSettings);
 }
 
-export async function handleGetTemplates({ request }: { request: Request }) {
-  await getDelay();
-  const url = new URL(request.url);
-  const q = parseQuery(url);
-  const db = getDb();
-  let items = [...db.templates];
-  if (q.status) items = items.filter((t) => t.status === q.status);
-  if (q.search)
-    items = filterByText(items, q.search, ["title", "category", "ownerName"]);
-  const page = parseNumber(q.page, 1);
-  const pageSize = parseNumber(q.pageSize, 20);
-  return jsonResponse(paginate(items, page, pageSize));
-}
-
-export async function handleCreateTemplate({ request }: { request: Request }) {
-  await getDelay();
-  const body = (await request.json()) as Partial<Template>;
-  const now = new Date().toISOString();
-  const newTemplate: Template = {
-    id: `tmpl-${crypto.randomUUID()}`,
-    title: body.title ?? "New Template",
-    description: body.description ?? "",
-    category: body.category ?? "",
-    frequency: body.frequency ?? "annually",
-    ownerId: body.ownerId ?? "",
-    ownerName: body.ownerName ?? "",
-    approverId: body.approverId ?? "",
-    approverName: body.approverName ?? "",
-    criticality: body.criticality ?? "medium",
-    applicableRegulationIds: body.applicableRegulationIds ?? [],
-    status: body.status ?? "draft",
-    tags: body.tags ?? [],
-    createdAt: now,
-    updatedAt: now,
-  };
-  getDb().templates.unshift(newTemplate);
-  return jsonResponse(newTemplate, 201);
-}
-
-export async function handleUpdateTemplate({
-  params,
-  request,
-}: MockResolverContext) {
-  await getDelay();
-  const db = getDb();
-  const index = db.templates.findIndex((t) => t.id === params.id);
-  if (index === -1) return notFound("Template not found");
-  const body = (await request.json()) as Partial<Template>;
-  db.templates[index] = {
-    ...db.templates[index],
-    ...body,
-    updatedAt: new Date().toISOString(),
-  };
-  return jsonResponse(db.templates[index]);
-}
-
-export async function handleDeleteTemplate({ params }: MockResolverContext) {
-  await getDelay();
-  const db = getDb();
-  const index = db.templates.findIndex((t) => t.id === params.id);
-  if (index === -1) return notFound("Template not found");
-  db.templates.splice(index, 1);
-  return jsonResponse({ success: true });
-}
-
 export async function handleGetAuditLogs({ request }: { request: Request }) {
   await getDelay();
   const url = new URL(request.url);
@@ -284,10 +218,6 @@ export const adminHandlers = [
   http.delete("/api/admin/roles/:id", handleDeleteRole),
   http.get("/api/admin/organization", handleGetOrganization),
   http.put("/api/admin/organization", handleUpdateOrganization),
-  http.get("/api/admin/templates", handleGetTemplates),
-  http.post("/api/admin/templates", handleCreateTemplate),
-  http.put("/api/admin/templates/:id", handleUpdateTemplate),
-  http.delete("/api/admin/templates/:id", handleDeleteTemplate),
   http.get("/api/admin/audit-logs", handleGetAuditLogs),
   http.get("/api/admin/ai-config", handleGetAiConfig),
   http.put("/api/admin/ai-config", handleUpdateAiConfig),

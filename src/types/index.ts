@@ -47,18 +47,27 @@ export type {
   ReportChart,
   ReportType,
   ExecutiveSummary,
+  EWSReport,
 } from "./report";
 export type {
   UserProfile,
   RoleEntity,
   Organization,
-  Template,
   AuditLog,
   AIConfig,
   Permission,
   OrganizationSettings,
-  PenaltyThreshold,
+  HoDepartment,
+  Branch,
 } from "./admin";
+export type {
+  NonComplianceCase,
+  NCCStatus,
+  NCCSeverity,
+  NCCFilter,
+  CreateNCCInput,
+  UpdateNCCInput,
+} from "./ncc";
 export type {
   Assignment,
   CreateAssignmentInput,

@@ -20,6 +20,15 @@ export function useCapFiles(capId: string | undefined) {
   });
 }
 
+export function useNccFiles(nccId: string | undefined) {
+  return useQuery({
+    queryKey: nccId ? fileKeys.byNcc(nccId) : ["files", "ncc", "none"],
+    queryFn: () => FileService.list({ nccId }),
+    enabled: Boolean(nccId),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 /**
  * Fetch files by explicit ID list. Used by the CAP detail page, which knows
  * the linked IDs from the CAP record regardless of whether each file's

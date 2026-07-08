@@ -11,7 +11,10 @@ import {
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useUploadFile, useDeleteFile } from "@/hooks/mutations/useFileMutations";
+import {
+  useUploadFile,
+  useDeleteFile,
+} from "@/hooks/mutations/useFileMutations";
 import type { FileAttachment } from "@/types";
 
 const DEFAULT_MAX_FILES = 5;
@@ -30,6 +33,8 @@ export interface FileUploadComponentProps {
   onFilesChange?: (files: FileAttachment[]) => void;
   /** Link uploads to this CAP when set. */
   capId?: string;
+  /** Link uploads to this NCC when set. */
+  nccId?: string;
   /** Uploader attribution (from the auth store). */
   uploadedBy?: string;
   uploadedById?: string;
@@ -52,6 +57,7 @@ export function FileUploadComponent({
   files,
   onFilesChange,
   capId,
+  nccId,
   uploadedBy,
   uploadedById,
   maxFiles = DEFAULT_MAX_FILES,
@@ -141,7 +147,7 @@ export function FileUploadComponent({
         }, 180);
 
         upload.mutate(
-          { file, capId, uploadedBy, uploadedById },
+          { file, capId, nccId, uploadedBy, uploadedById },
           {
             onSuccess: (attachment) => {
               clearInterval(interval);
@@ -178,6 +184,7 @@ export function FileUploadComponent({
       validate,
       upload,
       capId,
+      nccId,
       uploadedBy,
       uploadedById,
       commit,

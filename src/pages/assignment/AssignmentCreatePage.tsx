@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, Navigate, Link, useSearchParams } from "react-router-dom";
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +7,6 @@ import { z } from "zod";
 import { motion } from "motion/react";
 import { format, addDays } from "date-fns";
 import {
-  ArrowLeft,
   BookOpen,
   Building2,
   Calendar,
@@ -47,15 +47,15 @@ import {
   ErrorState,
 } from "@/components/common";
 import { DetailSkeleton } from "@/components/common/Skeletons";
-import { useRegulationList, useRegulationDetail } from "@/hooks/queries";
+import {
+  useRegulationList,
+  useRegulationDetail,
+  useOrgUnits,
+} from "@/hooks/queries";
 import { useCreateAssignment } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
-import {
-  VIETNAMESE_DEPARTMENTS,
-  getOfficesForDepartment,
-} from "@/constants/departments";
 import { PRIORITY_LEVELS } from "@/constants/status";
 import { toast } from "sonner";
 import type { CreateAssignmentInput, Regulation } from "@/types";
@@ -70,8 +70,9 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(PRIORITIES),
   dueDate: z.string().min(1, "Due date is required"),
-  assignedDepartmentId: z.string().min(1, "Department is required"),
-  assignedOfficeId: z.string().optional(),
+  assignedDepartmentIds: z
+    .array(z.string())
+    .min(1, "At least one department is required"),
   notes: z.string().optional(),
 });
 
@@ -270,6 +271,159 @@ function RegulationPicker({
   );
 }
 
+function isSubsequence(query: string, target: string): boolean {
+  let i = 0;
+  for (let j = 0; j < target.length && i < query.length; j++) {
+    if (query[i] === target[j]) i++;
+  }
+  return i === query.length;
+}
+
+function DepartmentTagInput({
+  value,
+  onChange,
+  invalid,
+}: {
+  value: string[];
+  onChange: (ids: string[]) => void;
+  invalid?: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [popupPos, setPopupPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const { data: orgUnitsData } = useOrgUnits();
+  const departments = orgUnitsData?.hoDepartments ?? [];
+
+  // Position the portal dropdown relative to the wrapper's bounding rect.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPopupPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }, [open]);
+
+  // Close on scroll (so the fixed popup never drifts) and recompute on resize.
+  useEffect(() => {
+    if (!open) return;
+    const onScroll = () => setOpen(false);
+    const onResize = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setPopupPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    window.addEventListener("scroll", onScroll);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return departments.filter((d) => {
+      if (value.includes(d.id)) return false;
+      if (!term) return true;
+      return isSubsequence(term, d.name.toLowerCase());
+    });
+  }, [query, value, departments]);
+
+  const add = (id: string) => {
+    if (value.includes(id)) return;
+    onChange([...value, id]);
+    setQuery("");
+  };
+
+  const remove = (id: string) => {
+    onChange(value.filter((v) => v !== id));
+  };
+
+  return (
+    <div className="space-y-2">
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((id) => {
+            const name = orgUnitsData?.getUnitById(id)?.name ?? id;
+            return (
+              <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                {name}
+                <button
+                  type="button"
+                  onClick={() => remove(id)}
+                  className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                  aria-label={`Remove ${name}`}
+                >
+                  <XCircle className="size-3" aria-hidden="true" />
+                </button>
+              </Badge>
+            );
+          })}
+        </div>
+      )}
+      <div className="relative" ref={containerRef}>
+        <Search
+          className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          placeholder="Search departments to assign..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          className="pl-8"
+          aria-invalid={invalid ? "true" : "false"}
+        />
+        {open &&
+          popupPos &&
+          createPortal(
+            <div
+              style={{
+                position: "fixed",
+                top: popupPos.top,
+                left: popupPos.left,
+                width: popupPos.width,
+                zIndex: 50,
+              }}
+              className="max-h-56 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md"
+            >
+              {filtered.length === 0 ? (
+                <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                  No matching departments.
+                </p>
+              ) : (
+                filtered.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      add(d.id);
+                    }}
+                    className="flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                  >
+                    {d.name}
+                  </button>
+                ))
+              )}
+            </div>,
+            document.body,
+          )}
+      </div>
+    </div>
+  );
+}
+
 export default function AssignmentCreatePage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
@@ -292,6 +446,8 @@ export default function AssignmentCreatePage() {
     200,
   );
 
+  const { data: orgUnitsData } = useOrgUnits();
+
   const {
     register,
     control,
@@ -306,14 +462,10 @@ export default function AssignmentCreatePage() {
       description: "",
       priority: "medium",
       dueDate: defaultDueDate,
-      assignedDepartmentId: "",
-      assignedOfficeId: "",
+      assignedDepartmentIds: [],
       notes: "",
     },
   });
-
-  const departmentId = watch("assignedDepartmentId");
-  const officeOptions = getOfficesForDepartment(departmentId);
 
   // Resolve the selected regulation from either the param or the picker.
   const pickedRegulation = useMemo(
@@ -336,11 +488,6 @@ export default function AssignmentCreatePage() {
     }
   }, [selectedRegulation, setValue]);
 
-  // Clear the office field whenever the department changes.
-  useEffect(() => {
-    setValue("assignedOfficeId", "");
-  }, [departmentId, setValue]);
-
   const createAssignment = useCreateAssignment();
 
   if (!canCreate) {
@@ -355,21 +502,15 @@ export default function AssignmentCreatePage() {
       toast.error("Please select a regulation first");
       return null;
     }
-    const department = VIETNAMESE_DEPARTMENTS.find(
-      (d) => d.id === values.assignedDepartmentId,
-    );
-    const office = values.assignedOfficeId
-      ? officeOptions.find((o) => o.id === values.assignedOfficeId)
-      : undefined;
     return {
       title: values.title,
       description: values.description ?? "",
       regulationId: selectedRegulation.id,
       regulationTitle: selectedRegulation.title,
-      assignedDepartmentId: values.assignedDepartmentId,
-      assignedDepartmentName: department?.name ?? values.assignedDepartmentId,
-      assignedOfficeId: office?.id,
-      assignedOfficeName: office?.name,
+      assignedDepartmentIds: values.assignedDepartmentIds,
+      assignedDepartmentNames: values.assignedDepartmentIds
+        .map((id) => orgUnitsData?.getUnitById(id)?.name)
+        .filter((n): n is string => Boolean(n)),
       priority: values.priority,
       dueDate: new Date(values.dueDate).toISOString(),
       status,
@@ -484,18 +625,6 @@ export default function AssignmentCreatePage() {
                 regulation={selectedRegulation}
                 locked={isRegulationLocked}
               />
-              {!isRegulationLocked && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 text-muted-foreground"
-                  onClick={() => setPickedRegulationId(null)}
-                >
-                  <ArrowLeft className="size-3.5" aria-hidden="true" />
-                  Change regulation
-                </Button>
-              )}
             </motion.div>
           ) : (
             <RegulationPicker
@@ -588,71 +717,26 @@ export default function AssignmentCreatePage() {
                 </div>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="assignedDepartmentId">
-                    Assign Department{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <Controller
-                    name="assignedDepartmentId"
-                    control={control}
-                    render={({ field }) => (
-                      <select
-                        id="assignedDepartmentId"
-                        {...field}
-                        className={selectClass}
-                      >
-                        <option value="">Select department</option>
-                        {VIETNAMESE_DEPARTMENTS.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  />
-                  {errors.assignedDepartmentId && (
-                    <p className="text-xs text-destructive">
-                      {errors.assignedDepartmentId.message}
-                    </p>
+              <div className="space-y-2">
+                <Label htmlFor="assignedDepartmentIds">
+                  Assign Departments <span className="text-destructive">*</span>
+                </Label>
+                <Controller
+                  name="assignedDepartmentIds"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <DepartmentTagInput
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      invalid={Boolean(fieldState.error)}
+                    />
                   )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="assignedOfficeId">
-                    Assign Office{" "}
-                    <span className="text-muted-foreground">(optional)</span>
-                  </Label>
-                  <Controller
-                    name="assignedOfficeId"
-                    control={control}
-                    render={({ field }) => (
-                      <select
-                        id="assignedOfficeId"
-                        {...field}
-                        disabled={officeOptions.length === 0}
-                        className={selectClass}
-                      >
-                        <option value="">
-                          {officeOptions.length === 0
-                            ? "No sub-offices"
-                            : "All offices"}
-                        </option>
-                        {officeOptions.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  />
-                  {officeOptions.length === 0 && departmentId && (
-                    <p className="text-xs text-muted-foreground">
-                      This department has no sub-offices.
-                    </p>
-                  )}
-                </div>
+                />
+                {errors.assignedDepartmentIds && (
+                  <p className="text-xs text-destructive">
+                    {errors.assignedDepartmentIds.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

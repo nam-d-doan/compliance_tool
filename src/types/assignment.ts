@@ -8,10 +8,8 @@ export interface Assignment {
   regulationTitle?: string;
   assignorId: string;
   assignorName?: string;
-  assignedDepartmentId: string;
-  assignedDepartmentName?: string;
-  assignedOfficeId?: string;
-  assignedOfficeName?: string;
+  assignedDepartmentIds: string[];
+  assignedDepartmentNames?: string[];
   status: AssignmentStatus;
   priority: PriorityLevel;
   dueDate: string;
@@ -27,10 +25,8 @@ export interface CreateAssignmentInput {
   description?: string;
   regulationId: string;
   regulationTitle?: string;
-  assignedDepartmentId: string;
-  assignedDepartmentName?: string;
-  assignedOfficeId?: string;
-  assignedOfficeName?: string;
+  assignedDepartmentIds: string[];
+  assignedDepartmentNames?: string[];
   priority: PriorityLevel;
   dueDate: string;
   status: AssignmentStatus;
@@ -41,7 +37,6 @@ export interface AssignmentFilter {
   status?: AssignmentStatus | AssignmentStatus[];
   priority?: PriorityLevel | PriorityLevel[];
   department?: string;
-  office?: string;
   assignor?: string;
   regulation?: string;
   dueDateFrom?: string;

@@ -26,6 +26,13 @@ import {
   handleCreateCapComment,
 } from "./handlers/cap_handlers";
 import {
+  handleGetNCCList,
+  handleGetNCCDetail,
+  handleCreateNCC,
+  handleUpdateNCC,
+  handleDeleteNCC,
+} from "./handlers/ncc_handlers";
+import {
   handleGetRegulationList,
   handleGetRegulationDetail,
   handleCreateRegulation,
@@ -45,6 +52,7 @@ import {
   handleDeleteRegulationDependency,
 } from "./handlers/regulation_handlers";
 import { handleGetReport } from "./handlers/report_handlers";
+import { handleGetEWSReport } from "./handlers/ews_handlers";
 import {
   handleGetNotifications,
   handleMarkNotificationRead,
@@ -62,10 +70,6 @@ import {
   handleDeleteRole,
   handleGetOrganization,
   handleUpdateOrganization,
-  handleGetTemplates,
-  handleCreateTemplate,
-  handleUpdateTemplate,
-  handleDeleteTemplate,
   handleGetAuditLogs,
   handleGetAiConfig,
   handleUpdateAiConfig,
@@ -189,6 +193,13 @@ const routes: Route[] = [
   { methods: ["GET"], pattern: "/api/cap/:id", handler: handleGetCapDetail },
   { methods: ["PUT"], pattern: "/api/cap/:id", handler: handleUpdateCap },
   { methods: ["DELETE"], pattern: "/api/cap/:id", handler: handleDeleteCap },
+
+  // NCC
+  { methods: ["GET"], pattern: "/api/ncc", handler: handleGetNCCList },
+  { methods: ["POST"], pattern: "/api/ncc", handler: handleCreateNCC },
+  { methods: ["GET"], pattern: "/api/ncc/:id", handler: handleGetNCCDetail },
+  { methods: ["PUT"], pattern: "/api/ncc/:id", handler: handleUpdateNCC },
+  { methods: ["DELETE"], pattern: "/api/ncc/:id", handler: handleDeleteNCC },
 
   // Regulation
   {
@@ -355,7 +366,12 @@ const routes: Route[] = [
     handler: handleDeleteFile,
   },
 
-  // Reports
+  // Reports — literal ews path must precede :type.
+  {
+    methods: ["GET"],
+    pattern: "/api/reports/ews",
+    handler: handleGetEWSReport,
+  },
   { methods: ["GET"], pattern: "/api/reports/:type", handler: handleGetReport },
 
   // Notifications
@@ -387,16 +403,6 @@ const routes: Route[] = [
     methods: ["GET"],
     pattern: "/api/admin/organization",
     handler: handleGetOrganization,
-  },
-  {
-    methods: ["GET"],
-    pattern: "/api/admin/templates",
-    handler: handleGetTemplates,
-  },
-  {
-    methods: ["POST"],
-    pattern: "/api/admin/templates",
-    handler: handleCreateTemplate,
   },
   {
     methods: ["GET"],
@@ -432,16 +438,6 @@ const routes: Route[] = [
     methods: ["PUT"],
     pattern: "/api/admin/organization",
     handler: handleUpdateOrganization,
-  },
-  {
-    methods: ["PUT"],
-    pattern: "/api/admin/templates/:id",
-    handler: handleUpdateTemplate,
-  },
-  {
-    methods: ["DELETE"],
-    pattern: "/api/admin/templates/:id",
-    handler: handleDeleteTemplate,
   },
   {
     methods: ["PUT"],

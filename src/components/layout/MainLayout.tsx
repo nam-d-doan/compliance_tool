@@ -26,13 +26,13 @@ export function MainLayout() {
     <>
       <SidebarProvider defaultOpen>
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="min-w-0">
           <TopNav />
-          <div className="flex flex-1 flex-col min-h-0">
+          <div className="flex flex-1 flex-col min-h-0 min-w-0">
             <div className="border-b bg-background px-6 py-3 flex-shrink-0">
               <Breadcrumb />
             </div>
-            <main className="flex-1 overflow-auto p-6 min-w-0">
+            <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-6 pb-24">
               <Suspense fallback={<PageSkeleton />}>
                 <Outlet />
               </Suspense>

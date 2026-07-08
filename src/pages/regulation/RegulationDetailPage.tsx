@@ -21,7 +21,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ExternalLink,
-  ClipboardList,
+  ClipboardCheck,
   ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -803,9 +803,9 @@ export default function RegulationDetailPage() {
                 AI Summary
               </Button>
               <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link to={`/obligations/create?regulationId=${item.id}`}>
-                  <ClipboardList className="size-4" aria-hidden="true" />
-                  Create Obligations
+                <Link to={`/assignment/create?regulationId=${item.id}`}>
+                  <ClipboardCheck className="size-4" aria-hidden="true" />
+                  Create Review Assignment
                 </Link>
               </Button>
             </CardContent>

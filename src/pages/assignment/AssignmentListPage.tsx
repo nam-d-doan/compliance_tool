@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { format, isBefore, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   PlusCircle,
   Pencil,
   BookOpen,
   Ban,
   ArrowRight,
-  Filter,
+  Search,
   X,
   ChevronDown,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -32,32 +38,23 @@ import {
   EmptyState,
   ListSkeleton,
 } from "@/components/common";
-import { useAssignmentList } from "@/hooks/queries";
+import { DueDateCell } from "@/components/common/DueDateCell";
+import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
+import { useAssignmentList, useOrgUnits } from "@/hooks/queries";
 import { useBulkUpdateAssignments } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
-import {
-  VIETNAMESE_DEPARTMENTS,
-  getOfficesForDepartment,
-} from "@/constants/departments";
 import { ASSIGNMENT_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
-import type { Assignment } from "@/types";
 import type { AssignmentStatus, PriorityLevel } from "@/constants/status";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { DUE_DATE_COLOR_GUIDE, isOverdueDueDate } from "@/lib/due-date";
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 const STATUS_OPTIONS = ASSIGNMENT_STATUSES as readonly AssignmentStatus[];
-
-function isOverdue(a: Assignment): boolean {
-  return (
-    isBefore(new Date(a.dueDate), new Date()) &&
-    !["completed", "cancelled"].includes(a.status)
-  );
-}
 
 export default function AssignmentListPage() {
   const { role, user } = useAuthStore();
@@ -82,7 +79,6 @@ export default function AssignmentListPage() {
   const [department, setDepartment] = useState(
     searchParams.get("department") ?? "",
   );
-  const [office, setOffice] = useState(searchParams.get("office") ?? "");
   const [dueDateFrom, setDueDateFrom] = useState(
     searchParams.get("dueDateFrom") ?? "",
   );
@@ -91,17 +87,19 @@ export default function AssignmentListPage() {
   );
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
 
+  // Column sort: asc → desc → none. null = handler default (newest-first).
+  const [sort, setSort] = useState<{
+    field: string;
+    direction: SortDirection;
+  } | null>(null);
+  const handleSort = (field: string) =>
+    setSort((prev) => {
+      if (prev?.field !== field) return { field, direction: "asc" };
+      if (prev.direction === "asc") return { field, direction: "desc" };
+      return null;
+    });
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  // Office options depend on the chosen department
-  const officeOptions = getOfficesForDepartment(department);
-
-  // Clear office when department changes
-  useEffect(() => {
-    if (office && !officeOptions.some((o) => o.id === office)) {
-      setOffice("");
-    }
-  }, [officeOptions, office]);
 
   // Sync filters back to URL (so links can be shared)
   useEffect(() => {
@@ -109,28 +107,28 @@ export default function AssignmentListPage() {
     if (statuses.length) params.set("status", statuses.join(","));
     if (priority) params.set("priority", priority);
     if (department) params.set("department", department);
-    if (office) params.set("office", office);
     if (dueDateFrom) params.set("dueDateFrom", dueDateFrom);
     if (dueDateTo) params.set("dueDateTo", dueDateTo);
     if (search) params.set("q", search);
     setSearchParams(params, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statuses, priority, department, office, dueDateFrom, dueDateTo, search]);
+  }, [statuses, priority, department, dueDateFrom, dueDateTo, search]);
 
   const filters = useMemo(
     () => ({
       status: statuses.length ? statuses : undefined,
       priority: priority || undefined,
       department: department || undefined,
-      office: office || undefined,
       dueDateFrom: dueDateFrom || undefined,
       dueDateTo: dueDateTo || undefined,
       search: search || undefined,
+      ...(sort ? { sortField: sort.field, sortDirection: sort.direction } : {}),
     }),
-    [statuses, priority, department, office, dueDateFrom, dueDateTo, search],
+    [statuses, priority, department, dueDateFrom, dueDateTo, search, sort],
   );
 
   const { data, isLoading, isFetching } = useAssignmentList(filters, 1, 100);
+  const { data: orgUnitsData } = useOrgUnits();
   const assignments = data?.items ?? [];
 
   const bulk = useBulkUpdateAssignments(filters);
@@ -139,7 +137,6 @@ export default function AssignmentListPage() {
     statuses.length > 0 ||
     priority !== "" ||
     department !== "" ||
-    office !== "" ||
     dueDateFrom !== "" ||
     dueDateTo !== "" ||
     search !== "";
@@ -148,7 +145,6 @@ export default function AssignmentListPage() {
     setStatuses([]);
     setPriority("");
     setDepartment("");
-    setOffice("");
     setDueDateFrom("");
     setDueDateTo("");
     setSearch("");
@@ -242,150 +238,130 @@ export default function AssignmentListPage() {
       </PageHero>
 
       <Card>
-        <CardContent className="space-y-4 pt-6">
-          {/* Filter bar */}
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter
-                className="size-4 text-muted-foreground"
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Filters</CardTitle>
+          {hasActiveFilters && (
+            <CardAction>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={clearFilters}
+              >
+                <X className="size-3" aria-hidden="true" />
+                Clear all
+              </Button>
+            </CardAction>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search */}
+            <div className="relative min-w-[12rem] flex-1">
+              <Search
+                className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden="true"
               />
-              <span className="text-sm font-medium text-muted-foreground">
-                Filters
-              </span>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={clearFilters}
-                >
-                  <X className="size-3" aria-hidden="true" />
-                  Clear all
-                </Button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Status multiselect */}
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  className={cn(
-                    selectClass,
-                    "flex w-full items-center justify-between",
-                  )}
-                >
-                  <span className="truncate">
-                    {statuses.length === 0
-                      ? "All statuses"
-                      : statuses.length === 1
-                        ? statuses[0]
-                        : `${statuses.length} statuses`}
-                  </span>
-                  <ChevronDown
-                    className="size-4 opacity-60"
-                    aria-hidden="true"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {STATUS_OPTIONS.map((s) => (
-                    <DropdownMenuItem
-                      key={s}
-                      onClick={() => toggleStatus(s)}
-                      className="gap-2 capitalize"
-                    >
-                      <Checkbox checked={statuses.includes(s)} />
-                      {s.replace(/_/g, " ")}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Priority */}
-              <select
-                value={priority}
-                onChange={(e) =>
-                  setPriority(e.target.value as PriorityLevel | "")
-                }
-                className={cn(selectClass, "w-full")}
-              >
-                <option value="">All priorities</option>
-                {PRIORITY_LEVELS.map((p) => (
-                  <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </option>
-                ))}
-              </select>
-
-              {/* Department */}
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className={cn(selectClass, "w-full")}
-              >
-                <option value="">All departments</option>
-                {VIETNAMESE_DEPARTMENTS.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Office */}
-              <select
-                value={office}
-                onChange={(e) => setOffice(e.target.value)}
-                disabled={officeOptions.length === 0}
-                className={cn(selectClass, "w-full")}
-              >
-                <option value="">
-                  {officeOptions.length === 0
-                    ? "No sub-offices"
-                    : "All offices"}
-                </option>
-                {officeOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Due from
-                </label>
-                <input
-                  type="date"
-                  value={dueDateFrom}
-                  onChange={(e) => setDueDateFrom(e.target.value)}
-                  className={cn(selectClass, "w-full")}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Due to
-                </label>
-                <input
-                  type="date"
-                  value={dueDateTo}
-                  onChange={(e) => setDueDateTo(e.target.value)}
-                  className={cn(selectClass, "w-full")}
-                />
-              </div>
               <input
                 type="text"
                 placeholder="Search assignments..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={cn(selectClass, "w-full")}
+                className={cn(selectClass, "w-full pl-9")}
+              />
+            </div>
+
+            {/* Status multiselect */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  selectClass,
+                  "flex min-w-[10rem] items-center justify-between",
+                )}
+              >
+                <span className="truncate">
+                  {statuses.length === 0
+                    ? "All statuses"
+                    : statuses.length === 1
+                      ? statuses[0]
+                      : `${statuses.length} statuses`}
+                </span>
+                <ChevronDown className="size-4 opacity-60" aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {STATUS_OPTIONS.map((s) => (
+                  <DropdownMenuItem
+                    key={s}
+                    closeOnClick={false}
+                    onClick={() => toggleStatus(s)}
+                    className="gap-2 capitalize"
+                  >
+                    <Checkbox
+                      checked={statuses.includes(s)}
+                      className="pointer-events-none"
+                    />
+                    {s.replace(/_/g, " ")}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Priority */}
+            <select
+              value={priority}
+              onChange={(e) =>
+                setPriority(e.target.value as PriorityLevel | "")
+              }
+              className={cn(selectClass, "min-w-[10rem]")}
+            >
+              <option value="">All priorities</option>
+              {PRIORITY_LEVELS.map((p) => (
+                <option key={p} value={p}>
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </option>
+              ))}
+            </select>
+
+            {/* Department */}
+            <select
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              className={cn(selectClass, "min-w-[10rem]")}
+            >
+              <option value="">All departments</option>
+              {(orgUnitsData?.hoDepartments ?? []).map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Due date range */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={dueDateFrom}
+                onChange={(e) => setDueDateFrom(e.target.value)}
+                className={cn(selectClass, "w-auto")}
+                aria-label="Due from"
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <input
+                type="date"
+                value={dueDateTo}
+                onChange={(e) => setDueDateTo(e.target.value)}
+                className={cn(selectClass, "w-auto")}
+                aria-label="Due to"
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
 
+      <Card>
+        <CardContent className="space-y-4 pt-6">
           {/* Bulk action bar */}
           {canUpdate && selected.size > 0 && (
             <motion.div
@@ -482,21 +458,60 @@ export default function AssignmentListPage() {
                         />
                       </th>
                     )}
-                    <th className="px-3 py-2.5 font-medium">Title</th>
+                    <SortableTh
+                      label="Title"
+                      field="title"
+                      sort={sort}
+                      onSort={handleSort}
+                      tooltip="Sort by title"
+                      className="px-3 py-2.5"
+                    />
                     <th className="hidden px-3 py-2.5 font-medium md:table-cell">
                       Regulation
                     </th>
                     <th className="hidden px-3 py-2.5 font-medium lg:table-cell">
-                      Department / Office
+                      Department
                     </th>
-                    <th className="px-3 py-2.5 font-medium">Status</th>
-                    <th className="hidden px-3 py-2.5 font-medium sm:table-cell">
-                      Priority
-                    </th>
-                    <th className="px-3 py-2.5 font-medium">Due Date</th>
-                    <th className="hidden px-3 py-2.5 font-medium xl:table-cell">
-                      Assignor
-                    </th>
+                    <SortableTh
+                      label="Status"
+                      field="status"
+                      sort={sort}
+                      onSort={handleSort}
+                      tooltip="Sort by status"
+                      className="px-3 py-2.5"
+                    />
+                    <SortableTh
+                      label="Priority"
+                      field="priority"
+                      sort={sort}
+                      onSort={handleSort}
+                      tooltip="Sort by priority"
+                      className="hidden px-3 py-2.5 sm:table-cell"
+                    />
+                    <SortableTh
+                      label="Due Date"
+                      field="dueDate"
+                      sort={sort}
+                      onSort={handleSort}
+                      tooltip={DUE_DATE_COLOR_GUIDE}
+                      className="px-3 py-2.5"
+                    />
+                    <SortableTh
+                      label="Assignor"
+                      field="assignor"
+                      sort={sort}
+                      onSort={handleSort}
+                      tooltip="Sort by assignor name"
+                      className="hidden px-3 py-2.5 xl:table-cell"
+                    />
+                    <SortableTh
+                      label="Created"
+                      field="createdDate"
+                      sort={sort}
+                      onSort={handleSort}
+                      tooltip="Sort by created date"
+                      className="hidden px-3 py-2.5 xl:table-cell"
+                    />
                     <th className="w-10 px-3 py-2.5 text-right font-medium">
                       Actions
                     </th>
@@ -504,7 +519,8 @@ export default function AssignmentListPage() {
                 </thead>
                 <tbody>
                   {assignments.map((a) => {
-                    const overdue = isOverdue(a);
+                    const done = ["completed", "cancelled"].includes(a.status);
+                    const overdue = isOverdueDueDate(a.dueDate, done);
                     const isCreator = a.assignorId === user?.id;
                     const rowSelected = selected.has(a.id);
                     return (
@@ -551,16 +567,9 @@ export default function AssignmentListPage() {
                           </Link>
                         </td>
                         <td className="hidden px-3 py-3 lg:table-cell">
-                          <div className="text-xs">
-                            <div className="font-medium text-foreground">
-                              {a.assignedDepartmentName ??
-                                a.assignedDepartmentId}
-                            </div>
-                            {a.assignedOfficeName && (
-                              <div className="text-muted-foreground">
-                                {a.assignedOfficeName}
-                              </div>
-                            )}
+                          <div className="text-xs font-medium text-foreground">
+                            {(a.assignedDepartmentNames ?? []).join(", ") ||
+                              "—"}
                           </div>
                         </td>
                         <td className="px-3 py-3">
@@ -570,19 +579,13 @@ export default function AssignmentListPage() {
                           <PriorityBadge priority={a.priority} size="sm" />
                         </td>
                         <td className="px-3 py-3">
-                          <span
-                            className={cn(
-                              "text-xs",
-                              overdue
-                                ? "font-semibold text-red-600 dark:text-red-400"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {format(parseISO(a.dueDate), "MMM d, yyyy")}
-                          </span>
+                          <DueDateCell dueDate={a.dueDate} completed={done} />
                         </td>
                         <td className="hidden px-3 py-3 text-xs text-muted-foreground xl:table-cell">
                           {a.assignorName ?? a.assignorId}
+                        </td>
+                        <td className="hidden px-3 py-3 text-xs text-muted-foreground xl:table-cell">
+                          {format(parseISO(a.createdDate), "MMM d, yyyy")}
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex items-center justify-end gap-1">

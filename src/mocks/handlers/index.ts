@@ -1,8 +1,10 @@
 import { authHandlers } from "./auth_handlers";
 import { complianceHandlers } from "./compliance_handlers";
 import { capHandlers } from "./cap_handlers";
+import { nccHandlers } from "./ncc_handlers";
 import { regulationHandlers } from "./regulation_handlers";
 import { reportHandlers } from "./report_handlers";
+import { ewsHandlers } from "./ews_handlers";
 import { adminHandlers } from "./admin_handlers";
 import { dashboardHandlers } from "./dashboard_handlers";
 import { notificationHandlers } from "./notification_handlers";
@@ -17,7 +19,9 @@ export const handlers = [
   ...authHandlers,
   ...complianceHandlers,
   ...capHandlers,
+  ...nccHandlers,
   ...regulationHandlers,
+  ...ewsHandlers,
   ...reportHandlers,
   ...adminHandlers,
   ...dashboardHandlers,

@@ -23,16 +23,22 @@ export const FileService = {
   },
 
   /**
-   * Upload a single file. The caller may pass `capId` to link the attachment
-   * to a CAP and `uploadedBy`/`uploadedById` for attribution.
+   * Upload a single file. The caller may pass `capId`/`nccId` to link the
+   * attachment to a CAP/NCC and `uploadedBy`/`uploadedById` for attribution.
    */
   upload(
     file: File,
-    meta: { capId?: string; uploadedBy?: string; uploadedById?: string } = {},
+    meta: {
+      capId?: string;
+      nccId?: string;
+      uploadedBy?: string;
+      uploadedById?: string;
+    } = {},
   ) {
     const form = new FormData();
     form.append("file", file);
     if (meta.capId) form.append("capId", meta.capId);
+    if (meta.nccId) form.append("nccId", meta.nccId);
     if (meta.uploadedBy) form.append("uploadedBy", meta.uploadedBy);
     if (meta.uploadedById) form.append("uploadedById", meta.uploadedById);
     return apiUpload<FileAttachment>(API_ENDPOINTS.FILE_UPLOAD, form);

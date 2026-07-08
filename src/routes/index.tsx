@@ -48,13 +48,13 @@ const ObligationDetailPage = lazy(
 const ObligationCreatePage = lazy(
   () => import("@/pages/obligations/ObligationCreatePage"),
 );
-const ObligationHistoryPage = lazy(
-  () => import("@/pages/obligations/ObligationHistoryPage"),
-);
 const CAPDashboardPage = lazy(() => import("@/pages/cap/CAPDashboardPage"));
 const CAPListPage = lazy(() => import("@/pages/cap/CAPListPage"));
 const CAPDetailPage = lazy(() => import("@/pages/cap/CAPDetailPage"));
 const CAPCreatePage = lazy(() => import("@/pages/cap/CAPCreatePage"));
+const NCCListPage = lazy(() => import("@/pages/ncc/NCCListPage"));
+const NCCDetailPage = lazy(() => import("@/pages/ncc/NCCDetailPage"));
+const NCCCreatePage = lazy(() => import("@/pages/ncc/NCCCreatePage"));
 const RegulationLibraryPage = lazy(
   () => import("@/pages/regulation/RegulationLibraryPage"),
 );
@@ -93,13 +93,11 @@ const ReportsCAPPage = lazy(() => import("@/pages/reports/ReportsCAPPage"));
 const ReportsExecutivePage = lazy(
   () => import("@/pages/reports/ReportsExecutivePage"),
 );
+const EWSReportPage = lazy(() => import("@/pages/reports/EWSReportPage"));
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
 const AdminRolesPage = lazy(() => import("@/pages/admin/AdminRolesPage"));
 const AdminOrganizationPage = lazy(
   () => import("@/pages/admin/AdminOrganizationPage"),
-);
-const AdminTemplatesPage = lazy(
-  () => import("@/pages/admin/AdminTemplatesPage"),
 );
 const AdminAuditLogsPage = lazy(
   () => import("@/pages/admin/AdminAuditLogsPage"),
@@ -157,13 +155,16 @@ export const router = createBrowserRouter([
 
           route("/obligations", <ObligationListPage />, "Obligations"),
           route("/obligations/create", <ObligationCreatePage />, "Create"),
-          route("/obligations/history", <ObligationHistoryPage />, "History"),
           route("/obligations/:id", <ObligationDetailPage />, "Detail"),
 
           route("/cap", <CAPDashboardPage />, "Corrective Actions"),
           route("/cap/list", <CAPListPage />, "All CAPs"),
           route("/cap/create", <CAPCreatePage />, "Create CAP"),
           route("/cap/:id", <CAPDetailPage />, "Detail"),
+
+          route("/ncc/list", <NCCListPage />, "All NCCs"),
+          route("/ncc/create", <NCCCreatePage />, "Create NCC"),
+          route("/ncc/:id", <NCCDetailPage />, "NCC Detail"),
 
           route("/regulation", <RegulationLibraryPage />, "Regulations"),
           route("/regulation/create", <RegulationCreatePage />, "Create"),
@@ -189,6 +190,7 @@ export const router = createBrowserRouter([
             <ReportsExecutivePage />,
             "Executive Reports",
           ),
+          route("/reports/ews", <EWSReportPage />, "Early Warning System"),
 
           route("/admin/users", <AdminUsersPage />, "Users"),
           route("/admin/roles", <AdminRolesPage />, "Roles"),
@@ -197,7 +199,6 @@ export const router = createBrowserRouter([
             <AdminOrganizationPage />,
             "Organization",
           ),
-          route("/admin/templates", <AdminTemplatesPage />, "Templates"),
           route("/admin/audit-logs", <AdminAuditLogsPage />, "Audit Logs"),
           route("/admin/ai-config", <AdminAIConfigPage />, "AI Config"),
 

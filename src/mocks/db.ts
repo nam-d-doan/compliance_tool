@@ -13,7 +13,6 @@ import type {
   UserProfile,
   RoleEntity,
   Organization,
-  Template,
   AuditLog,
   AIConfig,
   OrganizationSettings,
@@ -32,6 +31,7 @@ import type {
   AssignmentTimelineEvent,
   Obligation,
   FileAttachment,
+  NonComplianceCase,
 } from "@/types";
 
 faker.seed(42);
@@ -578,10 +578,9 @@ function generateComplianceObligations(
       !["Completed", "Approved", "Archived"].includes(status)
     ) {
       status = weightedPick<ComplianceObligation["status"]>([
-        { item: "Overdue", weight: 50 },
-        { item: "Pending Review", weight: 20 },
-        { item: "Submitted", weight: 20 },
-        { item: "Rejected", weight: 10 },
+        { item: "Pending Review", weight: 40 },
+        { item: "Submitted", weight: 35 },
+        { item: "Rejected", weight: 25 },
       ]);
     }
     if (isAfter(dueDate, addDays(today, 14)) && faker.datatype.boolean(0.3)) {
@@ -723,8 +722,8 @@ function generateObligations(
       articleRef: `Điều ${articleNumber}`,
       title: `${theme} — ${faker.company.buzzPhrase()}`,
       description: faker.lorem.paragraph(2),
-      ownerDepartmentId: assignment.assignedDepartmentId,
-      ownerDepartmentName: assignment.assignedDepartmentName,
+      ownerDepartmentId: assignment.assignedDepartmentIds[0] ?? "",
+      ownerDepartmentName: assignment.assignedDepartmentNames?.[0],
       ownerId: owner.id,
       ownerName: owner.name,
       dueDate: iso(dueDate),
@@ -765,7 +764,6 @@ function generateCAPs(
     const status = isBefore(dueDate, today)
       ? weightedPick<CAP["status"]>([
           { item: "Closed", weight: 40 },
-          { item: "Overdue", weight: 35 },
           { item: "In Progress", weight: 20 },
           { item: "Open", weight: 5 },
         ])
@@ -913,6 +911,146 @@ function generateFiles(caps: CAP[]): FileAttachment[] {
   return files;
 }
 
+const NCC_TITLES = [
+  "Failure to submit monthly AML report",
+  "Incomplete KYC documentation for corporate client",
+  "Delayed regulatory filing",
+  "Breach of transaction monitoring thresholds",
+  "Missing risk assessment for high-value transaction",
+  "Non-compliance with capital adequacy reporting",
+  "Failure to conduct periodic compliance training",
+  "Inadequate customer due diligence records",
+  "Late submission of suspicious activity report",
+  "Violation of sanctions screening requirements",
+  "Incomplete regulatory capital disclosure",
+  "Failure to report large cash transactions",
+  "Non-compliance with data retention policy",
+  "Missing board-approved risk management policy",
+  "Breach of lending limit regulations",
+  "Inadequate internal controls over financial reporting",
+  "Failure to reconcile regulatory accounts",
+  "Non-compliance with foreign exchange reporting",
+  "Missing anti-bribery compliance certification",
+  "Delayed implementation of regulatory directive",
+  "Breach of customer information confidentiality",
+  "Inadequate whistleblower protection procedures",
+  "Failure to maintain minimum reserve requirements",
+  "Non-compliance with consumer protection regulations",
+] as const;
+
+const NCC_TAGS = [
+  "audit",
+  "regulatory",
+  "operational",
+  "procedural",
+  "systemic",
+] as const;
+
+const NCC_RESOLUTIONS = [
+  "Root cause identified and corrective action plan implemented. Staff retrained on reporting procedures.",
+  "Process updated to include automated reminders. All missing documentation retrieved and filed.",
+  "Policy revised and approved by the compliance committee. Monitoring controls strengthened.",
+  "Issue remediated through system upgrade. Post-implementation review confirmed compliance.",
+  "Control deficiency addressed via additional review layer. No recurrence observed in subsequent audits.",
+  "Regulatory filing completed with explanatory note. Preventive controls deployed to avoid future delays.",
+] as const;
+
+function generateNCCs(
+  organizationSettings: OrganizationSettings,
+  users: UserProfile[],
+  count = 24,
+): NonComplianceCase[] {
+  const { hoDepartments, branches } = organizationSettings;
+  const items = Array.from({ length: count }, (_, i) => {
+    // ~40% HO department, ~60% branch.
+    const isHo = faker.number.float({ min: 0, max: 1 }) < 0.4;
+    const unit = isHo
+      ? { dept: pick(hoDepartments), branch: undefined }
+      : { dept: undefined, branch: pick(branches) };
+    const ownerUnitId = unit.branch?.id ?? unit.dept!.id;
+    const ownerUnitName = unit.branch?.name ?? unit.dept!.name;
+    const ownerUnitType: NonComplianceCase["ownerUnitType"] = unit.branch
+      ? "branch"
+      : "ho_department";
+    const ownerUnitRegion = unit.branch?.region;
+
+    const owner = pick(users);
+    const createdAt = randomDate(subDays(today, 200), subDays(today, 3));
+    const status: NonComplianceCase["status"] = weightedPick([
+      { item: "Open", weight: 65 },
+      { item: "Closed", weight: 35 },
+    ]);
+
+    // Due dates: for Open cases ~40% past due (overdue), rest today/future.
+    // For Closed cases, due date can be anything.
+    let dueDate: Date;
+    if (status === "Open" && faker.number.float({ min: 0, max: 1 }) < 0.4) {
+      dueDate = subDays(today, faker.number.int({ min: 1, max: 30 }));
+    } else if (status === "Open") {
+      dueDate = addDays(today, faker.number.int({ min: 0, max: 90 }));
+    } else {
+      dueDate = addDays(createdAt, faker.number.int({ min: 10, max: 120 }));
+    }
+
+    const fileIds: string[] =
+      faker.number.float({ min: 0, max: 1 }) < 0.3
+        ? Array.from(
+            { length: faker.number.int({ min: 1, max: 2 }) },
+            () => `file-${crypto.randomUUID()}`,
+          )
+        : [];
+
+    const tags: string[] =
+      faker.number.float({ min: 0, max: 1 }) < 0.4
+        ? faker.helpers.arrayElements(
+            NCC_TAGS,
+            faker.number.int({ min: 1, max: 2 }),
+          )
+        : [];
+
+    const linkedDocs: string | undefined =
+      faker.number.float({ min: 0, max: 1 }) < 0.2
+        ? `See compliance report Q${faker.number.int({ min: 1, max: 4 })}-${today.getFullYear()}`
+        : undefined;
+
+    const closedAt =
+      status === "Closed" ? iso(randomDate(createdAt, today)) : undefined;
+    const resolution = status === "Closed" ? pick(NCC_RESOLUTIONS) : undefined;
+
+    return {
+      id: uid("ncc"),
+      nccId: `NCC-${today.getFullYear()}-${pad(i + 1)}`,
+      title: pick(NCC_TITLES),
+      description: faker.lorem.sentences(2),
+      severity: faker.helpers.weightedArrayElement([
+        { weight: 25, value: "low" },
+        { weight: 35, value: "medium" },
+        { weight: 30, value: "high" },
+        { weight: 10, value: "critical" },
+      ]),
+      ownerUnitId,
+      ownerUnitName,
+      ownerUnitType,
+      ownerUnitRegion,
+      ownerId: owner.id,
+      ownerName: owner.name,
+      dueDate: iso(dueDate),
+      status,
+      resolution,
+      fileIds,
+      linkedDocs,
+      closedAt,
+      tags,
+      createdAt: iso(createdAt),
+      updatedAt: iso(randomDate(createdAt, today)),
+    };
+  });
+
+  // Newest first.
+  items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return items;
+}
+
 function generateNotifications(
   users: UserProfile[],
   count = 30,
@@ -1036,40 +1174,6 @@ function generateOrganizations(): Organization[] {
   }));
 }
 
-function generateTemplates(
-  regulations: Regulation[],
-  users: UserProfile[],
-  count = 15,
-): Template[] {
-  return Array.from({ length: count }, (_, i) => {
-    const owner = pick(users.filter((u) => u.role === "owner"));
-    const approver = pick(
-      users.filter((u) => u.role === "approver" || u.role === "admin"),
-    );
-    const regulation = pick(regulations);
-    return {
-      id: uid("tmpl"),
-      title: `${pick(CATEGORIES)} Template ${i + 1}`,
-      description: faker.lorem.paragraph(),
-      category: regulation.category,
-      frequency: pick(FREQUENCIES),
-      ownerId: owner.id,
-      ownerName: owner.name,
-      approverId: approver.id,
-      approverName: approver.name,
-      criticality: pick(PRIORITY_LEVELS),
-      applicableRegulationIds: [regulation.id],
-      status: pick(["draft", "published", "archived"]),
-      tags: faker.helpers.arrayElements(
-        ["aml", "kyc", "privacy", "cyber", "reporting", "consumer", "risk"],
-        { min: 1, max: 3 },
-      ),
-      createdAt: iso(subDays(today, 200)),
-      updatedAt: iso(subDays(today, 20)),
-    };
-  });
-}
-
 function generateAIConfig(): AIConfig {
   return {
     id: "ai-config-1",
@@ -1091,49 +1195,42 @@ function generateOrganizationSettings(): OrganizationSettings {
     name: "Acme Financial Services",
     industry: "Financial Services",
     jurisdictions: [
-      "United States",
-      "United Kingdom",
+      "Vietnam",
+      "Laos",
+      "Cambodia",
       "Singapore",
+      "Malaysia",
+      "Indonesia",
+      "China",
       "Hong Kong",
+      "Taiwan",
+      "South Korea",
+      "Japan",
     ],
-    businessUnits: [
-      "Retail Banking",
-      "Corporate Banking",
-      "Wealth Management",
-      "Investment Banking",
-      "Insurance",
-      "Operations",
-      "Technology",
+    hoDepartments: [
+      { id: "dept-credit", name: "Khối Quản lý Tín dụng" },
+      { id: "dept-legal", name: "Khối Pháp chế" },
+      { id: "dept-risk", name: "Khối Quản lý Rủi ro" },
+      { id: "dept-operations", name: "Khối Vận hành" },
+      { id: "dept-audit", name: "Khối Kiểm toán nội bộ" },
     ],
-    departments: [
-      "Risk & Compliance",
-      "Legal",
-      "Operations",
-      "Finance",
-      "Treasury",
-      "Retail Banking",
-      "Corporate Banking",
-      "IT Security",
-      "Human Resources",
-      "Internal Audit",
-    ],
-    locations: [
-      "New York",
-      "London",
-      "Singapore",
-      "Hong Kong",
-      "Tokyo",
-      "Sydney",
-      "Dubai",
-      "Frankfurt",
-    ],
-    defaultFrequency: "quarterly",
-    criticalityLevels: ["low", "medium", "high", "critical"],
-    penaltyThresholds: [
-      { label: "Low", value: 10000 },
-      { label: "Medium", value: 50000 },
-      { label: "High", value: 250000 },
-      { label: "Critical", value: 1000000 },
+    branches: [
+      { id: "branch-hn", name: "Chi nhánh Hà Nội", region: "Miền Bắc" },
+      { id: "branch-hcm", name: "Chi nhánh TP.HCM", region: "Miền Nam" },
+      { id: "branch-dn", name: "Chi nhánh Đà Nẵng", region: "Miền Trung" },
+      { id: "branch-cantho", name: "Chi nhánh Cần Thơ", region: "Miền Nam" },
+      {
+        id: "branch-haiphong",
+        name: "Chi nhánh Hải Phòng",
+        region: "Miền Bắc",
+      },
+      {
+        id: "branch-nhatrang",
+        name: "Chi nhánh Nha Trang",
+        region: "Miền Trung",
+      },
+      { id: "branch-vungtau", name: "Chi nhánh Vũng Tàu", region: "Miền Nam" },
+      { id: "branch-hue", name: "Chi nhánh Huế", region: "Miền Trung" },
     ],
     createdAt: iso(subDays(today, 400)),
     updatedAt: iso(subDays(today, 60)),
@@ -1273,61 +1370,10 @@ function generateCommentsFor(entityId: string, entityType: string): unknown[] {
   });
 }
 
-const VIETNAMESE_DEPARTMENTS = [
-  { id: "dept-credit", name: "Khối Quản lý Tín dụng" },
-  { id: "dept-legal", name: "Khối Pháp chế" },
-  { id: "dept-risk", name: "Khối Quản lý Rủi ro" },
-  { id: "dept-operations", name: "Khối Vận hành" },
-  { id: "dept-audit", name: "Khối Kiểm toán nội bộ" },
-] as const;
-
-const OFFICES = [
-  {
-    id: "off-credit-1",
-    name: "Phòng Cấp tín dụng",
-    departmentId: "dept-credit",
-  },
-  {
-    id: "off-credit-2",
-    name: "Phòng Giám sát tín dụng",
-    departmentId: "dept-credit",
-  },
-  {
-    id: "off-legal-1",
-    name: "Phòng Tư vấn pháp lý",
-    departmentId: "dept-legal",
-  },
-  { id: "off-legal-2", name: "Phòng Hợp đồng", departmentId: "dept-legal" },
-  {
-    id: "off-risk-1",
-    name: "Phòng Quản lý rủi ro tín dụng",
-    departmentId: "dept-risk",
-  },
-  {
-    id: "off-risk-2",
-    name: "Phòng Quản lý rủi ro thị trường",
-    departmentId: "dept-risk",
-  },
-  {
-    id: "off-ops-1",
-    name: "Phòng Vận hành hệ thống",
-    departmentId: "dept-operations",
-  },
-  {
-    id: "off-ops-2",
-    name: "Phòng Dịch vụ khách hàng",
-    departmentId: "dept-operations",
-  },
-  {
-    id: "off-audit-1",
-    name: "Phòng Kiểm toán tuân thủ",
-    departmentId: "dept-audit",
-  },
-] as const;
-
 function generateAssignments(
   regulations: Regulation[],
   users: UserProfile[],
+  hoDepartments: { id: string; name: string }[],
   count = 15,
 ): Assignment[] {
   const assignors = users.filter((u) =>
@@ -1336,10 +1382,10 @@ function generateAssignments(
   return Array.from({ length: count }, (_, i) => {
     const regulation = pick(regulations);
     const assignor = assignors.length ? pick(assignors) : pick(users);
-    const department = pick(VIETNAMESE_DEPARTMENTS);
-    const office = faker.datatype.boolean(0.4)
-      ? pick(OFFICES.filter((o) => o.departmentId === department.id))
-      : undefined;
+    const departments = faker.helpers.arrayElements(hoDepartments, {
+      min: 1,
+      max: 3,
+    });
     const createdAt = subDays(today, faker.number.int({ min: 14, max: 120 }));
     const dueOffset = weightedPick([
       { item: faker.number.int({ min: -60, max: -1 }), weight: 15 },
@@ -1370,10 +1416,8 @@ function generateAssignments(
       regulationTitle: regulation.title,
       assignorId: assignor.id,
       assignorName: assignor.name,
-      assignedDepartmentId: department.id,
-      assignedDepartmentName: department.name,
-      assignedOfficeId: office?.id,
-      assignedOfficeName: office?.name,
+      assignedDepartmentIds: departments.map((d) => d.id),
+      assignedDepartmentNames: departments.map((d) => d.name),
       status,
       priority: faker.helpers.arrayElement(PRIORITY_LEVELS),
       dueDate: iso(dueDate),
@@ -1391,13 +1435,13 @@ export interface MockDb {
   compliance: ComplianceObligation[];
   obligations: Obligation[];
   caps: CAP[];
+  nccs: NonComplianceCase[];
   assignments: Assignment[];
   files: FileAttachment[];
   notifications: Notification[];
   auditLogs: AuditLog[];
   roles: RoleEntity[];
   organizations: Organization[];
-  templates: Template[];
   aiConfig: AIConfig;
   organizationSettings: OrganizationSettings;
   generateTimelineFor: typeof generateTimelineFor;
@@ -1441,16 +1485,20 @@ export function getDb(): MockDb {
   const compliance = generateComplianceObligations(regulations, users);
   const caps = generateCAPs(compliance, users);
   const files = generateFiles(caps);
-  const assignments = generateAssignments(regulations, users);
+  const organizationSettings = generateOrganizationSettings();
+  const nccs = generateNCCs(organizationSettings, users);
+  const assignments = generateAssignments(
+    regulations,
+    users,
+    organizationSettings.hoDepartments,
+  );
   const obligations = generateObligations(assignments, users);
   linkObligationsToCAPs(caps, obligations);
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
   const organizations = generateOrganizations();
-  const templates = generateTemplates(regulations, users);
   const aiConfig = generateAIConfig();
-  const organizationSettings = generateOrganizationSettings();
 
   dbInstance = {
     users,
@@ -1459,13 +1507,13 @@ export function getDb(): MockDb {
     compliance,
     obligations,
     caps,
+    nccs,
     assignments,
     files,
     notifications,
     auditLogs,
     roles,
     organizations,
-    templates,
     aiConfig,
     organizationSettings,
     generateTimelineFor,
@@ -1480,13 +1528,13 @@ export function getDb(): MockDb {
       compliance: compliance.length,
       obligations: obligations.length,
       caps: caps.length,
+      nccs: nccs.length,
       assignments: assignments.length,
       files: files.length,
       notifications: notifications.length,
       auditLogs: auditLogs.length,
       roles: roles.length,
       organizations: organizations.length,
-      templates: templates.length,
     });
   }
 

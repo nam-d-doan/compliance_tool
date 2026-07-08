@@ -202,7 +202,6 @@ export const COMPLIANCE_STATUSES = [
   "Pending Review",
   "Approved",
   "Rejected",
-  "Overdue",
   "Due",
   "Completed",
   "Assigned",
@@ -226,7 +225,6 @@ export const CAP_STATUSES = [
   "Pending Approval",
   "Closed",
   "Rejected",
-  "Overdue",
 ] as const;
 
 export const REGULATION_STATUSES = [
@@ -253,10 +251,13 @@ export const ASSIGNMENT_STATUSES = [
   "cancelled",
 ] as const;
 
+export const NCC_STATUSES = ["Open", "Closed"] as const;
+
 export type ComplianceStatus = (typeof COMPLIANCE_STATUSES)[number];
 export type ObligationStatus = (typeof OBLIGATION_STATUSES)[number];
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 export type CAPStatus = (typeof CAP_STATUSES)[number];
+export type NCCStatus = (typeof NCC_STATUSES)[number];
 export type RegulationStatus = (typeof REGULATION_STATUSES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
 export type PriorityLevel = (typeof PRIORITY_LEVELS)[number];

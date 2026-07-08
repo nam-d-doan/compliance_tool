@@ -70,17 +70,20 @@ export function DashboardAssignmentsCard({
   const breakdownRows = useMemo(() => {
     const map = new Map<string, number>();
     assignments.forEach((a) => {
-      let key: string;
+      let keys: string[];
       if (breakdown === "department") {
-        key = a.assignedDepartmentName ?? a.assignedDepartmentId;
+        const names = a.assignedDepartmentNames?.length
+          ? a.assignedDepartmentNames
+          : a.assignedDepartmentIds;
+        keys = names.length ? names : ["Unassigned"];
       } else if (breakdown === "priority") {
-        key = a.priority;
-      } else if (breakdown === "review") {
-        key = a.status;
+        keys = [a.priority];
       } else {
-        key = a.status;
+        keys = [a.status];
       }
-      map.set(key, (map.get(key) ?? 0) + 1);
+      keys.forEach((key) => {
+        map.set(key, (map.get(key) ?? 0) + 1);
+      });
     });
     return Array.from(map.entries())
       .map(([name, value]) => ({ name, value }))
@@ -199,10 +202,10 @@ export function DashboardAssignmentsCard({
                           {a.title}
                         </p>
                         <p className="truncate text-[11px] text-muted-foreground">
-                          {a.assignedDepartmentName}
-                          {a.assignedOfficeName
-                            ? ` · ${a.assignedOfficeName}`
-                            : ""}
+                          {(a.assignedDepartmentNames?.length
+                            ? a.assignedDepartmentNames
+                            : a.assignedDepartmentIds
+                          ).join(", ")}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">

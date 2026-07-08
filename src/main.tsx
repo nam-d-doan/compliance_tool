@@ -3,19 +3,29 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 
-async function unregisterStaleMswWorker(): Promise<void> {
+async function purgeServiceWorkersAndCaches(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
 
+  // Unregister ALL service workers — dev mode should never have any SW
+  // active. A stale SW (from a previous prod build or MSW session) will
+  // intercept fetch requests and serve cached responses, causing the app
+  // to show stale data even after restarting `pnpm dev`.
   const registrations = await navigator.serviceWorker.getRegistrations();
   await Promise.all(
     registrations.map(async (registration) => {
-      const scriptUrl = registration.active?.scriptURL ?? "";
-      if (scriptUrl.includes("mockServiceWorker")) {
-        await registration.unregister();
-        console.info("[MSW] Unregistered stale service worker:", scriptUrl);
-      }
+      await registration.unregister();
+      console.info("[SW] Unregistered service worker:", registration.scope);
     }),
   );
+
+  // Clear all Cache API entries that a stale SW may have left behind.
+  if ("caches" in window) {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    if (cacheNames.length > 0) {
+      console.info("[SW] Cleared caches:", cacheNames.join(", "));
+    }
+  }
 }
 
 async function enableMocking() {
@@ -23,7 +33,7 @@ async function enableMocking() {
   // the service-worker lifecycle issues (stale registrations, HMR conflicts)
   // that the MSW worker causes during local development.
   if (import.meta.env.DEV) {
-    await unregisterStaleMswWorker();
+    await purgeServiceWorkersAndCaches();
     const { enableDirectMocking } = await import("./mocks/directApi");
     await enableDirectMocking();
     console.info("[DirectMock] Mock API initialized");

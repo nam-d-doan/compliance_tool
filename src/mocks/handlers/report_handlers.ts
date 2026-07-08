@@ -1,6 +1,7 @@
 import { http } from "msw";
 import { format, addDays } from "date-fns";
 import { getDb } from "@/mocks/db";
+import { isOverdueDueDate } from "@/lib/due-date";
 import {
   getDelay,
   jsonResponse,
@@ -27,7 +28,9 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
   ).length;
   const submitted = items.filter((i) => i.status === "Submitted").length;
   const approved = items.filter((i) => i.status === "Approved").length;
-  const overdue = items.filter((i) => i.status === "Overdue").length;
+  const overdue = items.filter((i) =>
+    isOverdueDueDate(i.dueDate, ["Completed", "Approved"].includes(i.status)),
+  ).length;
   const rejected = items.filter((i) => i.status === "Rejected").length;
   const complianceRate = total
     ? Math.round((completed / total) * 1000) / 10
@@ -126,8 +129,14 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
           label: "Overdue",
           data: departments.map(
             (d) =>
-              items.filter((i) => i.department === d && i.status === "Overdue")
-                .length,
+              items.filter(
+                (i) =>
+                  i.department === d &&
+                  isOverdueDueDate(
+                    i.dueDate,
+                    ["Completed", "Approved"].includes(i.status),
+                  ),
+              ).length,
           ),
           color: "#ef4444",
         },
@@ -137,7 +146,6 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
 
   const outcome = (status: string) => {
     if (["Completed", "Approved"].includes(status)) return "Compliant";
-    if (status === "Overdue") return "Overdue";
     if (status === "Rejected") return "Non-compliant";
     return "In Progress";
   };
@@ -245,7 +253,9 @@ function capReport(db: ReturnType<typeof getDb>): Report {
     ["Open", "In Progress"].includes(i.status),
   ).length;
   const closed = items.filter((i) => i.status === "Closed").length;
-  const overdue = items.filter((i) => i.status === "Overdue").length;
+  const overdue = items.filter((i) =>
+    isOverdueDueDate(i.dueDate, ["Closed", "Rejected"].includes(i.status)),
+  ).length;
   const avgDays = items.length
     ? Math.round(
         items.reduce((sum, i) => sum + (i.status === "Closed" ? 45 : 0), 0) /
@@ -344,8 +354,14 @@ function capReport(db: ReturnType<typeof getDb>): Report {
           label: "Overdue",
           data: departments.map(
             (d) =>
-              items.filter((i) => i.department === d && i.status === "Overdue")
-                .length,
+              items.filter(
+                (i) =>
+                  i.department === d &&
+                  isOverdueDueDate(
+                    i.dueDate,
+                    ["Closed", "Rejected"].includes(i.status),
+                  ),
+              ).length,
           ),
           color: "#ef4444",
         },
@@ -409,7 +425,9 @@ function executiveReport(
   const complianceRate = total
     ? Math.round((completed / total) * 1000) / 10
     : 0;
-  const overdue = compliance.filter((i) => i.status === "Overdue").length;
+  const overdue = compliance.filter((i) =>
+    isOverdueDueDate(i.dueDate, ["Completed", "Approved"].includes(i.status)),
+  ).length;
   const riskScore = Math.round(
     compliance.reduce((sum, i) => sum + i.aiRiskScore, 0) / (total || 1),
   );
@@ -417,7 +435,14 @@ function executiveReport(
   const summary: ExecutiveSummary = {
     enterpriseHealth: { score: complianceRate, trend: "up", trendPercent: 3.2 },
     topRisks: compliance
-      .filter((i) => i.criticality === "critical" && i.status === "Overdue")
+      .filter(
+        (i) =>
+          i.criticality === "critical" &&
+          isOverdueDueDate(
+            i.dueDate,
+            ["Completed", "Approved"].includes(i.status),
+          ),
+      )
       .slice(0, 5)
       .map((i) => ({
         title: i.title,
@@ -438,7 +463,9 @@ function executiveReport(
       open: caps.filter((i) => ["Open", "In Progress"].includes(i.status))
         .length,
       completed: caps.filter((i) => i.status === "Closed").length,
-      overdue: caps.filter((i) => i.status === "Overdue").length,
+      overdue: caps.filter((i) =>
+        isOverdueDueDate(i.dueDate, ["Closed", "Rejected"].includes(i.status)),
+      ).length,
       averageResolutionDays: caps.length ? 42 : 0,
     },
     regulatoryChanges: db.regulations.slice(0, 5).map((r) => ({
@@ -460,7 +487,12 @@ function executiveReport(
           complianceRate: deptItems.length
             ? Math.round((completedDept / deptItems.length) * 1000) / 10
             : 0,
-          overdueCount: deptItems.filter((i) => i.status === "Overdue").length,
+          overdueCount: deptItems.filter((i) =>
+            isOverdueDueDate(
+              i.dueDate,
+              ["Completed", "Approved"].includes(i.status),
+            ),
+          ).length,
           capCount: caps.filter((i) => i.department === d).length,
         };
       }),

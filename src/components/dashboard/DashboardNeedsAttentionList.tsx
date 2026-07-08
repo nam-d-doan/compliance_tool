@@ -8,6 +8,7 @@ import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { isOverdueDueDate } from "@/lib/due-date";
 import { cn } from "@/lib/utils";
 import type { ComplianceObligation, CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
@@ -40,7 +41,13 @@ export function DashboardNeedsAttentionList({
 }: DashboardNeedsAttentionListProps) {
   const items: AttentionItem[] = [
     ...compliance
-      .filter((c) => c.status === "Overdue" || c.criticality === "critical")
+      .filter(
+        (c) =>
+          isOverdueDueDate(
+            c.dueDate,
+            ["Completed", "Approved"].includes(c.status),
+          ) || c.criticality === "critical",
+      )
       .map((c) => ({
         id: c.id,
         type: "compliance" as const,
@@ -55,7 +62,10 @@ export function DashboardNeedsAttentionList({
       .filter(
         (c) =>
           c.status !== "Closed" &&
-          (c.status === "Overdue" ||
+          (isOverdueDueDate(
+            c.dueDate,
+            ["Closed", "Rejected"].includes(c.status),
+          ) ||
             c.priority === "critical" ||
             c.priority === "high"),
       )

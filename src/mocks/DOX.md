@@ -29,7 +29,7 @@ Both exports use the same functions. The individual functions are MSW-compatible
 ### Mock DB
 
 - `db.ts` — singleton in-memory database (`getDb()`). Seeded with `faker.seed(42)` for deterministic data. Resets on page reload.
-- Collections: users, regulations, regulationDependencies, compliance, obligations, caps, assignments, notifications, auditLogs, roles, organizations, templates, aiConfig, organizationSettings.
+- Collections: users, regulations, regulationDependencies, compliance, obligations, caps, nccs, assignments, notifications, auditLogs, roles, organizations, aiConfig, organizationSettings.
 - Helpers: `findById`, `paginate`, `filterByText`.
 - Timeline and comments are generated on-demand via `generateTimelineFor` / `generateCommentsFor`.
 

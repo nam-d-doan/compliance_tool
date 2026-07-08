@@ -1,14 +1,19 @@
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores";
+import { useSidebar } from "@/components/ui/sidebar";
 import type { Role } from "@/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, UserCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ChevronDown, UserCircle, Check } from "lucide-react";
 
 const ROLES: Role[] = ["admin", "executive", "owner", "approver", "reviewer"];
 
@@ -22,91 +27,118 @@ const ROLE_COLORS: Record<Role, string> = {
   reviewer: "bg-slate-100 text-slate-700 dark:bg-slate-950 dark:text-slate-300",
 };
 
+// Mirrors src/pages/dashboard/DashboardRedirect so a role switch immediately
+// routes the user to the dashboard that matches their new role.
+const ROLE_DASHBOARD: Record<Role, string> = {
+  admin: "/dashboard/admin",
+  executive: "/dashboard/executive",
+  owner: "/dashboard/owner",
+  approver: "/dashboard/approver",
+  reviewer: "/dashboard/reviewer",
+};
+
 interface RoleSwitchProps {
+  /**
+   * - "default": full sidebar-footer trigger. Icon-only when the sidebar is
+   *   collapsed (icon mode); icon + role badge + chevron when expanded.
+   *   Clicking opens a dropdown of roles.
+   * - "compact": bare list of role items meant to be rendered inside a parent
+   *   menu's submenu content (used by TopNav's "Switch role" submenu). Renders
+   *   NO trigger and NO nested menu of its own.
+   */
   variant?: "default" | "compact";
 }
 
 export function RoleSwitch({ variant = "default" }: RoleSwitchProps) {
   const { user, role, updateUser } = useAuthStore();
+  const navigate = useNavigate();
+  const { state } = useSidebar();
   const currentRole = role ?? "reviewer";
 
   const handleRoleChange = (newRole: Role) => {
     updateUser({ role: newRole });
+    // Refresh the whole view so it reflects the new role immediately.
+    navigate(ROLE_DASHBOARD[newRole], { replace: true });
   };
 
+  const renderRoleItems = () =>
+    ROLES.map((r) => (
+      <DropdownMenuItem
+        key={r}
+        onClick={() => handleRoleChange(r)}
+        className="capitalize"
+      >
+        <UserCircle className="size-4 text-muted-foreground" />
+        <span className="flex-1">{r}</span>
+        {r === currentRole && (
+          <Check className="size-4 text-primary" aria-label="active role" />
+        )}
+      </DropdownMenuItem>
+    ));
+
+  // Bare items for use inside a parent menu's submenu (TopNav "Switch role").
   if (variant === "compact") {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Button variant="ghost" size="sm" className="gap-1 px-2">
-            <UserCircle className="size-4" />
-            <span className="capitalize">{currentRole}</span>
-            <ChevronDown className="size-3 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {ROLES.map((r) => (
-            <DropdownMenuItem
-              key={r}
-              onClick={() => handleRoleChange(r)}
-              className="capitalize"
-            >
-              {r}
-              {r === currentRole && (
-                <span className="ml-auto text-xs text-primary">active</span>
-              )}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
+    return <>{renderRoleItems()}</>;
   }
 
+  const collapsed = state === "collapsed";
+
   return (
-    <div className="flex flex-col gap-2 p-2 min-w-0">
-      <div className="flex items-center justify-between min-w-0">
-        <span className="text-xs font-medium text-muted-foreground truncate">
-          Demo role
-        </span>
-        <Badge
-          variant="outline"
-          className={`text-[10px] font-semibold uppercase tracking-wide flex-shrink-0 ${ROLE_COLORS[currentRole]}`}
-        >
-          {currentRole}
-        </Badge>
-      </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Button
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            className={cn(
+              "h-auto w-full justify-start gap-2 px-2 py-1.5",
+              collapsed && "size-8 justify-center p-0",
+            )}
+            title={collapsed ? `Switch role (${currentRole})` : undefined}
+            aria-label="Switch role"
+          />
+        }
+      >
+        <UserCircle className="size-4 shrink-0" />
+        {!collapsed && (
+          <>
+            <span className="flex-1 truncate text-left text-xs font-medium text-muted-foreground">
+              Role
+            </span>
+            <Badge
               variant="outline"
-              size="sm"
-              className="w-full justify-between min-w-0"
+              className={cn(
+                "border-transparent px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide",
+                ROLE_COLORS[currentRole],
+              )}
             >
-              <span className="flex items-center gap-2 min-w-0">
-                <UserCircle className="size-4 flex-shrink-0" />
-                <span className="capitalize truncate">{currentRole}</span>
-              </span>
-              <ChevronDown className="size-3 opacity-50 flex-shrink-0" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52">
-            {ROLES.map((r) => (
-              <DropdownMenuItem
-                key={r}
-                onClick={() => handleRoleChange(r)}
-                className="capitalize"
-              >
-                {r}
-                {r === currentRole && (
-                  <span className="ml-auto text-xs text-primary flex-shrink-0">active</span>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {user && (
-          <p className="truncate text-xs text-muted-foreground min-w-0">{user.email}</p>
+              {currentRole}
+            </Badge>
+            <ChevronDown className="size-3 shrink-0 opacity-50" />
+          </>
         )}
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        // When the sidebar is collapsed the footer is at the screen edge, so
+        // float the menu out to the right; otherwise pop it above the footer.
+        side={collapsed ? "right" : "top"}
+        align={collapsed ? "center" : "start"}
+        sideOffset={collapsed ? 8 : 4}
+        className="min-w-44"
+      >
+        <DropdownMenuLabel>Switch role</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {renderRoleItems()}
+        {user && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1">
+              <p className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </p>
+            </div>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

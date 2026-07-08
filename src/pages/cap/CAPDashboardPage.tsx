@@ -31,6 +31,7 @@ import { useAuthStore } from "@/stores";
 import { useCAPList } from "@/hooks/queries";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
+import { isOverdueDueDate } from "@/lib/due-date";
 import type { CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
 
@@ -78,7 +79,12 @@ export default function CAPDashboardPage() {
     const thisMonth = isSameMonth;
 
     const openItems = caps.filter((c) => c.status !== "Closed");
-    const overdueItems = caps.filter((c) => c.status === "Overdue");
+    const overdueItems = caps.filter((c) =>
+      isOverdueDueDate(
+        c.dueDate,
+        c.status === "Closed" || c.status === "Rejected",
+      ),
+    );
     const pendingItems = caps.filter((c) => c.status === "Pending Approval");
     const closedThisMonthItems = caps.filter(
       (c) => c.status === "Closed" && thisMonth(parseISO(c.updatedAt), now),

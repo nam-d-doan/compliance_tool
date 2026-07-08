@@ -10,7 +10,6 @@ import {
   type RowSelectionState,
 } from "@tanstack/react-table";
 import { motion } from "motion/react";
-import { format } from "date-fns";
 import {
   Plus,
   Search,
@@ -19,12 +18,25 @@ import {
   ArrowUp,
   ArrowDown,
   ClipboardCheck,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
+import { DueDateCell } from "@/components/common/DueDateCell";
 import { PageHero } from "@/components/common";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
@@ -35,6 +47,7 @@ import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { COMPLIANCE_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
 import { cn } from "@/lib/utils";
+import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
 import type { ComplianceObligation, ComplianceFilter } from "@/types";
 
 const BUSINESS_UNITS = [
@@ -50,7 +63,18 @@ const BUSINESS_UNITS = [
 const PAGE_SIZE = 10;
 
 const selectClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+  "h-9 rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+
+const HEADER_TOOLTIPS: Record<string, string> = {
+  complianceId: "Unique obligation identifier",
+  title: "Obligation title",
+  businessUnit: "Owning business unit",
+  ownerName: "Responsible owner",
+  dueDate: DUE_DATE_COLOR_GUIDE,
+  status: "Current workflow status",
+  criticality: "Risk criticality",
+  aiRiskScore: "AI-assigned risk score",
+};
 
 export default function ObligationListPage() {
   const navigate = useNavigate();
@@ -64,9 +88,7 @@ export default function ObligationListPage() {
   const [businessUnit, setBusinessUnit] = useState("");
   const [owner, setOwner] = useState("");
   const [page, setPage] = useState(1);
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "dueDate", desc: false },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   useEffect(() => {
@@ -78,14 +100,29 @@ export default function ObligationListPage() {
     setPage(1);
   }, [debouncedSearch, status, priority, businessUnit, owner]);
 
+  const hasActiveFilters = Boolean(
+    search || status || priority || businessUnit || owner,
+  );
+  const clearFilters = () => {
+    setSearch("");
+    setStatus("");
+    setPriority("");
+    setBusinessUnit("");
+    setOwner("");
+  };
+
   // Row selection is index-based; clear it whenever the page or filters shift
   // so selections never silently rebind to different rows.
   useEffect(() => {
     setRowSelection({});
   }, [debouncedSearch, status, priority, businessUnit, owner, page]);
 
-  const sortField = sorting[0]?.id ?? "dueDate";
-  const sortDirection = sorting[0]?.desc ? "desc" : "asc";
+  const sortField = sorting[0]?.id ?? "createdAt";
+  const sortDirection = sorting[0]
+    ? sorting[0].desc
+      ? "desc"
+      : "asc"
+    : "desc";
 
   const filters = useMemo(
     () => ({
@@ -171,8 +208,12 @@ export default function ObligationListPage() {
         accessorKey: "dueDate",
         header: "Due Date",
         size: 130,
-        cell: ({ getValue }) =>
-          format(new Date(getValue<string>()), "MMM d, yyyy"),
+        cell: ({ row }) => (
+          <DueDateCell
+            dueDate={row.original.dueDate}
+            completed={["Completed", "Approved"].includes(row.original.status)}
+          />
+        ),
       },
       {
         accessorKey: "status",
@@ -306,25 +347,38 @@ export default function ObligationListPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium">Filters</CardTitle>
+          {hasActiveFilters && (
+            <CardAction>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={clearFilters}
+              >
+                <X className="size-3" aria-hidden="true" />
+                Clear all
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[12rem] flex-1">
               <Search
-                className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+                className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden="true"
               />
               <Input
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
+                className="h-9 pl-9"
               />
             </div>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className={selectClass}
+              className={cn(selectClass, "min-w-[10rem]")}
             >
               <option value="">All statuses</option>
               {COMPLIANCE_STATUSES.map((s) => (
@@ -336,7 +390,7 @@ export default function ObligationListPage() {
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className={selectClass}
+              className={cn(selectClass, "min-w-[10rem]")}
             >
               <option value="">All priorities</option>
               {PRIORITY_LEVELS.map((p) => (
@@ -348,7 +402,7 @@ export default function ObligationListPage() {
             <select
               value={businessUnit}
               onChange={(e) => setBusinessUnit(e.target.value)}
-              className={selectClass}
+              className={cn(selectClass, "min-w-[10rem]")}
             >
               <option value="">All business units</option>
               {BUSINESS_UNITS.map((b) => (
@@ -360,7 +414,7 @@ export default function ObligationListPage() {
             <select
               value={owner}
               onChange={(e) => setOwner(e.target.value)}
-              className={selectClass}
+              className={cn(selectClass, "min-w-[10rem]")}
             >
               <option value="">All owners</option>
               {ownersData?.items.map((u) => (
@@ -406,6 +460,32 @@ export default function ObligationListPage() {
                         {headerGroup.headers.map((header) => {
                           const canSort = header.column.getCanSort();
                           const sorted = header.column.getIsSorted();
+                          const tooltip = HEADER_TOOLTIPS[header.column.id];
+                          const headerContent = (
+                            <div className="flex items-center gap-1">
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {canSort &&
+                                (sorted === "asc" ? (
+                                  <ArrowUp
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                ) : sorted === "desc" ? (
+                                  <ArrowDown
+                                    className="size-3.5"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <ArrowUpDown
+                                    className="size-3.5 opacity-50"
+                                    aria-hidden="true"
+                                  />
+                                ))}
+                            </div>
+                          );
                           return (
                             <th
                               key={header.id}
@@ -420,29 +500,16 @@ export default function ObligationListPage() {
                                   : undefined
                               }
                             >
-                              <div className="flex items-center gap-1">
-                                {flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext(),
-                                )}
-                                {canSort &&
-                                  (sorted === "asc" ? (
-                                    <ArrowUp
-                                      className="size-3.5"
-                                      aria-hidden="true"
-                                    />
-                                  ) : sorted === "desc" ? (
-                                    <ArrowDown
-                                      className="size-3.5"
-                                      aria-hidden="true"
-                                    />
-                                  ) : (
-                                    <ArrowUpDown
-                                      className="size-3.5 opacity-50"
-                                      aria-hidden="true"
-                                    />
-                                  ))}
-                              </div>
+                              {canSort && tooltip ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    {headerContent}
+                                  </TooltipTrigger>
+                                  <TooltipContent>{tooltip}</TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                headerContent
+                              )}
                             </th>
                           );
                         })}

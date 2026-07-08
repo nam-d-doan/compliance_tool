@@ -4,21 +4,19 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   ShieldCheck,
+  ShieldAlert,
   List,
   PlusCircle,
-  History,
   ClipboardList,
   BookOpen,
   BarChart3,
+  TrendingUp,
   Settings2,
   Users,
   UserCog,
   Building2,
-  LayoutTemplate,
-  ScrollText,
   BrainCircuit,
   Settings,
-  ClipboardCheck,
 } from "lucide-react";
 
 // Route definitions with paths and permissions
@@ -44,7 +42,6 @@ export const ROUTES = {
     LIST: "/obligations",
     DETAIL: "/obligations/:id",
     CREATE: "/obligations/create",
-    HISTORY: "/obligations/history",
   },
 
   // CAP routes
@@ -53,6 +50,13 @@ export const ROUTES = {
     LIST: "/cap/list",
     DETAIL: "/cap/:id",
     CREATE: "/cap/create",
+  },
+
+  // NCC routes
+  NCC: {
+    LIST: "/ncc/list",
+    DETAIL: "/ncc/:id",
+    CREATE: "/ncc/create",
   },
 
   // Regulation routes
@@ -77,6 +81,7 @@ export const ROUTES = {
     CALENDAR: "/reports/calendar",
     CAP: "/reports/cap",
     EXECUTIVE: "/reports/executive",
+    EWS: "/reports/ews",
   },
 
   // Admin routes
@@ -84,7 +89,6 @@ export const ROUTES = {
     USERS: "/admin/users",
     ROLES: "/admin/roles",
     ORG: "/admin/organization",
-    TEMPLATES: "/admin/templates",
     AUDIT_LOGS: "/admin/audit-logs",
     AI_CONFIG: "/admin/ai-config",
   },
@@ -130,6 +134,9 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   ],
   [ROUTES.CAP.LIST]: ["reviewer", "approver", "owner", "executive", "admin"],
 
+  [ROUTES.NCC.CREATE]: ["owner", "executive", "admin"],
+  [ROUTES.NCC.LIST]: ["reviewer", "approver", "owner", "executive", "admin"],
+
   [ROUTES.REGULATION.CREATE]: ["admin"],
 
   [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],
@@ -141,10 +148,11 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
     "admin",
   ],
 
+  [ROUTES.REPORTS.EWS]: ["reviewer", "approver", "owner", "executive", "admin"],
+
   [ROUTES.ADMIN.USERS]: ["admin"],
   [ROUTES.ADMIN.ROLES]: ["admin"],
   [ROUTES.ADMIN.ORG]: ["admin"],
-  [ROUTES.ADMIN.TEMPLATES]: ["admin"],
   [ROUTES.ADMIN.AUDIT_LOGS]: ["admin"],
   [ROUTES.ADMIN.AI_CONFIG]: ["admin"],
 };
@@ -202,13 +210,6 @@ export function buildNavTree(role: Role | null): NavSection[] {
               section: "Compliance",
               requiredPermission: "compliance:create",
             },
-            {
-              label: "History",
-              icon: History,
-              path: ROUTES.OBLIGATIONS.HISTORY,
-              section: "Compliance",
-              requiredPermission: "compliance:read",
-            },
           ],
         },
         {
@@ -235,6 +236,29 @@ export function buildNavTree(role: Role | null): NavSection[] {
           ],
         },
         {
+          label: "Non-Compliance",
+          icon: ShieldAlert,
+          path: ROUTES.NCC.LIST,
+          section: "Compliance",
+          requiredPermission: "ncc:read",
+          children: [
+            {
+              label: "All Cases",
+              icon: List,
+              path: ROUTES.NCC.LIST,
+              section: "Compliance",
+              requiredPermission: "ncc:read",
+            },
+            {
+              label: "Create Case",
+              icon: PlusCircle,
+              path: ROUTES.NCC.CREATE,
+              section: "Compliance",
+              requiredPermission: "ncc:create",
+            },
+          ],
+        },
+        {
           label: "Regulations",
           icon: BookOpen,
           path: ROUTES.REGULATION.LIBRARY,
@@ -242,41 +266,25 @@ export function buildNavTree(role: Role | null): NavSection[] {
           requiredPermission: "regulation:read",
           children: [
             {
-              label: "Library",
+              label: "Regulation Library",
               icon: List,
               path: ROUTES.REGULATION.LIBRARY,
               section: "Compliance",
               requiredPermission: "regulation:read",
             },
             {
-              label: "Create",
+              label: "Add Regulation",
               icon: PlusCircle,
               path: ROUTES.REGULATION.CREATE,
               section: "Compliance",
               requiredPermission: "regulation:create",
             },
-          ],
-        },
-        {
-          label: "Assignments",
-          icon: ClipboardCheck,
-          path: ROUTES.ASSIGNMENTS.LIST,
-          section: "Compliance",
-          requiredPermission: "assignment:read",
-          children: [
             {
               label: "All Assignments",
               icon: List,
               path: ROUTES.ASSIGNMENTS.LIST,
               section: "Compliance",
               requiredPermission: "assignment:read",
-            },
-            {
-              label: "Create Assignment",
-              icon: PlusCircle,
-              path: ROUTES.ASSIGNMENTS.CREATE,
-              section: "Compliance",
-              requiredPermission: "assignment:create",
             },
           ],
         },
@@ -291,6 +299,22 @@ export function buildNavTree(role: Role | null): NavSection[] {
           path: ROUTES.REPORTS.EXECUTIVE,
           section: "Management",
           requiredPermission: "report:read",
+          children: [
+            {
+              label: "Executive Summary",
+              icon: BarChart3,
+              path: ROUTES.REPORTS.EXECUTIVE,
+              section: "Management",
+              requiredPermission: "report:read",
+            },
+            {
+              label: "Early Warning System",
+              icon: TrendingUp,
+              path: ROUTES.REPORTS.EWS,
+              section: "Management",
+              requiredPermission: "report:read",
+            },
+          ],
         },
       ],
     },
@@ -322,20 +346,6 @@ export function buildNavTree(role: Role | null): NavSection[] {
               label: "Organization",
               icon: Building2,
               path: ROUTES.ADMIN.ORG,
-              section: "Admin",
-              requiredRole: "admin",
-            },
-            {
-              label: "Templates",
-              icon: LayoutTemplate,
-              path: ROUTES.ADMIN.TEMPLATES,
-              section: "Admin",
-              requiredRole: "admin",
-            },
-            {
-              label: "Audit Logs",
-              icon: ScrollText,
-              path: ROUTES.ADMIN.AUDIT_LOGS,
               section: "Admin",
               requiredRole: "admin",
             },

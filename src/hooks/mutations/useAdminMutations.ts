@@ -4,7 +4,6 @@ import { adminKeys } from "@/hooks/query-keys";
 import type {
   UserProfile,
   RoleEntity,
-  Template,
   AIConfig,
   OrganizationSettings,
 } from "@/types";
@@ -74,36 +73,6 @@ export function useUpdateOrganization() {
       AdminService.updateOrganization(data),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: adminKeys.organization() }),
-  });
-}
-
-export function useCreateTemplate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Partial<Template>) => AdminService.createTemplate(data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminKeys.templates() }),
-  });
-}
-
-export function useUpdateTemplate(id: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Partial<Template>) =>
-      AdminService.updateTemplate(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.templates() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.template(id) });
-    },
-  });
-}
-
-export function useDeleteTemplate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => AdminService.deleteTemplate(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminKeys.templates() }),
   });
 }
 

@@ -49,21 +49,6 @@ export interface Organization extends BaseEntity {
   headName?: string;
 }
 
-export interface Template extends BaseEntity {
-  title: string;
-  description: string;
-  category: string;
-  frequency: string;
-  ownerId: string;
-  ownerName: string;
-  approverId: string;
-  approverName: string;
-  criticality: string;
-  applicableRegulationIds: string[];
-  status: "draft" | "published" | "archived";
-  tags: string[];
-}
-
 export interface AuditLog extends BaseEntity {
   timestamp: string;
   userId: string;
@@ -95,19 +80,32 @@ export interface AIConfig extends BaseEntity {
   conversationRetentionDays: number;
 }
 
-export interface PenaltyThreshold {
-  label: string;
-  value: number;
+/**
+ * A Head Office department. Belongs to no region — HO departments can be
+ * compared peer-to-peer with branches but are not grouped by region.
+ */
+export interface HoDepartment {
+  id: string;
+  name: string;
+}
+
+/**
+ * A branch office. Always belongs to a region (used for EWS geo grouping).
+ * Branches are compared peer-to-peer with HO departments and other branches.
+ */
+export interface Branch {
+  id: string;
+  name: string;
+  /** Geographic region the branch belongs to (e.g. "Miền Bắc", "Miền Trung"). */
+  region: string;
 }
 
 export interface OrganizationSettings extends BaseEntity {
   name: string;
   industry: string;
   jurisdictions: string[];
-  businessUnits: string[];
-  departments: string[];
-  locations: string[];
-  defaultFrequency: string;
-  criticalityLevels: string[];
-  penaltyThresholds: PenaltyThreshold[];
+  /** Head Office departments (no region). */
+  hoDepartments: HoDepartment[];
+  /** Branch offices, each with a region. */
+  branches: Branch[];
 }

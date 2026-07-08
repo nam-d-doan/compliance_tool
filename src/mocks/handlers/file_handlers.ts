@@ -9,7 +9,7 @@ import {
   parseNumber,
   type MockResolverContext,
 } from "./utils";
-import type { FileAttachment, CAP } from "@/types";
+import type { FileAttachment, CAP, NonComplianceCase } from "@/types";
 
 /** Max upload size enforced by the mock API (matches UI: 10 MB). */
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -23,6 +23,9 @@ export async function handleGetFileList({ request }: { request: Request }) {
 
   if (q.capId) {
     items = items.filter((f) => f.capId === q.capId);
+  }
+  if (q.nccId) {
+    items = items.filter((f) => f.nccId === q.nccId);
   }
   if (q.ids) {
     const ids = q.ids.split(",").map((s) => s.trim());
@@ -47,11 +50,7 @@ export async function handleGetFileList({ request }: { request: Request }) {
  * mints a blob object URL so downloads work in dev, persists metadata, and
  * links the file to the CAP when `capId` resolves to an existing CAP.
  */
-export async function handleUploadFile({
-  request,
-}: {
-  request: Request;
-}) {
+export async function handleUploadFile({ request }: { request: Request }) {
   await getDelay();
   let form: FormData;
   try {
@@ -61,6 +60,7 @@ export async function handleUploadFile({
   }
   const file = form.get("file");
   const capId = (form.get("capId") as string | null) ?? undefined;
+  const nccId = (form.get("nccId") as string | null) ?? undefined;
 
   if (!(file instanceof File)) {
     return badRequest("No file attached (field must be named 'file')");
@@ -93,6 +93,7 @@ export async function handleUploadFile({
     uploadedBy,
     uploadedById,
     capId,
+    nccId,
     createdAt: now,
     updatedAt: now,
   };
@@ -102,6 +103,14 @@ export async function handleUploadFile({
     const cap = findById(db.caps, capId);
     if (cap && !cap.fileIds.includes(attachment.id)) {
       cap.fileIds = [...cap.fileIds, attachment.id];
+    }
+  }
+
+  // Link to the NCC when one is referenced and exists.
+  if (nccId) {
+    const ncc = findById(db.nccs, nccId);
+    if (ncc && !ncc.fileIds.includes(attachment.id)) {
+      ncc.fileIds = [...ncc.fileIds, attachment.id];
     }
   }
 
@@ -126,6 +135,13 @@ export async function handleDeleteFile({ params }: MockResolverContext) {
   for (const cap of db.caps as CAP[]) {
     if (cap.fileIds.includes(removed.id)) {
       cap.fileIds = cap.fileIds.filter((id) => id !== removed.id);
+    }
+  }
+
+  // Unlink from any NCC that referenced it.
+  for (const ncc of db.nccs as NonComplianceCase[]) {
+    if (ncc.fileIds.includes(removed.id)) {
+      ncc.fileIds = ncc.fileIds.filter((id) => id !== removed.id);
     }
   }
 

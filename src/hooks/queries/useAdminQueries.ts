@@ -43,14 +43,39 @@ export function useAdminOrganizationSettings() {
   });
 }
 
-export function useAdminTemplates(
-  page = 1,
-  pageSize = 20,
-  filters: { status?: string; search?: string } = {},
-) {
+export interface OrgUnit {
+  id: string;
+  name: string;
+  type: "ho_department" | "branch";
+  region?: string; // only for branches
+}
+
+export function useOrgUnits() {
   return useQuery({
-    queryKey: [...adminKeys.templates(), filters, page, pageSize],
-    queryFn: () => AdminService.templates(page, pageSize, filters),
+    queryKey: [...adminKeys.organization(), "units"],
+    queryFn: () =>
+      AdminService.organization().then((res) => {
+        const settings = res.settings;
+        const allUnits: OrgUnit[] = [
+          ...settings.hoDepartments.map((d) => ({
+            id: d.id,
+            name: d.name,
+            type: "ho_department" as const,
+          })),
+          ...settings.branches.map((b) => ({
+            id: b.id,
+            name: b.name,
+            type: "branch" as const,
+            region: b.region,
+          })),
+        ];
+        return {
+          hoDepartments: settings.hoDepartments,
+          branches: settings.branches,
+          allUnits,
+          getUnitById: (id: string) => allUnits.find((u) => u.id === id),
+        };
+      }),
     staleTime: 5 * 60 * 1000,
   });
 }

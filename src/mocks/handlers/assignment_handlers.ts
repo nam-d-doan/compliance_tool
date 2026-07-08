@@ -80,21 +80,8 @@ export async function handleGetAssignmentList({
     items = items.filter((item) => priorities.includes(item.priority));
   }
   if (q.department) {
-    items = items.filter(
-      (item) =>
-        item.assignedDepartmentId === q.department ||
-        (item.assignedDepartmentName ?? "")
-          .toLowerCase()
-          .includes(q.department.toLowerCase()),
-    );
-  }
-  if (q.office) {
-    items = items.filter(
-      (item) =>
-        item.assignedOfficeId === q.office ||
-        (item.assignedOfficeName ?? "")
-          .toLowerCase()
-          .includes(q.office.toLowerCase()),
+    items = items.filter((item) =>
+      (item.assignedDepartmentIds ?? []).includes(q.department),
     );
   }
   if (q.assignor) {
@@ -126,7 +113,6 @@ export async function handleGetAssignmentList({
       "title",
       "description",
       "regulationTitle",
-      "assignedDepartmentName",
       "assignorName",
       "status",
     ]);
@@ -134,9 +120,14 @@ export async function handleGetAssignmentList({
 
   const sortField = q.sortField ?? "createdDate";
   const sortDirection = q.sortDirection ?? "desc";
+  // `assignor` isn't a direct property — sort by display name (fallback to id).
+  const sortValue = (item: Assignment): unknown =>
+    sortField === "assignor"
+      ? (item.assignorName ?? item.assignorId)
+      : item[sortField as keyof Assignment];
   items.sort((a, b) => {
-    const aVal = a[sortField as keyof Assignment];
-    const bVal = b[sortField as keyof Assignment];
+    const aVal = sortValue(a);
+    const bVal = sortValue(b);
     if (aVal == null || bVal == null) return 0;
     if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
     if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
@@ -168,7 +159,8 @@ export async function handleCreateAssignment({
 
   if (!body.title) return badRequest("Title is required");
   if (!body.regulationId) return badRequest("Regulation is required");
-  if (!body.assignedDepartmentId) return badRequest("Department is required");
+  if (!body.assignedDepartmentIds || body.assignedDepartmentIds.length === 0)
+    return badRequest("At least one department is required");
   if (!body.dueDate) return badRequest("Due date is required");
   if (!body.priority) return badRequest("Priority is required");
 
@@ -190,11 +182,8 @@ export async function handleCreateAssignment({
     regulationTitle: regulation.title,
     assignorId,
     assignorName,
-    assignedDepartmentId: body.assignedDepartmentId,
-    assignedDepartmentName:
-      body.assignedDepartmentName ?? body.assignedDepartmentId,
-    assignedOfficeId: body.assignedOfficeId,
-    assignedOfficeName: body.assignedOfficeName,
+    assignedDepartmentIds: body.assignedDepartmentIds,
+    assignedDepartmentNames: body.assignedDepartmentNames ?? [],
     status: normalizeStatus(body.status),
     priority: normalizePriority(body.priority),
     dueDate: body.dueDate,

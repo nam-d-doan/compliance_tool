@@ -9,14 +9,12 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { motion } from "motion/react";
+import { cn } from "@/lib/utils";
 import {
   Bell,
   Check,
-  FileCheck,
   AlertTriangle,
-  CalendarClock,
   ScrollText,
   Sparkles,
   Megaphone,
@@ -71,6 +69,19 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
   },
 ];
 
+// Category -> tinted icon chip. Mirrors the established pattern in
+// TimelineEvent.tsx so colors stay correct in light + dark mode.
+const CATEGORY_STYLES: Record<string, string> = {
+  Compliance: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  AI: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  CAP: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  System: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+};
+
+const DEFAULT_CATEGORY_STYLE = "bg-muted text-muted-foreground";
+
+type NotificationFilter = "all" | "unread";
+
 interface NotificationDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -83,8 +94,11 @@ export function NotificationDrawer({
   const [notifications, setNotifications] = useState<Notification[]>(
     INITIAL_NOTIFICATIONS,
   );
+  const [filter, setFilter] = useState<NotificationFilter>("all");
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const visibleNotifications =
+    filter === "unread" ? notifications.filter((n) => !n.read) : notifications;
 
   const markAllAsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -99,85 +113,186 @@ export function NotificationDrawer({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col sm:max-w-md">
-        <SheetHeader className="space-y-1">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2 text-lg font-semibold">
-              <Bell className="size-5" />
-              Notifications
-            </SheetTitle>
-            {unreadCount > 0 && (
-              <Badge variant="secondary" className="h-6 px-2 text-xs">
-                {unreadCount} unread
-              </Badge>
-            )}
+        <SheetHeader className="gap-4 px-6 pt-6 pb-0">
+          {/* Title block — kept on the left so it never clashes with the top-right close button. */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Bell className="size-5" />
+              </span>
+              <SheetTitle className="text-base font-semibold tracking-tight">
+                Notifications
+              </SheetTitle>
+            </div>
+            <SheetDescription className="text-xs">
+              Stay updated on approvals, deadlines, and AI insights.
+            </SheetDescription>
           </div>
-          <SheetDescription>
-            Stay updated on approvals, deadlines, and AI insights.
-          </SheetDescription>
+
+          {/* Segmented filter control */}
+          <div
+            role="group"
+            aria-label="Filter notifications"
+            className="inline-flex w-full items-center gap-1 rounded-lg bg-muted p-1"
+          >
+            <FilterTab
+              label="All"
+              active={filter === "all"}
+              onClick={() => setFilter("all")}
+            />
+            <FilterTab
+              label="Unread"
+              active={filter === "unread"}
+              count={unreadCount}
+              onClick={() => setFilter("unread")}
+            />
+          </div>
         </SheetHeader>
 
-        <Separator className="my-2" />
-
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="flex flex-col gap-3 pb-4">
-            {notifications.map((notification) => {
-              const Icon = notification.icon;
-              return (
-                <button
-                  key={notification.id}
-                  type="button"
-                  onClick={() => markAsRead(notification.id)}
-                  className={`flex gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 ${
-                    notification.read
-                      ? "border-border bg-background opacity-70"
-                      : "border-primary/20 bg-primary/5"
-                  }`}
-                >
-                  <div className="mt-0.5 shrink-0">
-                    <Icon className="size-5 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium leading-none">
-                        {notification.title}
-                      </p>
-                      {!notification.read && (
-                        <span className="mt-0.5 size-2 rounded-full bg-primary" />
+        <ScrollArea className="min-h-0 flex-1">
+          {visibleNotifications.length === 0 ? (
+            <EmptyState filter={filter} />
+          ) : (
+            <div className="flex flex-col gap-2 px-6 py-4">
+              {visibleNotifications.map((notification, index) => {
+                const Icon = notification.icon;
+                return (
+                  <motion.button
+                    key={notification.id}
+                    type="button"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.22,
+                      delay: Math.min(index * 0.04, 0.24),
+                      ease: "easeOut",
+                    }}
+                    onClick={() => markAsRead(notification.id)}
+                    className={cn(
+                      "group flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition-colors duration-200",
+                      notification.read
+                        ? "border-border/70 bg-card/40 hover:border-border hover:bg-muted/60"
+                        : "border-primary/15 bg-primary/[0.05] hover:bg-primary/[0.09]",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                        CATEGORY_STYLES[notification.category] ??
+                          DEFAULT_CATEGORY_STYLE,
                       )}
+                    >
+                      <Icon className="size-5" />
+                    </span>
+
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p
+                          className={cn(
+                            "text-sm leading-snug",
+                            notification.read
+                              ? "font-normal text-muted-foreground"
+                              : "font-medium text-foreground",
+                          )}
+                        >
+                          {notification.title}
+                        </p>
+                        {!notification.read && (
+                          <span
+                            aria-hidden="true"
+                            className="mt-1.5 size-2 shrink-0 rounded-full bg-primary ring-2 ring-primary/20"
+                          />
+                        )}
+                      </div>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {notification.description}
+                      </p>
+                      <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground/70">
+                        <span>{notification.timestamp}</span>
+                        <span aria-hidden="true" className="opacity-50">
+                          &middot;
+                        </span>
+                        <span>{notification.category}</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {notification.description}
-                    </p>
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[10px] text-muted-foreground">
-                        {notification.timestamp}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        •
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {notification.category}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
         </ScrollArea>
 
-        <SheetFooter className="mt-auto flex-col gap-2 sm:flex-col">
+        <SheetFooter className="px-6 pb-6 pt-0">
           <Button
             variant="outline"
             className="w-full"
             onClick={markAllAsRead}
             disabled={unreadCount === 0}
           >
-            <Check className="mr-2 size-4" />
+            <Check className="size-4" />
             Mark all as read
           </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function FilterTab({
+  label,
+  active,
+  count,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  count?: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {label}
+      {count !== undefined && count > 0 && (
+        <span
+          className={cn(
+            "tabular-nums text-[11px]",
+            active ? "text-muted-foreground" : "text-muted-foreground/70",
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function EmptyState({ filter }: { filter: NotificationFilter }) {
+  const isUnread = filter === "unread";
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        {isUnread ? <Check className="size-5" /> : <Bell className="size-5" />}
+      </span>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">
+          {isUnread ? "You're all caught up" : "No notifications"}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {isUnread
+            ? "No unread items right now."
+            : "New activity will show up here."}
+        </p>
+      </div>
+    </div>
   );
 }

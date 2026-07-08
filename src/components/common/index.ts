@@ -26,3 +26,9 @@ export {
   type ApprovalApprover,
   type ApproverStatus,
 } from "./ApprovalPanel";
+export { DueDateCell, type DueDateCellProps } from "./DueDateCell";
+export {
+  SortableTh,
+  type SortableThProps,
+  type SortDirection,
+} from "./SortableTh";

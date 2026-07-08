@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { motion } from "motion/react";
@@ -11,7 +11,6 @@ import {
   ClipboardList,
   Eraser,
   Loader2,
-  Plus,
   Save,
   Send,
   Sparkles,
@@ -33,11 +32,14 @@ import {
   ErrorState,
 } from "@/components/common";
 import { DetailSkeleton } from "@/components/common/Skeletons";
-import { useAssignmentDetail, useRegulationDetail } from "@/hooks/queries";
+import {
+  useAssignmentDetail,
+  useRegulationDetail,
+  useOrgUnits,
+} from "@/hooks/queries";
 import { useBulkCreateObligations } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
-import { VIETNAMESE_DEPARTMENTS } from "@/constants/departments";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 import type {
@@ -115,6 +117,7 @@ export default function ObligationCreatePage() {
 
   const assignmentQuery = useAssignmentDetail(assignmentId ?? "");
   const assignment = assignmentQuery.data;
+  const { data: orgUnitsData } = useOrgUnits();
 
   // Resolve the regulation: from the assignment's regulationId, or the query param.
   const effectiveRegulationId =
@@ -128,19 +131,19 @@ export default function ObligationCreatePage() {
     : false;
 
   // Defaults derived from context.
-  const defaultDept = assignment?.assignedDepartmentId ?? "";
+  const defaultDept = assignment?.assignedDepartmentIds?.[0] ?? "";
   const defaultDueDate = assignment
     ? toInputDate(assignment.dueDate)
     : format(addDays(new Date(), 30), "yyyy-MM-dd");
 
   // Row state — start with 1 blank placeholder row. Initialized once after context loads
   // so the defaults propagate from the assignment.
-  const [rows, setRows] = useState<ObligationRow[]>(() =>
-    [blankRow(
-      assignment?.assignedDepartmentId ?? "",
+  const [rows, setRows] = useState<ObligationRow[]>(() => [
+    blankRow(
+      assignment?.assignedDepartmentIds?.[0] ?? "",
       assignment ? toInputDate(assignment.dueDate) : defaultDueDate,
-    )],
-  );
+    ),
+  ]);
   const [errors, setErrors] = useState<Record<string, RowErrors>>({});
   const [commonDueDate, setCommonDueDate] = useState("");
 
@@ -169,12 +172,21 @@ export default function ObligationCreatePage() {
   const totalObligations = Math.max(0, rows.length - 1);
 
   // --- Row operations -------------------------------------------------------
-  const addRow = () => {
-    setRows((prev) => [...prev, blankRow(defaultDept, defaultDueDate)]);
-  };
-
   const removeRow = (rowId: string) => {
-    setRows((prev) => prev.filter((r) => r.rowId !== rowId));
+    setRows((prev) => {
+      const filtered = prev.filter((r) => r.rowId !== rowId);
+      // Preserve invariant: always end with a blank placeholder row.
+      const last = filtered[filtered.length - 1];
+      const needsPlaceholder =
+        !last ||
+        Boolean(last.articleRef.trim()) ||
+        Boolean(last.title.trim()) ||
+        Boolean(last.description.trim());
+      if (needsPlaceholder) {
+        filtered.push(blankRow(defaultDept, defaultDueDate));
+      }
+      return filtered;
+    });
     setErrors((prev) => {
       const next = { ...prev };
       delete next[rowId];
@@ -184,22 +196,22 @@ export default function ObligationCreatePage() {
 
   const updateRow = (rowId: string, patch: Partial<ObligationRow>) => {
     setRows((prev) => {
-      const updated = prev.map((r) => (r.rowId === rowId ? { ...r, ...patch } : r));
-      
-      // If this is the last row and user started typing in it, add a new placeholder
-      const lastRowIndex = updated.length - 1;
-      const lastRow = updated[lastRowIndex];
-      const isLastRow = rowId === lastRow.rowId;
-      const hasContent = (patch.articleRef?.trim() || patch.title?.trim() || patch.description?.trim() || 
-                          lastRow.articleRef.trim() || lastRow.title.trim() || lastRow.description.trim());
-      
-      if (isLastRow && hasContent) {
+      const updated = prev.map((r) =>
+        r.rowId === rowId ? { ...r, ...patch } : r,
+      );
+      // Invariant: keep exactly one trailing blank placeholder row.
+      // When the current last row gains content, append a fresh placeholder.
+      const last = updated[updated.length - 1];
+      const lastHasContent =
+        Boolean(last.articleRef.trim()) ||
+        Boolean(last.title.trim()) ||
+        Boolean(last.description.trim());
+      if (lastHasContent) {
         return [...updated, blankRow(defaultDept, defaultDueDate)];
       }
-      
       return updated;
     });
-    
+
     // Clear field errors on edit.
     setErrors((prev) => {
       if (!prev[rowId]) return prev;
@@ -219,14 +231,18 @@ export default function ObligationCreatePage() {
     toast.info("Cleared all rows");
   };
 
-  const moveRow = (fromIndex: number, toIndex: number) => {
-    // Don't allow moving the placeholder row (last row)
-    if (toIndex === rows.length - 1) return;
+  // Drag-and-drop reorder: hold the source index in a ref, move once on drop.
+  const dragRowIdx = useRef<number | null>(null);
+
+  const reorderRows = (from: number, to: number) => {
     setRows((prev) => {
-      const newRows = [...prev];
-      const [movedRow] = newRows.splice(fromIndex, 1);
-      newRows.splice(toIndex, 0, movedRow);
-      return newRows;
+      // The trailing placeholder (last index) is never a reorder endpoint.
+      const lastIdx = prev.length - 1;
+      if (from === lastIdx || to === lastIdx || from === to) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
     });
   };
 
@@ -236,7 +252,9 @@ export default function ObligationCreatePage() {
       return;
     }
     setRows((prev) => prev.map((r) => ({ ...r, dueDate: commonDueDate })));
-    toast.success(`Applied due date to all ${rows.length} rows`);
+    toast.success(
+      `Applied due date to all ${totalObligations} obligation${totalObligations === 1 ? "" : "s"}`,
+    );
   };
 
   // --- AI-populate stub -----------------------------------------------------
@@ -265,7 +283,7 @@ export default function ObligationCreatePage() {
       dueDate: defaultDueDate,
       riskLevel: "medium" as ObligationRiskLevel,
     }));
-    setRows(suggested);
+    setRows([...suggested, blankRow(defaultDept, defaultDueDate)]);
     setErrors({});
     toast.success(
       `AI-populated ${suggested.length} obligation suggestions from regulation`,
@@ -279,7 +297,11 @@ export default function ObligationCreatePage() {
 
     rows.forEach((r, index) => {
       // Skip the last placeholder row (it's always blank)
-      const isPlaceholder = index === rows.length - 1 && !r.articleRef.trim() && !r.title.trim() && !r.description.trim();
+      const isPlaceholder =
+        index === rows.length - 1 &&
+        !r.articleRef.trim() &&
+        !r.title.trim() &&
+        !r.description.trim();
       if (isPlaceholder) return;
 
       const isEmpty = !r.articleRef.trim() && !r.title.trim();
@@ -313,7 +335,7 @@ export default function ObligationCreatePage() {
     status: "draft" | "submitted",
   ) => {
     const obligations: BulkObligationInputItem[] = validRows.map((r) => {
-      const dept = VIETNAMESE_DEPARTMENTS.find(
+      const dept = (orgUnitsData?.hoDepartments ?? []).find(
         (d) => d.id === r.ownerDepartmentId,
       );
       return {
@@ -350,7 +372,7 @@ export default function ObligationCreatePage() {
             ? `Submitted ${data.created} obligation${data.created > 1 ? "s" : ""}`
             : `Saved ${data.created} draft obligation${data.created > 1 ? "s" : ""}`,
         );
-        navigate(ROUTES.OBLIGATIONS.HISTORY);
+        navigate(ROUTES.OBLIGATIONS.LIST);
       },
       onError: (err) => {
         toast.error(err.message || "Failed to save obligations");
@@ -413,7 +435,7 @@ export default function ObligationCreatePage() {
       : "Create Obligations";
 
   const headerSubtitle = assignment
-    ? `Batch obligation submission for ${assignment.assignedDepartmentName ?? assignment.assignedDepartmentId}`
+    ? `Batch obligation submission for ${assignment.assignedDepartmentNames?.[0] ?? assignment.assignedDepartmentIds[0]}`
     : regulation
       ? "Batch obligation submission from regulation articles"
       : "Define multiple obligations in one submission.";
@@ -485,8 +507,8 @@ export default function ObligationCreatePage() {
                     icon={Building2}
                     label="Department"
                     value={
-                      assignment.assignedDepartmentName ??
-                      assignment.assignedDepartmentId
+                      assignment.assignedDepartmentNames?.[0] ??
+                      assignment.assignedDepartmentIds[0]
                     }
                   />
                   <ContextFact
@@ -539,16 +561,6 @@ export default function ObligationCreatePage() {
           >
             <Sparkles className="size-4" aria-hidden="true" />
             Suggest from Regulation
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addRow}
-            disabled={submitting}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            Add Row
           </Button>
         </div>
 
@@ -623,28 +635,33 @@ export default function ObligationCreatePage() {
               {rows.map((row, idx) => {
                 const rowErr = errors[row.rowId];
                 const hasError = Boolean(rowErr);
-                const isPlaceholder = idx === rows.length - 1 && !row.articleRef.trim() && !row.title.trim() && !row.description.trim();
-                const isDraggable = !isPlaceholder && rows.length > 2;
-                
+                const isPlaceholder =
+                  idx === rows.length - 1 &&
+                  !row.articleRef.trim() &&
+                  !row.title.trim() &&
+                  !row.description.trim();
+                const isDraggable = !isPlaceholder && totalObligations > 1;
+
                 return (
                   <tr
                     key={row.rowId}
                     draggable={isDraggable}
                     onDragStart={() => {
-                      if (isDraggable) window.sessionStorage.setItem('draggingRowIdx', idx.toString());
+                      if (isDraggable) dragRowIdx.current = idx;
                     }}
                     onDragOver={(e) => {
-                      e.preventDefault();
-                      if (isDraggable) {
-                        const fromIdx = parseInt(window.sessionStorage.getItem('draggingRowIdx') || '-1');
-                        if (fromIdx !== -1 && fromIdx !== idx) {
-                          moveRow(fromIdx, idx);
-                          window.sessionStorage.setItem('draggingRowIdx', idx.toString());
-                        }
-                      }
+                      // Allow drop; never mutate state here (avoids re-render thrash).
+                      if (isDraggable) e.preventDefault();
+                    }}
+                    onDrop={() => {
+                      if (!isDraggable) return;
+                      const from = dragRowIdx.current;
+                      dragRowIdx.current = null;
+                      if (from === null) return;
+                      reorderRows(from, idx);
                     }}
                     onDragEnd={() => {
-                      window.sessionStorage.removeItem('draggingRowIdx');
+                      dragRowIdx.current = null;
                     }}
                     className={cn(
                       "border-b border-border/60 transition-colors",
@@ -723,7 +740,7 @@ export default function ObligationCreatePage() {
                         className={selectClass}
                       >
                         <option value="">Select dept</option>
-                        {VIETNAMESE_DEPARTMENTS.map((d) => (
+                        {(orgUnitsData?.hoDepartments ?? []).map((d) => (
                           <option key={d.id} value={d.id}>
                             {d.name}
                           </option>
@@ -879,7 +896,7 @@ export default function ObligationCreatePage() {
                       className={selectClass}
                     >
                       <option value="">Select dept</option>
-                      {VIETNAMESE_DEPARTMENTS.map((d) => (
+                      {(orgUnitsData?.hoDepartments ?? []).map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name}
                         </option>
@@ -920,27 +937,7 @@ export default function ObligationCreatePage() {
               </CardContent>
             </Card>
           );
-})}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => {
-              // Check if last row is placeholder, add new row otherwise
-              const lastRow = rows[rows.length - 1];
-              const hasContent = lastRow.articleRef.trim() || lastRow.title.trim() || lastRow.description.trim();
-              if (!hasContent) {
-                toast.info("Use the placeholder row at the bottom to add new obligations");
-                return;
-              }
-              addRow();
-            }}
-            disabled={submitting}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            Add Row
-          </Button>
+        })}
       </div>
 
       {/* Action bar */}

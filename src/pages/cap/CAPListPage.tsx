@@ -1,24 +1,32 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { format, parseISO } from "date-fns";
 import {
-  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   Eye,
   PlusCircle,
   Search,
   Trash2,
+  X,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
 import { PageHero } from "@/components/common";
+import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
+import { DueDateCell } from "@/components/common/DueDateCell";
 import { useAuthStore } from "@/stores";
 import { useCAPList } from "@/hooks/queries";
 import { useDeleteCAP } from "@/hooks/mutations";
@@ -27,8 +35,10 @@ import { ROUTES } from "@/constants/routes";
 import {
   CAP_STATUSES,
   PRIORITY_LEVELS,
+  type CAPStatus,
   type PriorityLevel,
 } from "@/constants/status";
+import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { CAP, CAPFilter } from "@/types";
@@ -40,12 +50,7 @@ type SortField =
   | "status"
   | "ownerName"
   | "dueDate"
-  | "progress";
-
-interface SortConfig {
-  field: SortField;
-  direction: "asc" | "desc";
-}
+  | "createdAt";
 
 const PAGE_SIZE = 10;
 
@@ -57,10 +62,10 @@ export default function CAPListPage() {
 
   const [filters, setFilters] = useState<CAPFilter>({});
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<SortConfig>({
-    field: "dueDate",
-    direction: "asc",
-  });
+  const [sort, setSort] = useState<{
+    field: SortField;
+    direction: SortDirection;
+  } | null>(null);
 
   const allCapsQuery = useCAPList({}, 1, 500);
   const allCaps = useMemo(
@@ -91,12 +96,23 @@ export default function CAPListPage() {
   const sortedCaps = useMemo(() => {
     const list = [...filteredCaps];
     list.sort((a, b) => {
+      // Default ordering: newest first by createdAt.
+      if (!sort) {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }
       const dir = sort.direction === "asc" ? 1 : -1;
       switch (sort.field) {
         case "dueDate":
           return (
             dir *
             (new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+          );
+        case "createdAt":
+          return (
+            dir *
+            (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
           );
         case "priority": {
           const order: Record<PriorityLevel, number> = {
@@ -107,8 +123,17 @@ export default function CAPListPage() {
           };
           return dir * (order[a.priority] - order[b.priority]);
         }
-        case "progress":
-          return dir * (a.progress - b.progress);
+        case "status": {
+          const order: Record<CAPStatus, number> = {
+            Draft: 1,
+            Open: 2,
+            "In Progress": 3,
+            "Pending Approval": 4,
+            Closed: 5,
+            Rejected: 6,
+          };
+          return dir * (order[a.status] - order[b.status]);
+        }
         default:
           return (
             dir * String(a[sort.field]).localeCompare(String(b[sort.field]))
@@ -125,12 +150,14 @@ export default function CAPListPage() {
     currentPage * PAGE_SIZE,
   );
 
-  const handleSort = (field: SortField) => {
-    setSort((prev) => ({
-      field,
-      direction:
-        prev.field === field && prev.direction === "asc" ? "desc" : "asc",
-    }));
+  const handleSort = (field: string) => {
+    setSort((prev) => {
+      if (prev?.field !== field)
+        return { field: field as SortField, direction: "asc" };
+      if (prev.direction === "asc")
+        return { field: field as SortField, direction: "desc" };
+      return null; // was desc → clear → revert to default ordering
+    });
     setPage(1);
   };
 
@@ -138,6 +165,16 @@ export default function CAPListPage() {
     setFilters((prev) => ({ ...prev, ...patch, page: 1 }));
     setPage(1);
   };
+
+  const hasActiveFilters = Boolean(
+    filters.search ||
+    filters.status ||
+    filters.priority ||
+    filters.owner ||
+    filters.department ||
+    filters.dueDateFrom ||
+    filters.dueDateTo,
+  );
 
   const handleDelete = (cap: CAP) => {
     if (!window.confirm(`Delete ${cap.capId}?`)) return;
@@ -185,76 +222,98 @@ export default function CAPListPage() {
         )}
       </PageHero>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
-        <div className="relative flex-1 lg:min-w-[16rem]">
-          <Search
-            className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            placeholder="Search CAPs..."
-            value={filters.search ?? ""}
-            onChange={(e) =>
-              updateFilter({ search: e.target.value || undefined })
-            }
-            className="pl-9"
-          />
-        </div>
-        <FilterSelect
-          value={(filters.status as string) ?? ""}
-          onChange={(v) =>
-            updateFilter({ status: (v as CAP["status"]) || undefined })
-          }
-          options={[...CAP_STATUSES]}
-          placeholder="All statuses"
-        />
-        <FilterSelect
-          value={(filters.priority as string) ?? ""}
-          onChange={(v) =>
-            updateFilter({
-              priority: (v.toLowerCase() as CAP["priority"]) || undefined,
-            })
-          }
-          options={PRIORITY_LEVELS.map(
-            (p) => p.charAt(0).toUpperCase() + p.slice(1),
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Filters</CardTitle>
+          {hasActiveFilters && (
+            <CardAction>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setFilters({})}
+              >
+                <X className="size-3" aria-hidden="true" />
+                Clear all
+              </Button>
+            </CardAction>
           )}
-          placeholder="All priorities"
-        />
-        <FilterSelect
-          value={filters.owner ?? ""}
-          onChange={(v) => updateFilter({ owner: v || undefined })}
-          options={ownerOptions.map(([id, name]) => ({
-            label: name,
-            value: id,
-          }))}
-          placeholder="All owners"
-        />
-        <FilterSelect
-          value={filters.department ?? ""}
-          onChange={(v) => updateFilter({ department: v || undefined })}
-          options={departmentOptions}
-          placeholder="All departments"
-        />
-        <div className="flex items-center gap-2">
-          <Input
-            type="date"
-            value={filters.dueDateFrom ?? ""}
-            onChange={(e) =>
-              updateFilter({ dueDateFrom: e.target.value || undefined })
-            }
-            className="w-auto"
-          />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input
-            type="date"
-            value={filters.dueDateTo ?? ""}
-            onChange={(e) =>
-              updateFilter({ dueDateTo: e.target.value || undefined })
-            }
-            className="w-auto"
-          />
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[12rem] flex-1">
+              <Search
+                className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                placeholder="Search CAPs..."
+                value={filters.search ?? ""}
+                onChange={(e) =>
+                  updateFilter({ search: e.target.value || undefined })
+                }
+                className="h-9 pl-9"
+              />
+            </div>
+            <FilterSelect
+              value={(filters.status as string) ?? ""}
+              onChange={(v) =>
+                updateFilter({ status: (v as CAP["status"]) || undefined })
+              }
+              options={[...CAP_STATUSES]}
+              placeholder="All statuses"
+            />
+            <FilterSelect
+              value={(filters.priority as string) ?? ""}
+              onChange={(v) =>
+                updateFilter({
+                  priority: (v.toLowerCase() as CAP["priority"]) || undefined,
+                })
+              }
+              options={PRIORITY_LEVELS.map(
+                (p) => p.charAt(0).toUpperCase() + p.slice(1),
+              )}
+              placeholder="All priorities"
+            />
+            <FilterSelect
+              value={filters.owner ?? ""}
+              onChange={(v) => updateFilter({ owner: v || undefined })}
+              options={ownerOptions.map(([id, name]) => ({
+                label: name,
+                value: id,
+              }))}
+              placeholder="All owners"
+            />
+            <FilterSelect
+              value={filters.department ?? ""}
+              onChange={(v) => updateFilter({ department: v || undefined })}
+              options={departmentOptions}
+              placeholder="All departments"
+            />
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="date"
+                value={filters.dueDateFrom ?? ""}
+                onChange={(e) =>
+                  updateFilter({ dueDateFrom: e.target.value || undefined })
+                }
+                className="h-9 w-auto"
+                aria-label="Due from"
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={filters.dueDateTo ?? ""}
+                onChange={(e) =>
+                  updateFilter({ dueDateTo: e.target.value || undefined })
+                }
+                className="h-9 w-auto"
+                aria-label="Due to"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <TableSkeleton rows={PAGE_SIZE} columns={9} />
@@ -280,41 +339,47 @@ export default function CAPListPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
-                  <SortHeader
-                    field="capId"
+                  <SortableTh
                     label="CAP ID"
+                    field="capId"
                     sort={sort}
                     onSort={handleSort}
+                    tooltip="Sort by CAP identifier"
                   />
-                  <SortHeader
-                    field="title"
+                  <SortableTh
                     label="Title"
+                    field="title"
                     sort={sort}
                     onSort={handleSort}
+                    tooltip="Sort by title (A→Z)"
                   />
-                  <SortHeader
-                    field="priority"
+                  <SortableTh
                     label="Priority"
+                    field="priority"
                     sort={sort}
                     onSort={handleSort}
+                    tooltip="Sort by priority (low → critical)"
                   />
-                  <SortHeader
-                    field="status"
+                  <SortableTh
                     label="Status"
+                    field="status"
                     sort={sort}
                     onSort={handleSort}
+                    tooltip="Sort by workflow status"
                   />
-                  <SortHeader
-                    field="ownerName"
+                  <SortableTh
                     label="Owner"
+                    field="ownerName"
                     sort={sort}
                     onSort={handleSort}
+                    tooltip="Sort by owner name (A→Z)"
                   />
-                  <SortHeader
-                    field="dueDate"
+                  <SortableTh
                     label="Due Date"
+                    field="dueDate"
                     sort={sort}
                     onSort={handleSort}
+                    tooltip={DUE_DATE_COLOR_GUIDE}
                   />
                   <th className="px-4 py-3 font-medium">Progress</th>
                   <th className="px-4 py-3 font-medium">Linked Obligations</th>
@@ -342,7 +407,12 @@ export default function CAPListPage() {
                     </td>
                     <td className="px-4 py-3">{cap.ownerName}</td>
                     <td className="whitespace-nowrap px-4 py-3">
-                      {format(parseISO(cap.dueDate), "MMM d, yyyy")}
+                      <DueDateCell
+                        dueDate={cap.dueDate}
+                        completed={
+                          cap.status === "Closed" || cap.status === "Rejected"
+                        }
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -458,7 +528,7 @@ function FilterSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "h-8 rounded-lg border border-input bg-background px-2.5 py-1 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
+        "h-9 min-w-[10rem] rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
       )}
     >
       <option value="">{placeholder}</option>
@@ -472,36 +542,5 @@ function FilterSelect({
         );
       })}
     </select>
-  );
-}
-
-function SortHeader({
-  field,
-  label,
-  sort,
-  onSort,
-}: {
-  field: SortField;
-  label: string;
-  sort: SortConfig;
-  onSort: (field: SortField) => void;
-}) {
-  return (
-    <th className="px-4 py-3 font-medium">
-      <button
-        type="button"
-        onClick={() => onSort(field)}
-        className="flex items-center gap-1 outline-none focus-visible:underline"
-      >
-        {label}
-        <ArrowUpDown
-          className={cn(
-            "size-3 transition-colors",
-            sort.field === field ? "text-primary" : "text-muted-foreground/50",
-          )}
-          aria-hidden="true"
-        />
-      </button>
-    </th>
   );
 }
