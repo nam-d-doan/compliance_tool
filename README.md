@@ -2,11 +2,6 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
 ## React Compiler
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
@@ -30,3 +25,31 @@ If you are developing a production application, we recommend enabling type-aware
 ```
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+
+## Running the App
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm run dev
+```
+
+### Quick Share with Cloudflare Tunnel
+
+```bash
+# Terminal 1: Start dev server
+pnpm run dev
+
+# Terminal 2: Create tunnel (requires cloudflared)
+cloudflared tunnel --url http://localhost:5173
+```
+
+## Deployment
+
+For detailed deployment instructions, see [Deployment Guide](docs/deployment.md).
+
+The guide covers:
+- **Cloudflare Tunnel**: Quick local sharing for demos
+- **Vercel**: Production deployment from GitHub

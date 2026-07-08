@@ -14,6 +14,10 @@ Project-level. Specs are authored during planning; architecture docs are maintai
 - **`architecture/`** — reference docs:
   - `folder-structure.md` — intended folder layout and tech stack setup steps. May drift from actual structure; treat as reference, not source of truth.
   - `design-language.md` — visual design patterns extracted from FDM demos. Binding for UI work.
+- **`deployment.md`** — deployment guide covering:
+  - Cloudflare Tunnel for local sharing/demos
+  - Vercel for production deployment
+  - Configuration steps and troubleshooting
 - **HTML demo files** (`FDM_*.html`) — reference demos from a prior project. Not part of the build; kept for design reference only.
 - **PDF** (`Business_user_guide2025 3.pdf`) — business user guide. Gitignored (`*.pdf` in `.gitignore`); not tracked.
 
@@ -22,6 +26,7 @@ Project-level. Specs are authored during planning; architecture docs are maintai
 - Specs drive feature development — read the relevant spec before implementing a phase.
 - Architecture docs are reference material. If the actual code structure diverges, update the doc or mark it stale.
 - Design language doc is binding for UI/UX work — match the documented patterns (hero banners, callouts, KPI cards, etc.).
+- `deployment.md` should be kept up-to-date with the actual deployment process. Update Vercel steps if build settings change.
 - Do not run formatters on `specs/` (excluded by design — prose may use intentional formatting).
 
 ## Verification
