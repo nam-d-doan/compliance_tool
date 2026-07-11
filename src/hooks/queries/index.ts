@@ -1,4 +1,3 @@
-export * from "./useComplianceQueries";
 export * from "./useCAPQueries";
 export * from "./useNCCQueries";
 export * from "./useRegulationQueries";

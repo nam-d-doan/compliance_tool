@@ -6,10 +6,10 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { cn } from "@/lib/utils";
 import { riskScoreTextClasses } from "@/lib/risk-score";
-import type { ComplianceObligation } from "@/types";
+import type { Obligation } from "@/types";
 
 export interface ComplianceCardProps {
-  item: ComplianceObligation;
+  item: Obligation;
   onClick?: () => void;
   className?: string;
 }
@@ -36,7 +36,7 @@ export function ComplianceCard({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <span className="text-xs text-muted-foreground">
-                {item.complianceId}
+                {item.code}
               </span>
               <CardTitle className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug">
                 {item.title}
@@ -44,7 +44,7 @@ export function ComplianceCard({
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5">
               <StatusBadge status={item.status} size="sm" />
-              <PriorityBadge priority={item.criticality} size="sm" />
+              <PriorityBadge priority={item.riskLevel} size="sm" />
             </div>
           </div>
         </CardHeader>

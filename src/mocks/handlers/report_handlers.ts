@@ -21,17 +21,17 @@ import type {
 const today = new Date();
 
 function statusReport(db: ReturnType<typeof getDb>): Report {
-  const items = db.compliance;
+  const items = db.obligations;
   const total = items.length;
   const completed = items.filter((i) =>
-    ["Completed", "Approved"].includes(i.status),
+    ["completed", "approved"].includes(i.status),
   ).length;
-  const submitted = items.filter((i) => i.status === "Submitted").length;
-  const approved = items.filter((i) => i.status === "Approved").length;
+  const submitted = items.filter((i) => i.status === "submitted").length;
+  const approved = items.filter((i) => i.status === "approved").length;
   const overdue = items.filter((i) =>
-    isOverdueDueDate(i.dueDate, ["Completed", "Approved"].includes(i.status)),
+    isOverdueDueDate(i.dueDate, ["completed", "approved"].includes(i.status)),
   ).length;
-  const rejected = items.filter((i) => i.status === "Rejected").length;
+  const rejected = items.filter((i) => i.status === "rejected").length;
   const complianceRate = total
     ? Math.round((completed / total) * 1000) / 10
     : 0;
@@ -112,7 +112,7 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
               items.filter(
                 (i) =>
                   i.businessUnit === bu &&
-                  ["Completed", "Approved"].includes(i.status),
+                  ["completed", "approved"].includes(i.status),
               ).length,
           ),
           color: "#10b981",
@@ -134,7 +134,7 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
                   i.department === d &&
                   isOverdueDueDate(
                     i.dueDate,
-                    ["Completed", "Approved"].includes(i.status),
+                    ["completed", "approved"].includes(i.status),
                   ),
               ).length,
           ),
@@ -145,8 +145,8 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
   ];
 
   const outcome = (status: string) => {
-    if (["Completed", "Approved"].includes(status)) return "Compliant";
-    if (status === "Rejected") return "Non-compliant";
+    if (["completed", "approved"].includes(status)) return "Compliant";
+    if (status === "rejected") return "Non-compliant";
     return "In Progress";
   };
 
@@ -158,7 +158,7 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
     kpis,
     charts,
     tableData: items.slice(0, 20).map((i) => ({
-      id: i.complianceId,
+      id: i.code,
       title: i.title,
       owner: i.ownerName,
       status: i.status,
@@ -190,7 +190,7 @@ interface CalendarEventRow {
 }
 
 function calendarReport(db: ReturnType<typeof getDb>): Report {
-  const complianceEvents: CalendarEventRow[] = db.compliance
+  const complianceEvents: CalendarEventRow[] = db.obligations
     .filter((i) => i.dueDate)
     .map((i) => ({
       id: `evt-cmp-${i.id}`,
@@ -198,7 +198,7 @@ function calendarReport(db: ReturnType<typeof getDb>): Report {
       date: i.dueDate,
       type: "compliance",
       status: i.status,
-      entityId: i.complianceId,
+      entityId: i.code,
       owner: i.ownerName,
     }));
 
@@ -408,17 +408,17 @@ function capReport(db: ReturnType<typeof getDb>): Report {
 function executiveReport(
   db: ReturnType<typeof getDb>,
 ): Report & { data: ExecutiveSummary } {
-  const compliance = db.compliance;
+  const compliance = db.obligations;
   const caps = db.caps;
   const total = compliance.length;
   const completed = compliance.filter((i) =>
-    ["Completed", "Approved"].includes(i.status),
+    ["completed", "approved"].includes(i.status),
   ).length;
   const complianceRate = total
     ? Math.round((completed / total) * 1000) / 10
     : 0;
   const overdue = compliance.filter((i) =>
-    isOverdueDueDate(i.dueDate, ["Completed", "Approved"].includes(i.status)),
+    isOverdueDueDate(i.dueDate, ["completed", "approved"].includes(i.status)),
   ).length;
   const riskScore = Math.round(
     compliance.reduce((sum, i) => sum + i.aiRiskScore, 0) / (total || 1),
@@ -429,24 +429,24 @@ function executiveReport(
     topRisks: compliance
       .filter(
         (i) =>
-          i.criticality === "critical" &&
+          i.riskLevel === "critical" &&
           isOverdueDueDate(
             i.dueDate,
-            ["Completed", "Approved"].includes(i.status),
+            ["completed", "approved"].includes(i.status),
           ),
       )
       .slice(0, 5)
       .map((i) => ({
         title: i.title,
-        severity: i.criticality,
+        severity: i.riskLevel,
         owner: i.ownerName,
         dueDate: i.dueDate,
       })),
     criticalCompliance: compliance
-      .filter((i) => i.criticality === "critical")
+      .filter((i) => i.riskLevel === "critical")
       .slice(0, 5)
       .map((i) => ({
-        id: i.complianceId,
+        id: i.code,
         title: i.title,
         status: i.status,
         dueDate: i.dueDate,
@@ -471,7 +471,7 @@ function executiveReport(
       .map((d) => {
         const deptItems = compliance.filter((i) => i.department === d);
         const completedDept = deptItems.filter((i) =>
-          ["Completed", "Approved"].includes(i.status),
+          ["completed", "approved"].includes(i.status),
         ).length;
         return {
           department: d,
@@ -481,7 +481,7 @@ function executiveReport(
           overdueCount: deptItems.filter((i) =>
             isOverdueDueDate(
               i.dueDate,
-              ["Completed", "Approved"].includes(i.status),
+              ["completed", "approved"].includes(i.status),
             ),
           ).length,
           capCount: caps.filter((i) => i.department === d).length,

@@ -48,7 +48,7 @@ import {
   useRegulationComments,
   useRegulationDependencies,
 } from "@/hooks/queries/useRegulationQueries";
-import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
 import { useRegulationImpact as useAIRegulationImpact } from "@/hooks/mutations/useAIMutations";
 import {
   useAddRegulationComment,
@@ -210,7 +210,7 @@ export default function RegulationDetailPage() {
   const timeline = useRegulationTimeline(id);
   const comments = useRegulationComments(id);
   const dependencies = useRegulationDependencies(id);
-  const obligations = useComplianceList({ regulation: id }, 1, 50);
+  const obligations = useObligationList({ regulationId: id }, 1, 50);
   const aiImpact = useAIRegulationImpact();
   const addComment = useAddRegulationComment(id);
 
@@ -832,7 +832,7 @@ export default function RegulationDetailPage() {
                       className="flex w-full items-center justify-between rounded-md border border-border bg-card p-2 text-left text-sm transition-colors hover:bg-muted/50"
                     >
                       <span className="truncate font-medium">
-                        {obligation.complianceId}
+                        {obligation.code}
                       </span>
                       <StatusBadge status={obligation.status} size="sm" />
                     </button>

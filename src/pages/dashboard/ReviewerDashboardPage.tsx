@@ -23,12 +23,12 @@ import {
   ListSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import { useDashboard, useComplianceList } from "@/hooks/queries";
+import { useDashboard, useObligationList } from "@/hooks/queries";
 import { CHART_COLORS } from "@/components/charts/chart-theme";
 
 function useReviewerData() {
   const dashboard = useDashboard("reviewer");
-  const compliance = useComplianceList({ page: 1, pageSize: 500 }, 1, 500);
+  const compliance = useObligationList({}, 1, 500);
 
   const isLoading = dashboard.isPending || compliance.isPending;
   const error = dashboard.error ?? compliance.error;

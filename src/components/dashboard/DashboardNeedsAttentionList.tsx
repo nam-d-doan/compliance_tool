@@ -10,7 +10,7 @@ import { ArrowRight, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { isOverdueDueDate } from "@/lib/due-date";
 import { cn } from "@/lib/utils";
-import type { ComplianceObligation, CAP } from "@/types";
+import type { Obligation, CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
 
 interface AttentionItem {
@@ -25,7 +25,7 @@ interface AttentionItem {
 }
 
 interface DashboardNeedsAttentionListProps {
-  compliance?: ComplianceObligation[];
+  compliance?: Obligation[];
   caps?: CAP[];
   title?: string;
   maxItems?: number;
@@ -45,16 +45,16 @@ export function DashboardNeedsAttentionList({
         (c) =>
           isOverdueDueDate(
             c.dueDate,
-            ["Completed", "Approved"].includes(c.status),
-          ) || c.criticality === "critical",
+            ["completed", "approved"].includes(c.status),
+          ) || c.riskLevel === "critical",
       )
       .map((c) => ({
         id: c.id,
         type: "compliance" as const,
         title: c.title,
-        entityId: c.complianceId,
+        entityId: c.code,
         status: c.status,
-        priority: c.criticality,
+        priority: c.riskLevel,
         dueDate: c.dueDate,
         ownerName: c.ownerName,
       })),
@@ -131,7 +131,7 @@ export function DashboardNeedsAttentionList({
                       className="shrink-0 opacity-0 group-hover:opacity-100"
                     >
                       <Link
-                        to={`/${item.type === "compliance" ? "compliance" : "cap"}/${item.id}`}
+                        to={`/${item.type === "compliance" ? "obligations" : "cap"}/${item.id}`}
                       >
                         <ArrowRight className="size-3.5" aria-hidden="true" />
                       </Link>

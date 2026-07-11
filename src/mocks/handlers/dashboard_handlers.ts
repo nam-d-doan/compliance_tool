@@ -15,18 +15,18 @@ import type {
 } from "@/types";
 
 function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
-  const compliance = db.compliance;
+  const compliance = db.obligations;
   const caps = db.caps;
 
   const overdue = compliance.filter((i) =>
-    isOverdueDueDate(i.dueDate, ["Completed", "Approved"].includes(i.status)),
+    isOverdueDueDate(i.dueDate, ["completed", "approved"].includes(i.status)),
   ).length;
   const pendingApproval = compliance.filter((i) =>
-    ["Pending Review", "Submitted"].includes(i.status),
+    ["review_required", "submitted"].includes(i.status),
   ).length;
   const complianceRate = compliance.length
     ? Math.round(
-        (compliance.filter((i) => ["Completed", "Approved"].includes(i.status))
+        (compliance.filter((i) => ["completed", "approved"].includes(i.status))
           .length /
           compliance.length) *
           1000,
@@ -85,10 +85,10 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "Top Risks",
           value: compliance.filter(
             (i) =>
-              i.criticality === "critical" &&
+              i.riskLevel === "critical" &&
               isOverdueDueDate(
                 i.dueDate,
-                ["Completed", "Approved"].includes(i.status),
+                ["completed", "approved"].includes(i.status),
               ),
           ).length,
           previousPeriod: 5,
@@ -110,7 +110,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
         {
           id: "todays-tasks",
           title: "Today's Tasks",
-          value: compliance.filter((i) => i.status === "Assigned").length,
+          value: compliance.filter((i) => i.status === "submitted").length,
         },
         { id: "overdue", title: "Overdue", value: overdue },
         {
@@ -136,14 +136,14 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "High Risk Cases",
           value: compliance.filter(
             (i) =>
-              i.criticality === "critical" &&
-              ["Pending Review", "Submitted"].includes(i.status),
+              i.riskLevel === "critical" &&
+              ["review_required", "submitted"].includes(i.status),
           ).length,
         },
         {
           id: "returned",
           title: "Returned Items",
-          value: compliance.filter((i) => i.status === "Returned").length,
+          value: compliance.filter((i) => i.status === "returned").length,
         },
         {
           id: "pending-cap",

@@ -11,13 +11,12 @@ import type {
   OrganizationSettings,
   Regulation,
   Article,
-  ComplianceObligation,
   CAP,
   CAPAction,
   Notification,
-  ComplianceTimelineEvent,
+  ObligationTimelineEvent,
   CAPTimelineEvent,
-  ComplianceComment,
+  ObligationComment,
   CAPComment,
   RegulationDependency,
   Assignment,
@@ -29,7 +28,6 @@ import type {
 import {
   CURATED_REGULATIONS,
   CURATED_DEPENDENCIES,
-  CURATED_COMPLIANCE_OBLIGATIONS,
   CURATED_ASSIGNMENTS,
   CURATED_OBLIGATIONS,
   CURATED_CAPS,
@@ -235,64 +233,20 @@ function generateRegulationDependencies(
   }));
 }
 
-function generateComplianceObligations(
-  regulations: Regulation[],
-  users: UserProfile[],
-): ComplianceObligation[] {
-  const regById = new Map(regulations.map((r) => [r.id, r]));
-  const ownerUsers = users.filter((u) => u.role === "owner");
-  const approverUsers = users.filter(
-    (u) => u.role === "approver" || u.role === "admin",
-  );
-  const reviewerUsers = users.filter((u) => u.role === "reviewer");
-
-  return CURATED_COMPLIANCE_OBLIGATIONS.map((spec, i) => {
-    const regulation = regById.get(spec.regulationId) ?? regulations[0];
-    const owner = pick(ownerUsers.length ? ownerUsers : users);
-    const approver = pick(approverUsers.length ? approverUsers : users);
-    const reviewers = faker.helpers.arrayElements(reviewerUsers, {
-      min: 0,
-      max: 2,
-    });
-    const dueDate = addDays(today, spec.dueOffset);
-    const createdAt = subDays(dueDate, faker.number.int({ min: 60, max: 365 }));
-
-    return {
-      id: uid("cmp"),
-      complianceId: `COMP-${today.getFullYear()}-${pad(i + 1)}`,
-      title: spec.title,
-      description: spec.description,
-      businessUnit: pick(BUSINESS_UNITS),
-      department: spec.department,
-      location: pick(LOCATIONS),
-      regulationId: regulation.id,
-      regulationName: regulation.title,
-      ownerId: owner.id,
-      ownerName: owner.name,
-      approverId: approver.id,
-      approverName: approver.name,
-      reviewerIds: reviewers.map((r) => r.id),
-      frequency: spec.frequency,
-      criticality: spec.criticality,
-      dueDate: iso(dueDate),
-      penalty: spec.penalty,
-      status: spec.status as ComplianceObligation["status"],
-      aiRiskScore: faker.number.int({ min: 15, max: 98 }),
-      tags: spec.tags,
-      aiRecommendation: faker.datatype.boolean(0.4)
-        ? faker.lorem.sentence()
-        : undefined,
-      progress: spec.progress,
-      createdAt: iso(createdAt),
-      updatedAt: iso(randomDate(createdAt, today)),
-    };
-  });
-}
-
+/**
+ * Generate the unified Obligation dataset. Every obligation links to an
+ * Assignment (the real intended flow entry point: Regulation → Assignment →
+ * Obligation); regulation fields are denormalized from the assignment's
+ * regulation. Richer fields (approver/reviewers/frequency/penalty/tags/
+ * progress) come from the curated spec when present, otherwise a reasonable
+ * seed default is generated so every row still reads as real data.
+ */
 function generateObligations(
+  regulations: Regulation[],
   assignments: Assignment[],
   users: UserProfile[],
 ): Obligation[] {
+  const regById = new Map(regulations.map((r) => [r.id, r]));
   // Owner pool: prefer real owner-role users. The demo owner ("demo-owner")
   // is weighted heavily so the owner dashboard is always populated when
   // logging in as Sarah Mitchell.
@@ -304,50 +258,84 @@ function generateObligations(
       : ownerUsers.length
         ? pick(ownerUsers)
         : pick(users);
+  const approverUsers = users.filter(
+    (u) => u.role === "approver" || u.role === "admin",
+  );
+  const reviewerUsers = users.filter((u) => u.role === "reviewer");
 
-  return CURATED_OBLIGATIONS.map((spec) => {
+  return CURATED_OBLIGATIONS.map((spec, i) => {
     const assignment = assignments[spec.assignmentIndex] ?? assignments[0];
+    const regulation =
+      regById.get(assignment.regulationId) ?? regulations[0];
     const owner = pickOwner();
+    const approver = pick(approverUsers.length ? approverUsers : users);
+    const reviewers = faker.helpers.arrayElements(reviewerUsers, {
+      min: 0,
+      max: 2,
+    });
     const dueDate = addDays(today, spec.dueOffset);
     const createdAt = subDays(today, faker.number.int({ min: 30, max: 90 }));
     const updatedAt = randomDate(createdAt, today);
 
     return {
       id: uid("obg"),
+      code: `OBG-${today.getFullYear()}-${pad(i + 1)}`,
       assignmentId: assignment.id,
       assignmentTitle: assignment.title,
       articleRef: spec.articleRef,
       title: spec.title,
       description: spec.description,
+      regulationId: regulation.id,
+      regulationName: regulation.title,
       ownerDepartmentId: assignment.assignedDepartmentIds[0] ?? "",
       ownerDepartmentName: assignment.assignedDepartmentNames?.[0],
       ownerId: owner.id,
       ownerName: owner.name,
+      approverId: approver.id,
+      approverName: approver.name,
+      reviewerIds: reviewers.map((r) => r.id),
+      businessUnit: pick(BUSINESS_UNITS),
+      department: assignment.assignedDepartmentNames?.[0] ?? pick(DEPARTMENTS),
+      location: pick(LOCATIONS),
+      frequency: spec.frequency ?? pick(FREQUENCIES),
       dueDate: iso(dueDate),
       riskLevel: spec.riskLevel,
       status: spec.status as Obligation["status"],
-      createdDate: iso(createdAt),
-      updatedDate: iso(updatedAt),
+      penalty: spec.penalty ?? "Khiển trách, yêu cầu khắc phục",
+      aiRiskScore: faker.number.int({ min: 15, max: 98 }),
+      aiRecommendation: faker.datatype.boolean(0.4)
+        ? faker.lorem.sentence()
+        : undefined,
+      tags: spec.tags ?? [],
+      progress:
+        spec.progress ??
+        (spec.status === "completed"
+          ? 100
+          : faker.number.int({ min: 0, max: 90 })),
+      createdAt: iso(createdAt),
+      updatedAt: iso(updatedAt),
     };
   });
 }
 
-function generateCAPs(
-  compliance: ComplianceObligation[],
-  users: UserProfile[],
-): CAP[] {
+function generateCAPs(obligations: Obligation[], users: UserProfile[]): CAP[] {
   const ownerUsers = users.filter((u) => u.role === "owner");
   const approverUsers = users.filter(
     (u) => u.role === "approver" || u.role === "admin",
   );
 
   return CURATED_CAPS.map((spec, i) => {
-    const item = compliance[spec.complianceIndex] ?? compliance[0];
+    // `complianceIndex` is indexed modulo the unified obligations array —
+    // seed CAPs no longer reference a separate legacy dataset, so this just
+    // picks a stable, varied primary obligation per CAP.
+    const item =
+      obligations[spec.complianceIndex % obligations.length] ??
+      obligations[0];
     const owner = pick(ownerUsers.length ? ownerUsers : users);
     const approver = pick(approverUsers.length ? approverUsers : users);
     // Link 1-3 obligations per CAP: `item` is the primary, plus 0-2 extras.
     const extras = faker.helpers.arrayElements(
-      compliance.filter((c) => c.id !== item.id),
+      obligations.filter((o) => o.id !== item.id),
       faker.number.int({ min: 0, max: 2 }),
     );
     const obligationIds = [item.id, ...extras.map((e) => e.id)];
@@ -383,7 +371,7 @@ function generateCAPs(
       title: spec.title,
       description: spec.description,
       priority: spec.priority,
-      risk: item.criticality,
+      risk: item.riskLevel,
       ownerId: owner.id,
       ownerName: owner.name,
       approverId: approver.id,
@@ -842,8 +830,8 @@ export interface Comment {
 
 function generateTimelineFor(
   entityId: string,
-  entityType: "compliance",
-): ComplianceTimelineEvent[];
+  entityType: "obligation",
+): ObligationTimelineEvent[];
 function generateTimelineFor(
   entityId: string,
   entityType: "cap",
@@ -858,11 +846,12 @@ function generateTimelineFor(
 ): AssignmentTimelineEvent[];
 function generateTimelineFor(entityId: string, entityType: string): unknown[] {
   const eventTypes: Record<string, string[]> = {
-    compliance: [
+    obligation: [
       "created",
-      "assigned",
       "updated",
       "submitted",
+      "review_required",
+      "cap_in_progress",
       "approved",
       "rejected",
       "cap_created",
@@ -908,7 +897,7 @@ function generateTimelineFor(entityId: string, entityType: string): unknown[] {
       timestamp: iso(timestamp),
       metadata: {},
     };
-    if (entityType === "compliance") event.complianceId = entityId;
+    if (entityType === "obligation") event.obligationId = entityId;
     else if (entityType === "cap") event.capId = entityId;
     else if (entityType === "assignment") event.assignmentId = entityId;
     else {
@@ -921,8 +910,8 @@ function generateTimelineFor(entityId: string, entityType: string): unknown[] {
 
 function generateCommentsFor(
   entityId: string,
-  entityType: "compliance",
-): ComplianceComment[];
+  entityType: "obligation",
+): ObligationComment[];
 function generateCommentsFor(entityId: string, entityType: "cap"): CAPComment[];
 function generateCommentsFor(entityId: string, entityType: string): Comment[];
 function generateCommentsFor(entityId: string, entityType: string): unknown[] {
@@ -940,7 +929,7 @@ function generateCommentsFor(entityId: string, entityType: string): unknown[] {
       content: faker.lorem.paragraph(),
       timestamp: iso(timestamp),
     };
-    if (entityType === "compliance") comment.complianceId = entityId;
+    if (entityType === "obligation") comment.obligationId = entityId;
     else if (entityType === "cap") comment.capId = entityId;
     else {
       comment.entityId = entityId;
@@ -994,7 +983,6 @@ export interface MockDb {
   users: UserProfile[];
   regulations: Regulation[];
   regulationDependencies: RegulationDependency[];
-  compliance: ComplianceObligation[];
   obligations: Obligation[];
   caps: CAP[];
   nccs: NonComplianceCase[];
@@ -1012,41 +1000,12 @@ export interface MockDb {
 
 let dbInstance: MockDb | null = null;
 
-/**
- * Link a subset of obligations to existing CAPs by pushing obligation ids
- * into the CAP's `obligationIds`. This seeds the real one-to-many CAP↔obligation
- * relationship the owner dashboard relies on (Needs CAP alerts, "Go to CAP").
- * Obligations already in `cap_in_progress`/`completed` are linked more often so
- * the status and linkage stay coherent.
- */
-function linkObligationsToCAPs(caps: CAP[], obligations: Obligation[]): void {
-  if (!caps.length || !obligations.length) return;
-  for (const obg of obligations) {
-    const linkProbability =
-      obg.status === "cap_in_progress" || obg.status === "completed"
-        ? 0.6
-        : 0.3;
-    if (!faker.datatype.boolean(linkProbability)) continue;
-    const cap = faker.helpers.arrayElement(caps);
-    if (!cap.obligationIds.includes(obg.id)) {
-      cap.obligationIds.push(obg.id);
-    }
-    // Reflect the link on the obligation status when it's still open.
-    if (obg.status === "draft" || obg.status === "submitted") {
-      obg.status = "cap_in_progress";
-    }
-  }
-}
-
 export function getDb(): MockDb {
   if (dbInstance) return dbInstance;
 
   const users = [...generateDemoUserProfiles(), ...generateStaffUsers()];
   const regulations = generateRegulations();
   const regulationDependencies = generateRegulationDependencies(regulations);
-  const compliance = generateComplianceObligations(regulations, users);
-  const caps = generateCAPs(compliance, users);
-  const files = generateFiles(caps);
   const organizationSettings = generateOrganizationSettings();
   const nccs = generateNCCs(organizationSettings, users);
   const assignments = generateAssignments(
@@ -1054,8 +1013,9 @@ export function getDb(): MockDb {
     users,
     organizationSettings.hoDepartments,
   );
-  const obligations = generateObligations(assignments, users);
-  linkObligationsToCAPs(caps, obligations);
+  const obligations = generateObligations(regulations, assignments, users);
+  const caps = generateCAPs(obligations, users);
+  const files = generateFiles(caps);
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
@@ -1066,7 +1026,6 @@ export function getDb(): MockDb {
     users,
     regulations,
     regulationDependencies,
-    compliance,
     obligations,
     caps,
     nccs,
@@ -1087,7 +1046,6 @@ export function getDb(): MockDb {
       users: users.length,
       regulations: regulations.length,
       regulationDependencies: regulationDependencies.length,
-      compliance: compliance.length,
       obligations: obligations.length,
       caps: caps.length,
       nccs: nccs.length,

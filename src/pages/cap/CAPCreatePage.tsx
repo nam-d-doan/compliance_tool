@@ -21,7 +21,7 @@ import { PageHero } from "@/components/common";
 import { CAPForm, type CAPFormValues } from "@/components/cap/CAPForm";
 import { useGenerateCAP } from "@/hooks/queries/useAIQueries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
-import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
 import { useCreateCAP } from "@/hooks/mutations/useCAPMutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
@@ -66,7 +66,7 @@ export default function CAPCreatePage() {
   const create = useCreateCAP();
 
   const usersQuery = useAdminUsers(1, 200, { status: "Active" });
-  const complianceQuery = useComplianceList({}, 1, 200);
+  const complianceQuery = useObligationList({}, 1, 200);
 
   const owners = useMemo(
     () => usersQuery.data?.items.filter((u) => u.role === "owner") ?? [],
@@ -254,7 +254,7 @@ export default function CAPCreatePage() {
                   <option value="">Select a compliance obligation</option>
                   {complianceItems.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.complianceId} - {c.title}
+                      {c.code} - {c.title}
                     </option>
                   ))}
                 </select>
@@ -428,7 +428,7 @@ export default function CAPCreatePage() {
                 approverOptions={approvers}
                 obligationOptions={complianceItems.map((c) => ({
                   id: c.id,
-                  title: `${c.complianceId} - ${c.title}`,
+                  title: `${c.code} - ${c.title}`,
                 }))}
                 optionsLoading={
                   usersQuery.isPending || complianceQuery.isPending

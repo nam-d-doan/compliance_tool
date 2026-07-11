@@ -31,7 +31,7 @@ import {
 import { ErrorState } from "@/components/common/ErrorState";
 import {
   useDashboard,
-  useComplianceList,
+  useObligationList,
   useCAPList,
   useAssignmentList,
 } from "@/hooks/queries";
@@ -47,7 +47,7 @@ const TREND_VALUES = [91, 92, 90, 93, 94, 95];
 
 function useExecutiveData() {
   const dashboard = useDashboard("executive");
-  const compliance = useComplianceList({ page: 1, pageSize: 500 });
+  const compliance = useObligationList({}, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 });
   const assignments = useAssignmentList({}, 1, 200);
   const aiSummary = useExecutiveSummary();
@@ -103,7 +103,7 @@ export default function ExecutiveDashboardPage() {
   const riskDistribution = useMemo(() => {
     const counts = new Map<string, number>();
     complianceItems.forEach((item) => {
-      counts.set(item.criticality, (counts.get(item.criticality) ?? 0) + 1);
+      counts.set(item.riskLevel, (counts.get(item.riskLevel) ?? 0) + 1);
     });
     return Array.from(counts.entries()).map(([name, value]) => ({
       name,

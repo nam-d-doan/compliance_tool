@@ -9,7 +9,7 @@ import {
   parseNumber,
   type MockResolverContext,
 } from "./utils";
-import type { CAP, CAPComment, ComplianceObligation } from "@/types";
+import type { CAP, CAPComment, Obligation } from "@/types";
 
 export async function handleGetCapList({ request }: { request: Request }) {
   await getDelay();
@@ -97,7 +97,7 @@ export async function handleCreateCap({ request }: { request: Request }) {
   // Derive primary title from the first linked obligation (if any).
   const primary =
     obligationIds.length > 0
-      ? findById(db.compliance, obligationIds[0])
+      ? findById(db.obligations, obligationIds[0])
       : undefined;
 
   const newItem: CAP = {
@@ -131,7 +131,7 @@ export async function handleCreateCap({ request }: { request: Request }) {
   };
 
   // Bulk update linked obligations: mark as under active remediation.
-  bulkUpdateObligationStatus(db, obligationIds, "Pending Review");
+  bulkUpdateObligationStatus(db, obligationIds, "cap_in_progress");
 
   db.caps.unshift(newItem);
   return jsonResponse(newItem, 201);
@@ -168,25 +168,25 @@ export async function handleUpdateCap({
 
   // When a CAP transitions to Closed, mark all linked obligations as Completed.
   if (prev.status !== "Closed" && db.caps[index].status === "Closed") {
-    bulkUpdateObligationStatus(db, nextObligationIds, "Completed");
+    bulkUpdateObligationStatus(db, nextObligationIds, "completed");
   }
   return jsonResponse(db.caps[index]);
 }
 
 /**
- * Bulk-set a status on every linked ComplianceObligation (the entities surfaced
- * in the /obligations UI). Silently skips IDs that no longer exist.
+ * Bulk-set a status on every linked Obligation (the entities surfaced in the
+ * /obligations UI). Silently skips IDs that no longer exist.
  */
 function bulkUpdateObligationStatus(
   db: ReturnType<typeof getDb>,
   obligationIds: string[],
-  status: ComplianceObligation["status"],
+  status: Obligation["status"],
 ): void {
   for (const id of obligationIds) {
-    const idx = db.compliance.findIndex((c) => c.id === id);
+    const idx = db.obligations.findIndex((c) => c.id === id);
     if (idx !== -1) {
-      db.compliance[idx] = {
-        ...db.compliance[idx],
+      db.obligations[idx] = {
+        ...db.obligations[idx],
         status,
         updatedAt: new Date().toISOString(),
       };

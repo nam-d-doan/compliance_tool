@@ -58,7 +58,7 @@ import {
   useCAPComments,
 } from "@/hooks/queries/useCAPQueries";
 import { useFilesByIds } from "@/hooks/queries/useFileQueries";
-import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import {
   useUpdateCAP,
@@ -179,7 +179,7 @@ export default function CAPDetailPage() {
   const addComment = useAddCAPComment(id);
 
   const usersQuery = useAdminUsers(1, 200, { status: "Active" });
-  const complianceQuery = useComplianceList({}, 1, 200);
+  const complianceQuery = useObligationList({}, 1, 200);
 
   const item = detail.data;
 
@@ -898,7 +898,7 @@ export default function CAPDetailPage() {
               obligationOptions={(complianceQuery.data?.items ?? []).map(
                 (c) => ({
                   id: c.id,
-                  title: `${c.complianceId} - ${c.title}`,
+                  title: `${c.code} - ${c.title}`,
                 }),
               )}
               optionsLoading={usersQuery.isPending || complianceQuery.isPending}

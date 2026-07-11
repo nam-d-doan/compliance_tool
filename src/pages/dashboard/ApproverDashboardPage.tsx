@@ -29,14 +29,14 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { CHART_COLORS } from "@/components/charts/chart-theme";
 import {
   useDashboard,
-  useComplianceList,
+  useObligationList,
   useCAPList,
   useAssignmentList,
 } from "@/hooks/queries";
 
 function useApproverData() {
   const dashboard = useDashboard("approver");
-  const compliance = useComplianceList({ page: 1, pageSize: 500 }, 1, 500);
+  const compliance = useObligationList({}, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 }, 1, 500);
   const assignments = useAssignmentList({}, 1, 200);
 

@@ -1,5 +1,4 @@
 export { AuthService } from "./auth_service";
-export { ComplianceService } from "./compliance_service";
 export { CAPService } from "./cap_service";
 export { NCCService } from "./ncc_service";
 export { RegulationService } from "./regulation_service";

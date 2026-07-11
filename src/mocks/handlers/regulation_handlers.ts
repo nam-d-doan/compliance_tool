@@ -293,7 +293,7 @@ export async function handleRegulationImpact({
     regulationId: regulation.id,
     regulationTitle: regulation.title,
     affectedDepartments,
-    affectedComplianceIds: db.compliance
+    affectedComplianceIds: db.obligations
       .filter((c) => c.regulationId === regulation.id)
       .map((c) => c.id),
     affectedPolicies: ["Policy A", "Policy B"],

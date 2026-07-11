@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { ComplianceObligation, CAP } from "@/types";
+import type { Obligation, CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
 
 interface QueueItem {
@@ -30,7 +30,7 @@ interface QueueItem {
 }
 
 interface DashboardApprovalQueueProps {
-  compliance?: ComplianceObligation[];
+  compliance?: Obligation[];
   caps?: CAP[];
   title?: string;
   maxItems?: number;
@@ -46,14 +46,14 @@ export function DashboardApprovalQueue({
 }: DashboardApprovalQueueProps) {
   const items: QueueItem[] = [
     ...compliance
-      .filter((c) => ["Pending Review", "Submitted"].includes(c.status))
+      .filter((c) => ["review_required", "submitted"].includes(c.status))
       .map((c) => ({
         id: c.id,
         type: "compliance" as const,
         title: c.title,
-        entityId: c.complianceId,
+        entityId: c.code,
         status: c.status,
-        priority: c.criticality,
+        priority: c.riskLevel,
         dueDate: c.dueDate,
         ownerName: c.ownerName,
       })),
@@ -92,7 +92,7 @@ export function DashboardApprovalQueue({
   };
 
   const typeRoutes = {
-    compliance: "compliance",
+    compliance: "obligations",
     cap: "cap",
   };
 

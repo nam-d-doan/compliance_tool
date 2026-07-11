@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch, apiPut } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/api";
 import type {
   BulkCreateObligationsInput,
@@ -6,7 +6,9 @@ import type {
   BulkUpdateObligationsInput,
   BulkUpdateObligationsResult,
   Obligation,
+  ObligationComment,
   ObligationFilter,
+  ObligationTimelineEvent,
   Paginated,
 } from "@/types";
 
@@ -38,6 +40,30 @@ export const ObligationService = {
 
   update(id: string, data: Partial<Obligation>) {
     return apiPut<Obligation>(API_ENDPOINTS.OBLIGATION_UPDATE(id), data);
+  },
+
+  remove(id: string) {
+    return apiDelete<{ success: boolean }>(API_ENDPOINTS.OBLIGATION_DELETE(id));
+  },
+
+  timeline(id: string) {
+    return apiGet<ObligationTimelineEvent[]>(
+      API_ENDPOINTS.OBLIGATION_TIMELINE(id),
+    );
+  },
+
+  comments(id: string, page = 1, pageSize = 20) {
+    return apiGet<Paginated<ObligationComment>>(
+      `${API_ENDPOINTS.OBLIGATION_COMMENTS(id)}?page=${page}&pageSize=${pageSize}`,
+    );
+  },
+
+  addComment(id: string, content: string, userId?: string, userName?: string) {
+    return apiPost<ObligationComment>(API_ENDPOINTS.OBLIGATION_COMMENTS(id), {
+      content,
+      userId,
+      userName,
+    });
   },
 
   bulkCreate(data: BulkCreateObligationsInput) {

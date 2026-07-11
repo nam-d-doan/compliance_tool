@@ -210,25 +210,16 @@ export function getPriorityStyle(priority: PriorityLevel): StatusStyle {
   return PRIORITY_STYLES[priority] ?? PRIORITY_STYLES.medium;
 }
 
-export const COMPLIANCE_STATUSES = [
-  "Draft",
-  "Pending Review",
-  "Approved",
-  "Rejected",
-  "Due",
-  "Completed",
-  "Assigned",
-  "Submitted",
-  "Returned",
-  "Archived",
-] as const;
-
 export const OBLIGATION_STATUSES = [
   "draft",
   "submitted",
   "review_required",
+  "approved",
+  "rejected",
+  "returned",
   "cap_in_progress",
   "completed",
+  "archived",
 ] as const;
 
 export const CAP_STATUSES = ["Open", "Pending Approval", "Closed"] as const;
@@ -259,7 +250,6 @@ export const ASSIGNMENT_STATUSES = [
 
 export const NCC_STATUSES = ["Open", "Closed"] as const;
 
-export type ComplianceStatus = (typeof COMPLIANCE_STATUSES)[number];
 export type ObligationStatus = (typeof OBLIGATION_STATUSES)[number];
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 export type CAPStatus = (typeof CAP_STATUSES)[number];

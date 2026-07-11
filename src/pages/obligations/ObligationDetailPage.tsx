@@ -47,22 +47,22 @@ import {
   type ComplianceFormValues,
 } from "@/components/compliance/ComplianceForm";
 import {
-  useComplianceDetail,
-  useComplianceTimeline,
-  useComplianceComments,
-} from "@/hooks/queries/useComplianceQueries";
+  useObligationDetail,
+  useObligationTimeline,
+  useObligationComments,
+} from "@/hooks/queries/useObligationQueries";
 import { useCAPList } from "@/hooks/queries/useCAPQueries";
 import {
-  useUpdateCompliance,
-  useDeleteCompliance,
-  useAddComplianceComment,
-} from "@/hooks/mutations/useComplianceMutations";
+  useUpdateObligation,
+  useDeleteObligation,
+  useAddObligationComment,
+} from "@/hooks/mutations/useObligationMutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
 import type {
-  ComplianceObligation,
-  ComplianceTimelineEvent,
+  Obligation,
+  ObligationTimelineEvent,
   ActivityFeedItem,
   AIInsight,
 } from "@/types";
@@ -77,13 +77,16 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 const timelineTypeMap: Record<
-  ComplianceTimelineEvent["type"],
+  ObligationTimelineEvent["type"],
   ActivityFeedItem["type"]
 > = {
   created: "submission",
-  assigned: "submission",
   updated: "upload",
   submitted: "submission",
+  review_required: "submission",
+  cap_in_progress: "cap_created",
+  completed: "approval",
+  status_changed: "upload",
   approved: "approval",
   rejected: "rejection",
   cap_created: "cap_created",
@@ -91,7 +94,7 @@ const timelineTypeMap: Record<
   commented: "comment",
 };
 
-function buildInsight(item: ComplianceObligation): AIInsight {
+function buildInsight(item: Obligation): AIInsight {
   return {
     id: `ai-${item.id}`,
     title: "AI Risk Assessment",
@@ -102,7 +105,7 @@ function buildInsight(item: ComplianceObligation): AIInsight {
       item.aiRecommendation ??
       "Review this obligation before the due date and ensure all required documentation is collected.",
     reasoning: [
-      `Risk score of ${item.aiRiskScore} derived from obligation criticality (${item.criticality}) and due date proximity.`,
+      `Risk score of ${item.aiRiskScore} derived from obligation criticality (${item.riskLevel}) and due date proximity.`,
       "Cross-referenced with similar historical obligations and submission outcomes.",
       item.aiRecommendation
         ? "AI recommendation was generated from the obligation context."
@@ -127,13 +130,13 @@ export default function ObligationDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [editOpen, setEditOpen] = useState(false);
 
-  const detail = useComplianceDetail(id);
-  const timeline = useComplianceTimeline(id);
-  const comments = useComplianceComments(id);
+  const detail = useObligationDetail(id);
+  const timeline = useObligationTimeline(id);
+  const comments = useObligationComments(id);
   const caps = useCAPList({ compliance: id }, 1, 20);
-  const update = useUpdateCompliance(id);
-  const remove = useDeleteCompliance();
-  const addComment = useAddComplianceComment(id);
+  const update = useUpdateObligation(id);
+  const remove = useDeleteObligation();
+  const addComment = useAddObligationComment(id);
 
   const item = detail.data;
 
@@ -149,7 +152,7 @@ export default function ObligationDetailPage() {
       ...event,
       type: timelineTypeMap[event.type],
       entityType: "compliance",
-      entityId: event.complianceId,
+      entityId: event.obligationId,
       createdAt: event.timestamp,
       updatedAt: event.timestamp,
     }));
@@ -170,9 +173,9 @@ export default function ObligationDetailPage() {
   const approvers = useMemo(() => {
     if (!item) return [];
     const status: "approved" | "rejected" | "pending" =
-      item.status === "Approved"
+      item.status === "approved"
         ? "approved"
-        : item.status === "Rejected"
+        : item.status === "rejected"
           ? "rejected"
           : "pending";
     return [
@@ -185,14 +188,14 @@ export default function ObligationDetailPage() {
 
   const handleApprove = () => {
     update.mutate(
-      { status: "Approved", progress: 100 },
+      { status: "approved", progress: 100 },
       { onSuccess: () => toast.success("Obligation approved") },
     );
   };
 
   const handleReject = () => {
     update.mutate(
-      { status: "Rejected" },
+      { status: "rejected" },
       { onSuccess: () => toast.success("Obligation rejected") },
     );
   };
@@ -234,7 +237,7 @@ export default function ObligationDetailPage() {
         reviewerIds: values.reviewerIds,
         frequency: values.frequency,
         dueDate: new Date(values.dueDate).toISOString(),
-        criticality: values.criticality,
+        riskLevel: values.criticality,
         penalty: values.penalty,
         tags: values.tags
           ? values.tags
@@ -280,7 +283,7 @@ export default function ObligationDetailPage() {
     reviewerIds: item.reviewerIds,
     frequency: item.frequency,
     dueDate: item.dueDate.slice(0, 10),
-    criticality: item.criticality,
+    criticality: item.riskLevel,
     penalty: item.penalty,
     tags: item.tags.join(", "),
   };
@@ -301,7 +304,7 @@ export default function ObligationDetailPage() {
         Back to obligations
       </Button>
 
-      <PageHero title={item.title} subtitle={item.complianceId}>
+      <PageHero title={item.title} subtitle={item.code}>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="secondary"
@@ -333,7 +336,7 @@ export default function ObligationDetailPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={item.status} size="md" />
-        <PriorityBadge priority={item.criticality} size="md" />
+        <PriorityBadge priority={item.riskLevel} size="md" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -678,7 +681,7 @@ export default function ObligationDetailPage() {
           <SheetHeader>
             <SheetTitle>Edit Obligation</SheetTitle>
             <SheetDescription>
-              Update the details for {item.complianceId}.
+              Update the details for {item.code}.
             </SheetDescription>
           </SheetHeader>
           <div className="py-4">

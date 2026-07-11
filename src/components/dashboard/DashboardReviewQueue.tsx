@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { ArrowRight, Eye, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { ComplianceObligation } from "@/types";
+import type { Obligation } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
 
 interface ReviewItem {
@@ -24,7 +24,7 @@ interface ReviewItem {
 }
 
 interface DashboardReviewQueueProps {
-  compliance?: ComplianceObligation[];
+  compliance?: Obligation[];
   title?: string;
   maxItems?: number;
   delay?: number;
@@ -37,15 +37,13 @@ export function DashboardReviewQueue({
   delay = 0,
 }: DashboardReviewQueueProps) {
   const items: ReviewItem[] = compliance
-    .filter((c) =>
-      ["Submitted", "Pending Review", "Pending Information"].includes(c.status),
-    )
+    .filter((c) => ["submitted", "review_required"].includes(c.status))
     .map((c) => ({
       id: c.id,
       title: c.title,
-      entityId: c.complianceId,
+      entityId: c.code,
       status: c.status,
-      priority: c.criticality,
+      priority: c.riskLevel,
       dueDate: c.dueDate,
       ownerName: c.ownerName,
     }))

@@ -41,15 +41,15 @@ import { PageHero } from "@/components/common";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
-import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
-import { COMPLIANCE_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
+import { OBLIGATION_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
 import { cn } from "@/lib/utils";
 import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
 import { riskScoreTextClasses } from "@/lib/risk-score";
-import type { ComplianceObligation, ComplianceFilter } from "@/types";
+import type { Obligation, ObligationFilter } from "@/types";
 
 const BUSINESS_UNITS = [
   "Retail Banking",
@@ -67,13 +67,13 @@ const selectClass =
   "h-9 rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 const HEADER_TOOLTIPS: Record<string, string> = {
-  complianceId: "Unique obligation identifier",
+  code: "Unique obligation identifier",
   title: "Obligation title",
   businessUnit: "Owning business unit",
   ownerName: "Responsible owner",
   dueDate: DUE_DATE_COLOR_GUIDE,
   status: "Current workflow status",
-  criticality: "Risk criticality",
+  riskLevel: "Risk criticality",
   aiRiskScore: "AI-assigned risk score",
 };
 
@@ -129,7 +129,7 @@ export default function ObligationListPage() {
     () => ({
       search: debouncedSearch,
       status: status || undefined,
-      priority: priority || undefined,
+      riskLevel: priority || undefined,
       businessUnit: businessUnit || undefined,
       owner: owner || undefined,
       sortField,
@@ -146,8 +146,8 @@ export default function ObligationListPage() {
     ],
   );
 
-  const { data, isPending, isError, refetch } = useComplianceList(
-    filters as ComplianceFilter,
+  const { data, isPending, isError, refetch } = useObligationList(
+    filters as ObligationFilter,
     page,
     PAGE_SIZE,
   );
@@ -156,7 +156,7 @@ export default function ObligationListPage() {
     status: "Active",
   });
 
-  const columns = useMemo<ColumnDef<ComplianceObligation>[]>(
+  const columns = useMemo<ColumnDef<Obligation>[]>(
     () => [
       {
         id: "select",
@@ -186,7 +186,7 @@ export default function ObligationListPage() {
         enableSorting: false,
       },
       {
-        accessorKey: "complianceId",
+        accessorKey: "code",
         header: "Obligation ID",
         size: 140,
       },
@@ -212,7 +212,7 @@ export default function ObligationListPage() {
         cell: ({ row }) => (
           <DueDateCell
             dueDate={row.original.dueDate}
-            completed={["Completed", "Approved"].includes(row.original.status)}
+            completed={["completed", "approved"].includes(row.original.status)}
           />
         ),
       },
@@ -225,7 +225,7 @@ export default function ObligationListPage() {
         ),
       },
       {
-        accessorKey: "criticality",
+        accessorKey: "riskLevel",
         header: "Priority",
         size: 120,
         cell: ({ getValue }) => (
@@ -375,9 +375,9 @@ export default function ObligationListPage() {
               className={cn(selectClass, "min-w-[10rem]")}
             >
               <option value="">All statuses</option>
-              {COMPLIANCE_STATUSES.map((s) => (
+              {OBLIGATION_STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {s.replace(/_/g, " ")}
                 </option>
               ))}
             </select>

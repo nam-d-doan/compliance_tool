@@ -1,5 +1,4 @@
 import type {
-  ComplianceFilter,
   CAPFilter,
   NCCFilter,
   RegulationFilter,
@@ -7,19 +6,6 @@ import type {
   AssignmentFilter,
   ObligationFilter,
 } from "@/types";
-
-export const complianceKeys = {
-  all: ["compliance"] as const,
-  lists: () => [...complianceKeys.all, "list"] as const,
-  list: (filters: ComplianceFilter) =>
-    [...complianceKeys.lists(), filters] as const,
-  details: () => [...complianceKeys.all, "detail"] as const,
-  detail: (id: string) => [...complianceKeys.details(), id] as const,
-  timeline: (id: string) => [...complianceKeys.detail(id), "timeline"] as const,
-  comments: (id: string) => [...complianceKeys.detail(id), "comments"] as const,
-  history: (filters: ComplianceFilter) =>
-    [...complianceKeys.all, "history", filters] as const,
-};
 
 export const capKeys = {
   all: ["cap"] as const,
@@ -71,6 +57,8 @@ export const obligationKeys = {
     [...obligationKeys.lists(), filters] as const,
   details: () => [...obligationKeys.all, "detail"] as const,
   detail: (id: string) => [...obligationKeys.details(), id] as const,
+  timeline: (id: string) => [...obligationKeys.detail(id), "timeline"] as const,
+  comments: (id: string) => [...obligationKeys.detail(id), "comments"] as const,
   bulk: () => [...obligationKeys.all, "bulk"] as const,
 };
 

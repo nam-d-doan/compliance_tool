@@ -3,12 +3,6 @@ export * from "./base";
 export type { Article } from "./article";
 export type { LoginCredentials, AuthUser, AuthState } from "./user";
 export type {
-  ComplianceObligation,
-  ComplianceFilter,
-  ComplianceTimelineEvent,
-  ComplianceComment,
-} from "./compliance";
-export type {
   Obligation,
   ObligationStatus,
   ObligationRiskLevel,
@@ -20,6 +14,7 @@ export type {
   BulkUpdateObligationsInput,
   BulkUpdateObligationsResult,
   ObligationTimelineEvent,
+  ObligationComment,
 } from "./obligation";
 export type {
   CAP,
