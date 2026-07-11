@@ -10,7 +10,8 @@ Project-level. Specs are authored during planning; architecture docs are maintai
 
 ## Local Contracts
 
-- **`specs/`** — phased feature specs (P1–P5). Excluded from formatters via `.pre-commit-config.yaml` (`exclude: ^docs/specs/`). These are prose documents driving feature development.
+- **`USER_FLOW.md`** — ground-truth description of the actual user flow (roles, lifecycle, key files), derived from the code as it exists today. This is the trustworthy source for current behavior — prefer it over `specs/` when they conflict.
+- **`specs/`** — phased feature specs (P1–P5), each now marked historical/aspirational — they describe a larger, partially different product than what's built. Excluded from formatters via `.pre-commit-config.yaml` (`exclude: ^docs/specs/`). Read for original intent/context, not as ground truth.
 - **`architecture/`** — reference docs:
   - `folder-structure.md` — intended folder layout and tech stack setup steps. May drift from actual structure; treat as reference, not source of truth.
   - `design-language.md` — visual design patterns extracted from FDM demos. Binding for UI work.
