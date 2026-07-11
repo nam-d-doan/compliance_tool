@@ -1,6 +1,6 @@
 import { http } from "msw";
 import { faker } from "@faker-js/faker";
-import { getDb, findById, paginate, filterByText } from "@/mocks/db";
+import { getDb, findById, paginate, filterByText, DEMO_TODAY } from "@/mocks/db";
 import {
   getDelay,
   jsonResponse,
@@ -123,7 +123,7 @@ function normalizeRegulationStatus(status?: string): Regulation["status"] {
 function checkAutoExpire(item: Regulation): void {
   if (item.status === "Effective" && item.expirationDate) {
     const expiration = new Date(item.expirationDate);
-    if (!Number.isNaN(expiration.getTime()) && expiration < new Date()) {
+    if (!Number.isNaN(expiration.getTime()) && expiration < DEMO_TODAY) {
       item.status = "Expired";
     }
   }

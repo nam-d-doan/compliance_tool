@@ -35,7 +35,13 @@ import {
 
 faker.seed(42);
 
-const today = new Date();
+// Fixed reference date (not `new Date()`) so every reload, tab, and device
+// generates byte-identical demo data — due dates and "days remaining" are
+// computed relative to this, not real wall-clock time. Other mock handlers
+// that compute overdue/derived stats against seed data should import this
+// rather than calling `new Date()` directly, to stay consistent with it.
+export const DEMO_TODAY = new Date("2026-07-11T00:00:00.000Z");
+const today = DEMO_TODAY;
 
 const DEPARTMENTS = [
   "Risk Management",

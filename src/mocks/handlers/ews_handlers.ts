@@ -7,7 +7,7 @@ import {
   endOfMonth,
   subMonths,
 } from "date-fns";
-import { getDb } from "@/mocks/db";
+import { getDb, DEMO_TODAY } from "@/mocks/db";
 import { isOverdueDueDate } from "@/lib/due-date";
 import { getDelay, jsonResponse, parseQuery } from "./utils";
 import type { EWSReport, ReportKPI } from "@/types";
@@ -21,8 +21,8 @@ export async function handleGetEWSReport({ request }: { request: Request }) {
 
   // Optional date range filter (by createdAt)
   if (q.from || q.to) {
-    const from = q.from ? parseISO(q.from) : subMonths(new Date(), 12);
-    const to = q.to ? parseISO(q.to) : new Date();
+    const from = q.from ? parseISO(q.from) : subMonths(DEMO_TODAY, 12);
+    const to = q.to ? parseISO(q.to) : DEMO_TODAY;
     items = items.filter((ncc) => {
       try {
         return isWithinInterval(parseISO(ncc.createdAt), {
@@ -67,7 +67,7 @@ export async function handleGetEWSReport({ request }: { request: Request }) {
   ];
 
   // Monthly creation + closure trend (last 12 months)
-  const now = new Date();
+  const now = DEMO_TODAY;
   const months: { key: string; label: string; start: Date; end: Date }[] = [];
   for (let i = 11; i >= 0; i--) {
     const monthStart = startOfMonth(subMonths(now, i));

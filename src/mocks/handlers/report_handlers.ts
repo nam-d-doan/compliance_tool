@@ -1,6 +1,6 @@
 import { http } from "msw";
 import { format, addDays } from "date-fns";
-import { getDb } from "@/mocks/db";
+import { getDb, DEMO_TODAY } from "@/mocks/db";
 import { isOverdueDueDate } from "@/lib/due-date";
 import {
   getDelay,
@@ -18,7 +18,7 @@ import type {
   RiskHeatmapData,
 } from "@/types";
 
-const today = new Date();
+const today = DEMO_TODAY;
 
 function statusReport(db: ReturnType<typeof getDb>): Report {
   const items = db.obligations;
