@@ -223,12 +223,7 @@ export default function AssignmentListPage() {
         subtitle="Track regulations routed to departments for compliance review."
       >
         {canCreate && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            asChild
-          >
+          <Button variant="outline" size="sm" asChild>
             <Link to={ROUTES.ASSIGNMENTS.CREATE}>
               <PlusCircle className="size-4" aria-hidden="true" />
               Create Assignment

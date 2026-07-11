@@ -81,6 +81,11 @@ export default function AdminDashboardPage() {
     [assignments.data],
   );
 
+  const activeUserCount = useMemo(
+    () => userItems.filter((u) => u.status === "Active").length,
+    [userItems],
+  );
+
   const userActivity = useMemo(() => {
     const counts = new Map<string, number>();
     userItems.forEach((user) => {
@@ -155,7 +160,7 @@ export default function AdminDashboardPage() {
   return (
     <DashboardLayout
       title="Admin Dashboard"
-      subtitle="User management, roles, organization settings, and system configuration."
+      subtitle={`${activeUserCount} active users · ${auditItems.length} audit events logged recently.`}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}

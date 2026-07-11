@@ -61,6 +61,14 @@ export default function ApproverDashboardPage() {
     [assignments.data],
   );
 
+  const pendingApprovalCount = useMemo(
+    () =>
+      complianceItems.filter((c) =>
+        ["review_required", "submitted"].includes(c.status),
+      ).length + capItems.filter((c) => c.status === "Pending Approval").length,
+    [complianceItems, capItems],
+  );
+
   const approvalStatusData = useMemo(() => {
     const counts = new Map<string, number>();
     complianceItems.forEach((item) => {
@@ -118,7 +126,7 @@ export default function ApproverDashboardPage() {
   return (
     <DashboardLayout
       title="Compliance Approver Dashboard"
-      subtitle="Pending approvals, high-risk cases, and review queues."
+      subtitle={`${pendingApprovalCount} item${pendingApprovalCount === 1 ? "" : "s"} ${pendingApprovalCount === 1 ? "is" : "are"} waiting on your approval right now.`}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}

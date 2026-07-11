@@ -23,26 +23,26 @@ export function getRiskScoreTone(score: number): RiskScoreTone {
   return "normal";
 }
 
-/** Text-color classes for a numeric score shown inline (uses the 600 shade). */
+/** Text-color classes for a numeric score shown inline. */
 export function riskScoreTextClasses(score: number): string {
   switch (getRiskScoreTone(score)) {
     case "critical":
-      return "text-red-600 dark:text-red-400";
+      return "text-danger";
     case "elevated":
-      return "text-amber-600 dark:text-amber-400";
+      return "text-warning";
     default:
-      return "text-emerald-600 dark:text-emerald-400";
+      return "text-success";
   }
 }
 
-/** Stroke/fill classes for a gauge ring (uses the 500 shade). */
+/** Stroke/fill classes for a gauge ring. */
 export function riskScoreStrokeClasses(score: number): string {
   switch (getRiskScoreTone(score)) {
     case "critical":
-      return "text-red-500 dark:text-red-400";
+      return "text-danger";
     case "elevated":
-      return "text-amber-500 dark:text-amber-400";
+      return "text-warning";
     default:
-      return "text-emerald-500 dark:text-emerald-400";
+      return "text-success";
   }
 }

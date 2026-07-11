@@ -1,31 +1,27 @@
 import { motion } from "motion/react";
-import { format } from "date-fns";
 import {
   CardSkeleton,
   ListSkeleton,
   ChartSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import { PageHero } from "@/components/common/PageHero";
 import { useAuthStore } from "@/stores";
+import { getGreeting } from "@/lib/greeting";
+import { AISummaryLine } from "./AISummaryLine";
 import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
+  /** Fallback shown as the AI summary line when the page has no dynamic
+   * summary of its own ready yet. */
   title: string;
   subtitle?: string;
   kpis: React.ReactNode[];
   children: React.ReactNode;
-  /** Optional action buttons rendered on the right side of the hero banner. */
+  /** Optional action buttons rendered on the right side of the header. */
   actions?: React.ReactNode;
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
-}
-
-function getGreeting(name?: string | null): string {
-  const hour = new Date().getHours();
-  const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
-  return name ? `Good ${period}, ${name}` : `Good ${period}`;
 }
 
 export function DashboardLayout({
@@ -39,15 +35,12 @@ export function DashboardLayout({
   onRetry,
 }: DashboardLayoutProps) {
   const { user } = useAuthStore();
-  const greeting = getGreeting(user?.name?.split(" ")[0]);
-  const heroSubtitle = subtitle
-    ? `${greeting} · ${subtitle}`
-    : `${greeting} · ${format(new Date(), "EEEE, MMMM do, yyyy")}`;
+  const greeting = getGreeting(user?.name ?? "there");
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-24 w-full animate-pulse rounded-2xl bg-muted" />
+        <div className="h-16 w-2/3 animate-pulse rounded-xl bg-muted" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <CardSkeleton key={i} />
@@ -65,7 +58,12 @@ export function DashboardLayout({
   if (error) {
     return (
       <div className="space-y-6">
-        <PageHero title={title} subtitle={heroSubtitle} />
+        <div className="space-y-2">
+          <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">
+            {greeting}
+          </h1>
+          <AISummaryLine text={subtitle ?? title} />
+        </div>
         <ErrorState
           title="Could not load dashboard"
           message={error.message}
@@ -82,9 +80,15 @@ export function DashboardLayout({
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <PageHero title={title} subtitle={heroSubtitle}>
-        {actions}
-      </PageHero>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">
+            {greeting}
+          </h1>
+          <AISummaryLine text={subtitle ?? title} />
+        </div>
+        {actions && <div className="shrink-0">{actions}</div>}
+      </div>
 
       <div
         className={cn(

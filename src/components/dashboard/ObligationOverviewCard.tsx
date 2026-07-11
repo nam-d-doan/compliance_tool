@@ -24,26 +24,26 @@ const PRIORITY_ROWS: {
   {
     key: "critical",
     label: "Critical",
-    dot: "bg-red-500",
-    text: "text-red-600 dark:text-red-400",
+    dot: "bg-danger",
+    text: "text-danger",
   },
   {
     key: "high",
     label: "High",
-    dot: "bg-orange-500",
-    text: "text-orange-600 dark:text-orange-400",
+    dot: "bg-warning",
+    text: "text-warning",
   },
   {
     key: "medium",
     label: "Medium",
-    dot: "bg-amber-500",
-    text: "text-amber-600 dark:text-amber-400",
+    dot: "bg-info",
+    text: "text-info",
   },
   {
     key: "low",
     label: "Low",
-    dot: "bg-emerald-500",
-    text: "text-emerald-600 dark:text-emerald-400",
+    dot: "bg-neutral",
+    text: "text-neutral",
   },
 ];
 
@@ -52,26 +52,26 @@ const STATUS_ROWS: {
   label: string;
   tone: string;
 }[] = [
-  { key: "draft", label: "Draft", tone: "text-slate-600 dark:text-slate-400" },
+  { key: "draft", label: "Draft", tone: "text-neutral" },
   {
     key: "submitted",
     label: "Submitted",
-    tone: "text-blue-600 dark:text-blue-400",
+    tone: "text-info",
   },
   {
     key: "review_required",
     label: "Review Required",
-    tone: "text-amber-600 dark:text-amber-400",
+    tone: "text-warning",
   },
   {
     key: "cap_in_progress",
     label: "CAP In Progress",
-    tone: "text-amber-600 dark:text-amber-400",
+    tone: "text-warning",
   },
   {
     key: "completed",
     label: "Completed",
-    tone: "text-emerald-600 dark:text-emerald-400",
+    tone: "text-success",
   },
 ];
 
@@ -92,7 +92,7 @@ export function ObligationOverviewCard({
       <Card className="h-full">
         <CardContent className="p-5">
           <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <span className="bg-info-bg text-info flex size-8 items-center justify-center rounded-lg">
               <Inbox className="size-4" aria-hidden="true" />
             </span>
             <div>

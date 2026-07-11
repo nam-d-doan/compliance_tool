@@ -461,10 +461,7 @@ export default function ObligationCreatePage() {
 
       <PageHero title={headerTitle} subtitle={headerSubtitle}>
         <div className="flex flex-col items-end gap-2">
-          <Badge
-            variant="outline"
-            className="gap-1.5 border-white/30 bg-white/10 text-white"
-          >
+          <Badge variant="outline" className="gap-1.5">
             <ClipboardList className="size-3.5" aria-hidden="true" />
             {totalObligations} obligation{totalObligations !== 1 ? "s" : ""}
           </Badge>

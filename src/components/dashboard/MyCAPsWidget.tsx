@@ -30,8 +30,7 @@ const TABS: {
     label: "Open",
     match: "Open",
     icon: PlayCircle,
-    accent:
-      "data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400",
+    accent: "data-[state=active]:bg-info-bg data-[state=active]:text-info",
     emptyTitle: "No open action plans",
     emptyDescription:
       "Action plans you're working on will appear here. Create one from an obligation.",
@@ -42,7 +41,7 @@ const TABS: {
     match: "Pending Approval",
     icon: Hourglass,
     accent:
-      "data-[state=active]:bg-violet-500/10 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400",
+      "data-[state=active]:bg-warning-bg data-[state=active]:text-warning",
     emptyTitle: "Nothing awaiting approval",
     emptyDescription:
       "Submitted action plans pending compliance review show here.",
@@ -53,7 +52,7 @@ const TABS: {
     match: "Closed",
     icon: CheckCircle2,
     accent:
-      "data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400",
+      "data-[state=active]:bg-success-bg data-[state=active]:text-success",
     emptyTitle: "No closed plans yet",
     emptyDescription: "Completed and approved action plans are tracked here.",
   },
@@ -95,7 +94,7 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
   const items = buckets[activeTab];
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm">
+    <div className="rounded-[20px] border bg-card shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--card-border)]">
       <div className="border-b border-border px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -142,7 +141,7 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
                     className={cn(
                       "ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
                       count > 0 && tab.id === "open"
-                        ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                        ? "bg-info-bg text-info"
                         : isActive
                           ? "bg-foreground/10"
                           : "bg-muted text-muted-foreground",
@@ -207,7 +206,7 @@ function CAPCard({ cap, index, onOpen }: CAPCardProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.3) }}
-      className="group relative flex flex-col rounded-lg border border-border bg-background p-3.5 transition-all hover:border-primary/30 hover:shadow-sm"
+      className="group relative flex flex-col rounded-xl border bg-muted/30 p-3.5 transition-all hover:border-foreground/20 hover:shadow-sm [border-color:var(--hairline)]"
     >
       <button
         type="button"
@@ -251,7 +250,7 @@ function CAPCard({ cap, index, onOpen }: CAPCardProps) {
             </div>
             <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-primary transition-all"
+                className="bg-chart-accent h-full rounded-full transition-all"
                 style={{ width: `${cap.progress}%` }}
               />
             </div>

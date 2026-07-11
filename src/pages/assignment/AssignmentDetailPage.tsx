@@ -209,7 +209,6 @@ export default function AssignmentDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-white/90 hover:bg-white/10 hover:text-white"
             onClick={() => navigate(ROUTES.ASSIGNMENTS.LIST)}
           >
             <ArrowLeft className="size-4" aria-hidden="true" />

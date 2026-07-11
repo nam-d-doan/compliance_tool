@@ -32,19 +32,19 @@ export function AIInsightCard({
 
   const typeIcon =
     insight.type === "risk" ? (
-      <span className="text-red-500" aria-hidden="true">
+      <span className="text-danger" aria-hidden="true">
         ●
       </span>
     ) : insight.type === "opportunity" ? (
-      <span className="text-emerald-500" aria-hidden="true">
+      <span className="text-success" aria-hidden="true">
         ●
       </span>
     ) : insight.type === "anomaly" ? (
-      <span className="text-amber-500" aria-hidden="true">
+      <span className="text-warning" aria-hidden="true">
         ●
       </span>
     ) : (
-      <span className="text-blue-500" aria-hidden="true">
+      <span className="text-info" aria-hidden="true">
         ●
       </span>
     );

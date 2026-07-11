@@ -51,9 +51,9 @@ export function getDueDateTone(
 export function dueDateCellClasses(dueDate: string, completed = false): string {
   switch (getDueDateTone(dueDate, completed)) {
     case "overdue":
-      return "font-semibold text-red-700 dark:text-red-400 bg-red-500/10";
+      return "font-semibold text-danger bg-danger-bg";
     case "soon":
-      return "font-medium text-amber-700 dark:text-amber-400 bg-amber-500/15";
+      return "font-medium text-warning bg-warning-bg";
     default:
       return "text-muted-foreground";
   }

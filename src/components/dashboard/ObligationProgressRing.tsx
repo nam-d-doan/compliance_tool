@@ -56,7 +56,7 @@ export function ObligationProgressRing({
             fill="none"
             strokeWidth={strokeWidth}
             strokeLinecap="round"
-            className="stroke-amber-400"
+            className="stroke-chart-accent"
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
             animate={{ strokeDashoffset: offset }}

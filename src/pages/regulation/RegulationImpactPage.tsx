@@ -293,12 +293,7 @@ export default function RegulationImpactPage() {
         title="Impact Analysis"
         subtitle={`Deep-dive AI impact assessment for ${item.title}`}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-white/90 hover:bg-white/10 hover:text-white"
-          onClick={() => navigate(`/regulation/${id}`)}
-        >
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/regulation/${id}`)}>
           <ArrowLeft className="size-4" aria-hidden="true" />
           Back to regulation
         </Button>

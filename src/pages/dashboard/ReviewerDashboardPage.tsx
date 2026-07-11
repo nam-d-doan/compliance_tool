@@ -43,6 +43,14 @@ export default function ReviewerDashboardPage() {
     [compliance.data],
   );
 
+  const reviewQueueCount = useMemo(
+    () =>
+      complianceItems.filter((c) =>
+        ["submitted", "review_required"].includes(c.status),
+      ).length,
+    [complianceItems],
+  );
+
   const reviewThroughput = useMemo(
     () => [
       { name: "Mon", completed: 4, assigned: 6 },
@@ -86,7 +94,7 @@ export default function ReviewerDashboardPage() {
   return (
     <DashboardLayout
       title="Reviewer Dashboard"
-      subtitle="Enterprise oversight, compliance monitoring, and trend analysis."
+      subtitle={`${reviewQueueCount} obligation${reviewQueueCount === 1 ? "" : "s"} ${reviewQueueCount === 1 ? "is" : "are"} in your review queue.`}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}

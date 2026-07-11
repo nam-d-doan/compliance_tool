@@ -307,20 +307,13 @@ export default function ObligationDetailPage() {
       <PageHero title={item.title} subtitle={item.code}>
         <div className="flex flex-wrap items-center gap-2">
           <Button
-            variant="secondary"
             onClick={() => navigate(`/cap/create?obligations=${item.id}`)}
-            className="border-white/30 bg-white/20 text-white hover:bg-white/30 hover:text-white"
           >
             <Plus className="size-4" aria-hidden="true" />
             Create CAP
           </Button>
           {canEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditOpen(true)}
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            >
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden="true" />
               Edit
             </Button>

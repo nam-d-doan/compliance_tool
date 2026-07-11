@@ -90,7 +90,7 @@ export default function EWSReportPage() {
         subtitle="Trending analysis of non-compliance metrics across units and regions."
       >
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-blue-100">
+          <label className="text-xs font-medium text-muted-foreground">
             Date range
           </label>
           <div className="flex items-center gap-2">
@@ -98,14 +98,14 @@ export default function EWSReportPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-8 rounded-lg border-0 bg-white/20 px-2.5 text-xs text-white outline-none focus:bg-white/30"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
-            <span className="text-xs text-blue-100">to</span>
+            <span className="text-xs text-muted-foreground">to</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-8 rounded-lg border-0 bg-white/20 px-2.5 text-xs text-white outline-none focus:bg-white/30"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
           </div>
         </div>

@@ -40,9 +40,7 @@ export function KPICard({
   }
 
   const isPositive = trend?.positive ?? trend?.direction === "up";
-  const trendColor = isPositive
-    ? "text-emerald-600 dark:text-emerald-400"
-    : "text-red-600 dark:text-red-400";
+  const trendColor = isPositive ? "text-success" : "text-danger";
 
   const TrendIcon =
     trend?.direction === "up"

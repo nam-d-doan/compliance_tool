@@ -247,7 +247,7 @@ export default function AdminRolesPage() {
       >
         <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <SheetTrigger asChild>
-            <Button className="bg-white text-[#0c3767] hover:bg-white/90">
+            <Button>
               <Plus className="size-4" aria-hidden="true" />
               Create Role
             </Button>

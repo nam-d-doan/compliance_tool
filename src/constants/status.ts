@@ -36,150 +36,100 @@ export interface StatusStyle {
   dot: string;
 }
 
-const slate = {
-  default: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  outline:
-    "border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300",
-  dot: "text-slate-600 dark:text-slate-400",
+// Five-category semantic system (success/warning/danger/info/neutral) —
+// matches the badge() categorization in the ComplianceAI design prototype.
+const success = {
+  default: "bg-success-bg text-success",
+  outline: "border-success/40 text-success",
+  dot: "text-success",
 };
 
-const zinc = {
-  default: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  outline:
-    "border-zinc-300 text-zinc-700 dark:border-zinc-600 dark:text-zinc-300",
-  dot: "text-zinc-600 dark:text-zinc-400",
+const warning = {
+  default: "bg-warning-bg text-warning",
+  outline: "border-warning/40 text-warning",
+  dot: "text-warning",
 };
 
-const blue = {
-  default: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  outline:
-    "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400",
-  dot: "text-blue-600 dark:text-blue-400",
+const danger = {
+  default: "bg-danger-bg text-danger",
+  outline: "border-danger/40 text-danger",
+  dot: "text-danger",
 };
 
-const violet = {
-  default:
-    "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-  outline:
-    "border-violet-300 text-violet-700 dark:border-violet-700 dark:text-violet-400",
-  dot: "text-violet-600 dark:text-violet-400",
-};
-
-const purple = {
-  default:
-    "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  outline:
-    "border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-400",
-  dot: "text-purple-600 dark:text-purple-400",
-};
-
-const emerald = {
-  default:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  outline:
-    "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400",
-  dot: "text-emerald-600 dark:text-emerald-400",
-};
-
-const amber = {
-  default:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  outline:
-    "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400",
-  dot: "text-amber-600 dark:text-amber-400",
-};
-
-const orange = {
-  default:
-    "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  outline:
-    "border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-400",
-  dot: "text-orange-600 dark:text-orange-400",
-};
-
-const red = {
-  default: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  outline: "border-red-300 text-red-700 dark:border-red-700 dark:text-red-400",
-  dot: "text-red-600 dark:text-red-400",
-};
-
-const rose = {
-  default: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
-  outline:
-    "border-rose-300 text-rose-700 dark:border-rose-700 dark:text-rose-400",
-  dot: "text-rose-600 dark:text-rose-400",
+const info = {
+  default: "bg-info-bg text-info",
+  outline: "border-info/40 text-info",
+  dot: "text-info",
 };
 
 const neutral = {
-  default:
-    "bg-muted text-muted-foreground dark:bg-muted/60 dark:text-muted-foreground",
-  outline:
-    "border-border text-muted-foreground dark:border-border/60 dark:text-muted-foreground",
-  dot: "text-muted-foreground dark:text-muted-foreground",
+  default: "bg-neutral-bg text-neutral",
+  outline: "border-neutral/40 text-neutral",
+  dot: "text-neutral",
 };
 
 export const STATUS_STYLES: Record<string, StatusStyle> = {
   // Compliance lifecycle
-  draft: { label: "Draft", icon: FileEdit, ...slate },
-  "pending review": { label: "Pending Review", icon: Eye, ...blue },
-  approved: { label: "Approved", icon: CheckCircle, ...emerald },
-  rejected: { label: "Rejected", icon: XCircle, ...red },
-  overdue: { label: "Overdue", icon: AlertCircle, ...red },
-  due: { label: "Due", icon: Clock, ...amber },
-  completed: { label: "Completed", icon: CheckCircle2, ...emerald },
-  assigned: { label: "Assigned", icon: UserCheck, ...purple },
-  submitted: { label: "Submitted", icon: UploadCloud, ...blue },
-  returned: { label: "Returned", icon: RefreshCw, ...orange },
-  archived: { label: "Archived", icon: Archive, ...slate },
+  draft: { label: "Draft", icon: FileEdit, ...neutral },
+  "pending review": { label: "Pending Review", icon: Eye, ...info },
+  approved: { label: "Approved", icon: CheckCircle, ...success },
+  rejected: { label: "Rejected", icon: XCircle, ...danger },
+  overdue: { label: "Overdue", icon: AlertCircle, ...danger },
+  due: { label: "Due", icon: Clock, ...warning },
+  completed: { label: "Completed", icon: CheckCircle2, ...success },
+  assigned: { label: "Assigned", icon: UserCheck, ...info },
+  submitted: { label: "Submitted", icon: UploadCloud, ...info },
+  returned: { label: "Returned", icon: RefreshCw, ...warning },
+  archived: { label: "Archived", icon: Archive, ...neutral },
 
   // Obligation lifecycle
   review_required: {
     label: "Review Required",
     icon: AlertCircle,
-    ...amber,
+    ...warning,
   },
   cap_in_progress: {
     label: "CAP In Progress",
     icon: PlayCircle,
-    ...amber,
+    ...warning,
   },
 
   // CAP
-  open: { label: "Open", icon: Circle, ...blue },
-  "in progress": { label: "In Progress", icon: PlayCircle, ...amber },
+  open: { label: "Open", icon: Circle, ...info },
+  "in progress": { label: "In Progress", icon: PlayCircle, ...warning },
   "pending approval": {
     label: "Pending Approval",
     icon: Hourglass,
-    ...violet,
+    ...warning,
   },
-  closed: { label: "Closed", icon: CheckCircle2, ...emerald },
+  closed: { label: "Closed", icon: CheckCircle2, ...success },
 
   // Assignment lifecycle
-  published: { label: "Published", icon: Send, ...blue },
-  acknowledged: { label: "Acknowledged", icon: ThumbsUp, ...violet },
-  cancelled: { label: "Cancelled", icon: XCircle, ...rose },
+  published: { label: "Published", icon: Send, ...info },
+  acknowledged: { label: "Acknowledged", icon: ThumbsUp, ...info },
+  cancelled: { label: "Cancelled", icon: XCircle, ...danger },
 
   // Regulation / content
-  effective: { label: "Effective", icon: CheckCircle, ...emerald },
-  expired: { label: "Expired", icon: Archive, ...slate },
-  superseded: { label: "Superseded", icon: RefreshCw, ...amber },
+  effective: { label: "Effective", icon: CheckCircle, ...success },
+  expired: { label: "Expired", icon: Archive, ...neutral },
+  superseded: { label: "Superseded", icon: RefreshCw, ...warning },
 
   // User / admin
-  inactive: { label: "Inactive", icon: UserX, ...slate },
-  invited: { label: "Invited", icon: Mail, ...blue },
-  deactivated: { label: "Deactivated", icon: UserMinus, ...zinc },
+  inactive: { label: "Inactive", icon: UserX, ...neutral },
+  invited: { label: "Invited", icon: Mail, ...info },
+  deactivated: { label: "Deactivated", icon: UserMinus, ...neutral },
 
   // Generic
-  pending: { label: "Pending", icon: Clock, ...amber },
-  success: { label: "Success", icon: CheckCircle, ...emerald },
-  failure: { label: "Failure", icon: XCircle, ...red },
+  pending: { label: "Pending", icon: Clock, ...warning },
+  success: { label: "Success", icon: CheckCircle, ...success },
+  failure: { label: "Failure", icon: XCircle, ...danger },
 };
 
 export const PRIORITY_STYLES: Record<PriorityLevel, StatusStyle> = {
-  low: { label: "Low", icon: ArrowDown, ...emerald },
-  medium: { label: "Medium", icon: Minus, ...amber },
-  high: { label: "High", icon: ArrowUp, ...orange },
-  critical: { label: "Critical", icon: ShieldAlert, ...red },
+  low: { label: "Low", icon: ArrowDown, ...neutral },
+  medium: { label: "Medium", icon: Minus, ...info },
+  high: { label: "High", icon: ArrowUp, ...warning },
+  critical: { label: "Critical", icon: ShieldAlert, ...danger },
 };
 
 /**
@@ -189,8 +139,8 @@ export const PRIORITY_STYLES: Record<PriorityLevel, StatusStyle> = {
  * active). These overrides apply only when StatusBadge is given kind="ncc".
  */
 const NCC_STATUS_STYLES: Record<string, StatusStyle> = {
-  open: { label: "Open", icon: AlertCircle, ...amber },
-  closed: { label: "Closed", icon: CheckCircle2, ...emerald },
+  open: { label: "Open", icon: AlertCircle, ...warning },
+  closed: { label: "Closed", icon: CheckCircle2, ...success },
 };
 
 export function getStatusStyle(status: string, kind?: "ncc"): StatusStyle {

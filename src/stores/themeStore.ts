@@ -37,8 +37,7 @@ export const useThemeStore = create<ThemeStore>()(
       },
 
       toggleTheme: () => {
-        const currentTheme = get().theme;
-        const newTheme = currentTheme === "light" ? "dark" : "light";
+        const newTheme = get().isDark ? "light" : "dark";
         get().setTheme(newTheme);
       },
     }),

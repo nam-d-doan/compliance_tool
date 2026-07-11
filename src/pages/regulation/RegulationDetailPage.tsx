@@ -291,17 +291,13 @@ export default function RegulationDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-white/90 hover:bg-white/10 hover:text-white"
             onClick={() => navigate("/regulation")}
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
             Back to library
           </Button>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Badge
-              variant="outline"
-              className="border-white/30 bg-white/10 text-white"
-            >
+            <Badge variant="outline">
               {item.source === "external" ? (
                 <Globe className="size-3" aria-hidden="true" />
               ) : (
@@ -315,7 +311,6 @@ export default function RegulationDetailPage() {
                 size="sm"
                 onClick={handleArchive}
                 disabled={archive.isPending}
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
               >
                 {archive.isPending ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -329,7 +324,6 @@ export default function RegulationDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => navigate(`/regulation/${item.id}/edit`)}
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
               <Pencil className="size-4" aria-hidden="true" />
               Edit

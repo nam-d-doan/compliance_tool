@@ -36,20 +36,20 @@ const statusConfig: Record<
   approved: {
     label: "Approved",
     icon: CheckCircle2,
-    color: "text-emerald-600 dark:text-emerald-400",
-    bg: "bg-emerald-100 dark:bg-emerald-900/30",
+    color: "text-success",
+    bg: "bg-success-bg",
   },
   rejected: {
     label: "Rejected",
     icon: XCircle,
-    color: "text-red-600 dark:text-red-400",
-    bg: "bg-red-100 dark:bg-red-900/30",
+    color: "text-danger",
+    bg: "bg-danger-bg",
   },
   pending: {
     label: "Pending",
     icon: Clock,
-    color: "text-amber-600 dark:text-amber-400",
-    bg: "bg-amber-100 dark:bg-amber-900/30",
+    color: "text-warning",
+    bg: "bg-warning-bg",
   },
 };
 

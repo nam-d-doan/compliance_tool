@@ -170,7 +170,7 @@ export default function ExecutiveDashboardPage() {
   return (
     <DashboardLayout
       title="Executive Dashboard"
-      subtitle="Enterprise compliance health, risk overview, and AI-generated insights."
+      subtitle={aiSummary.data?.summary}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}

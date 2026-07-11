@@ -312,25 +312,16 @@ export default function ObligationListPage() {
       >
         <div className="flex flex-wrap items-center gap-2">
           <Button
-            variant="secondary"
+            variant={selectedCount > 0 ? "default" : "secondary"}
             onClick={handleCreateCAPFromSelected}
             disabled={selectedCount === 0}
-            className={
-              selectedCount > 0
-                ? "border-white/30 bg-white/20 text-white hover:bg-white/30 hover:text-white"
-                : ""
-            }
           >
             <ClipboardCheck className="size-4" aria-hidden="true" />
             Create CAP
             {selectedCount > 0 ? ` (${selectedCount})` : ""}
           </Button>
           {canCreate && (
-            <Button
-              variant="outline"
-              onClick={() => navigate("/obligations/create")}
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            >
+            <Button variant="outline" onClick={() => navigate("/obligations/create")}>
               <Plus className="size-4" aria-hidden="true" />
               Create New
             </Button>
