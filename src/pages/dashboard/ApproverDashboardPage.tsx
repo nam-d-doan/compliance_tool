@@ -238,7 +238,7 @@ export default function ApproverDashboardPage() {
         />
       </div>
 
-      <div className="md:col-span-1">
+      <div className="md:col-span-2">
         <DashboardAssignmentsCard
           title="Assignments for Review"
           description="Waiting for acknowledgment or completion."

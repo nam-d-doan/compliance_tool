@@ -10,7 +10,6 @@ import {
   User,
   CheckCircle,
   AlertTriangle,
-  Trash2,
   Pencil,
   ExternalLink,
   PlusCircle,
@@ -37,6 +36,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
+import { PageHero } from "@/components/common";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { DetailSkeleton } from "@/components/common/Skeletons";
@@ -63,7 +63,6 @@ import { useRegulationList } from "@/hooks/queries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import {
   useUpdateCAP,
-  useDeleteCAP,
   useAddCAPComment,
 } from "@/hooks/mutations/useCAPMutations";
 import { useAuthStore } from "@/stores";
@@ -165,7 +164,6 @@ export default function CAPDetailPage() {
   const navigate = useNavigate();
   const { role, user } = useAuthStore();
   const canEdit = hasPermission(role, "cap:update");
-  const canDelete = hasPermission(role, "cap:delete");
   const canApprove = hasPermission(role, "cap:approve");
 
   const [activeTab, setActiveTab] = useState<TabId>("overview");
@@ -176,7 +174,6 @@ export default function CAPDetailPage() {
   const timeline = useCAPTimeline(id);
   const comments = useCAPComments(id);
   const update = useUpdateCAP(id);
-  const remove = useDeleteCAP();
   const addComment = useAddCAPComment(id);
 
   const usersQuery = useAdminUsers(1, 200, { status: "Active" });
@@ -274,22 +271,6 @@ export default function CAPDetailPage() {
       { status: "Open" },
       { onSuccess: () => toast.success("CAP returned for revision") },
     );
-  };
-
-  const handleDelete = () => {
-    if (!item) return;
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this corrective action plan?",
-      )
-    )
-      return;
-    remove.mutate(item.id, {
-      onSuccess: () => {
-        toast.success("CAP deleted");
-        navigate("/cap/list");
-      },
-    });
   };
 
   const handleEditSubmit = (values: CAPFormValues) => {
@@ -408,87 +389,45 @@ export default function CAPDetailPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <Card className="relative overflow-hidden border-0 text-white shadow-lg">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(135deg, #0c3767 0%, #185b95 58%, #147769 100%)",
-          }}
-        />
-        <div className="relative p-6 lg:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/cap/list")}
-                className="-ml-2 text-blue-100 hover:bg-white/10 hover:text-white"
-              >
-                <ArrowLeft className="size-4" aria-hidden="true" />
-                Back to CAPs
-              </Button>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">
-                  {item.title}
-                </h1>
-                <StatusBadge status={item.status} size="md" />
-                <PriorityBadge priority={item.priority} size="md" />
-              </div>
-              <p className="text-sm text-blue-100">{item.capId}</p>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-blue-50">
-                <span className="inline-flex items-center gap-1.5">
-                  <User className="size-4" aria-hidden="true" />
-                  {item.ownerName}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="size-4" aria-hidden="true" />
-                  {format(parseISO(item.dueDate), "PPP")}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {canEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditOpen(true)}
-                  className="border-white/30 text-white hover:bg-white/10 hover:text-white"
-                >
-                  <Pencil className="size-4" aria-hidden="true" />
-                  Edit
-                </Button>
-              )}
-              {canDelete && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDelete}
-                  className="border-white/30 text-white hover:bg-red-500/20 hover:text-white"
-                >
-                  <Trash2 className="size-4" aria-hidden="true" />
-                  Delete
-                </Button>
-              )}
-            </div>
-          </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate("/cap/list")}
+        className="-ml-2 text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        Back to CAPs
+      </Button>
 
-          <div className="mt-6 space-y-2">
-            <div className="flex items-center justify-between text-sm text-blue-50">
-              <span>Progress</span>
-              <span className="font-medium">{item.progress}%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
-              <motion.div
-                className="h-full rounded-full bg-white"
-                initial={{ width: 0 }}
-                animate={{ width: `${item.progress}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              />
-            </div>
-          </div>
+      <PageHero
+        title={item.title}
+        subtitle={`${item.capId} · ${item.ownerName} · Due ${format(parseISO(item.dueDate), "PPP")}`}
+      >
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+              Edit
+            </Button>
+          )}
         </div>
-      </Card>
+      </PageHero>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusBadge status={item.status} size="md" />
+        <PriorityBadge priority={item.priority} size="md" />
+        <Badge variant="outline" className="gap-1.5">
+          <span className="text-muted-foreground">Progress</span>
+          <span className="font-semibold text-foreground">
+            {item.progress}%
+          </span>
+        </Badge>
+        <Progress value={item.progress} className="h-2 max-w-[200px]" />
+      </div>
 
       <Tabs
         defaultValue={activeTab}

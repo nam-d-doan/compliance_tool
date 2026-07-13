@@ -96,17 +96,6 @@ export default function ExecutiveDashboardPage() {
     [regulations.data],
   );
 
-  const complianceByBU = useMemo(() => {
-    const counts = new Map<string, number>();
-    complianceItems.forEach((item) => {
-      counts.set(item.businessUnit, (counts.get(item.businessUnit) ?? 0) + 1);
-    });
-    return Array.from(counts.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
-  }, [complianceItems]);
-
   const riskDistribution = useMemo(() => {
     const counts = new Map<string, number>();
     complianceItems.forEach((item) => {
@@ -273,45 +262,6 @@ export default function ExecutiveDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="Compliance by Business Unit" delay={0.25}>
-          <div className="h-64">
-            {complianceByBU.length === 0 ? (
-              <EmptyState
-                title="No data"
-                className="h-full border-0 bg-transparent"
-              />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={complianceByBU}
-                  margin={{ top: 8, right: 16, bottom: 24, left: -16 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-muted"
-                  />
-                  <XAxis
-                    dataKey="name"
-                    angle={-30}
-                    textAnchor="end"
-                    height={60}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar
-                    dataKey="value"
-                    fill={CHART_COLORS[0]}
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </DashboardChartCard>
-      </div>
-
-      <div className="md:col-span-1">
         <DashboardChartCard title="Risk Distribution" delay={0.3}>
           <div className="h-64">
             {riskDistribution.length === 0 ? (
@@ -383,11 +333,19 @@ export default function ExecutiveDashboardPage() {
         />
       </div>
 
+      <div className="md:col-span-1">
+        <DashboardUpcomingRegulations
+          regulations={regulationItems}
+          now={DEMO_TODAY}
+          delay={0.45}
+        />
+      </div>
+
       <div className="md:col-span-2">
         <DashboardActivityFeed
           items={dashboard.data?.activity}
           title="Organization Activity"
-          delay={0.45}
+          delay={0.5}
         />
       </div>
 
@@ -397,14 +355,6 @@ export default function ExecutiveDashboardPage() {
           description="By department, with overdue and critical counts."
           assignments={assignmentItems}
           breakdown="department"
-          delay={0.5}
-        />
-      </div>
-
-      <div className="md:col-span-1">
-        <DashboardUpcomingRegulations
-          regulations={regulationItems}
-          now={DEMO_TODAY}
           delay={0.55}
         />
       </div>

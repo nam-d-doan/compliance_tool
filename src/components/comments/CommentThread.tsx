@@ -84,14 +84,15 @@ export function CommentThread({
                   className={cn(
                     "flex gap-3",
                     isExecutive &&
-                      "rounded-lg border border-chart-accent/40 bg-chart-accent/[0.06] p-2 pr-3",
+                      "rounded-lg border border-warning/40 bg-warning/10 p-2 pr-3",
                   )}
                 >
                   <Avatar size="sm">
                     <AvatarFallback
                       className={cn(
                         "text-xs",
-                        isExecutive && "bg-chart-accent text-black",
+                        isExecutive &&
+                          "bg-warning/15 text-warning ring-1 ring-inset ring-warning/40",
                       )}
                     >
                       {comment.userName
@@ -108,7 +109,7 @@ export function CommentThread({
                         {isExecutive && (
                           <Badge
                             variant="outline"
-                            className="border-chart-accent/60 text-chart-accent text-[9px] px-1 py-0"
+                            className="border-warning/50 text-warning text-[9px] px-1 py-0"
                           >
                             Executive
                           </Badge>

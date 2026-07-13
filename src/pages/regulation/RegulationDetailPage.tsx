@@ -818,15 +818,15 @@ export default function RegulationDetailPage() {
                   No obligations linked.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
                   {obligations.data?.items.map((obligation) => (
                     <button
                       key={obligation.id}
                       onClick={() => navigate(`/obligations/${obligation.id}`)}
-                      className="flex w-full items-center justify-between rounded-md border border-border bg-card p-2 text-left text-sm transition-colors hover:bg-muted/50"
+                      className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card p-2 text-left text-sm transition-colors hover:bg-muted/50"
                     >
-                      <span className="truncate font-medium">
-                        {obligation.code}
+                      <span className="min-w-0 truncate font-medium">
+                        {obligation.code} — {obligation.title}
                       </span>
                       <StatusBadge status={obligation.status} size="sm" />
                     </button>
