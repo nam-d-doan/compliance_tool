@@ -7,12 +7,11 @@ import {
   CalendarClock,
   PlayCircle,
   CheckCircle2,
-  ClipboardCheck,
   ArrowRight,
   Plus,
+  ChevronRight,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -20,11 +19,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { StatusBadge, PriorityBadge, EmptyState } from "@/components/common";
+import { StatusBadge, EmptyState } from "@/components/common";
 import {
   classifyObligation,
-  dueDateLabel,
-  dueDateTone,
   getObligationCap,
   buildObligationCapMap,
   type ObligationTab,
@@ -36,6 +33,8 @@ interface MyObligationsWidgetProps {
   obligations: Obligation[];
   caps: CAP[];
 }
+
+const MAX_ROWS = 5;
 
 const TABS: {
   id: ObligationTab;
@@ -122,11 +121,11 @@ export function MyObligationsWidget({
           </h2>
           <Button
             variant="ghost"
-            size="xs"
+            size="sm"
             className="text-muted-foreground"
             onClick={() => navigate("/obligations")}
           >
-            View all
+            View All
             <ArrowRight className="size-3.5" aria-hidden="true" />
           </Button>
         </div>
@@ -193,22 +192,62 @@ export function MyObligationsWidget({
                           className="border-0 bg-transparent py-10"
                         />
                       ) : (
-                        <div className="grid gap-3 pb-4 sm:grid-cols-2">
-                          {items.map((obg, idx) => (
-                            <ObligationCard
-                              key={obg.id}
-                              obligation={obg}
-                              cap={getObligationCap(obg, capMap)}
-                              index={idx}
-                              onOpen={() => navigate(`/obligations/${obg.id}`)}
-                              onCreateCap={(ids) =>
-                                navigate(
-                                  `/cap/create?obligations=${ids.join(",")}`,
-                                )
-                              }
-                              onGoToCap={(capId) => navigate(`/cap/${capId}`)}
-                            />
-                          ))}
+                        <div className="flex flex-col">
+                          {items.slice(0, MAX_ROWS).map((obg) => {
+                            const cap = getObligationCap(obg, capMap);
+                            const capEligible =
+                              obg.status === "submitted" ||
+                              obg.status === "review_required";
+                            const showCreateCap = capEligible && !cap;
+                            return (
+                              <button
+                                key={obg.id}
+                                type="button"
+                                onClick={() =>
+                                  navigate(`/obligations/${obg.id}`)
+                                }
+                                className="group flex w-full items-center gap-3 border-b border-border/50 py-2 text-left text-sm transition-colors last:border-b-0 hover:bg-muted/50"
+                              >
+                                <StatusBadge status={obg.status} size="sm" />
+                                <span className="line-clamp-1 flex-1 font-medium text-foreground group-hover:text-primary">
+                                  {obg.title}
+                                </span>
+                                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                                  {format(new Date(obg.dueDate), "MMM d")}
+                                </span>
+                                {showCreateCap && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon-sm"
+                                        variant="ghost"
+                                        className="text-muted-foreground hover:text-primary"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(
+                                            `/cap/create?obligations=${obg.id}`,
+                                          );
+                                        }}
+                                        aria-label="Create CAP"
+                                      >
+                                        <Plus
+                                          className="size-3.5"
+                                          aria-hidden="true"
+                                        />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      Create CAP
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <ChevronRight
+                                  className="size-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+                                  aria-hidden="true"
+                                />
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </motion.div>
@@ -220,117 +259,5 @@ export function MyObligationsWidget({
         </Tabs>
       </div>
     </div>
-  );
-}
-
-interface ObligationCardProps {
-  obligation: Obligation;
-  cap?: CAP;
-  index: number;
-  onOpen: () => void;
-  onCreateCap: (obligationIds: string[]) => void;
-  onGoToCap: (capId: string) => void;
-}
-
-function ObligationCard({
-  obligation,
-  cap,
-  index,
-  onOpen,
-  onCreateCap,
-  onGoToCap,
-}: ObligationCardProps) {
-  // CAP action is offered for submitted / review_required obligations (per spec),
-  // surfaced for any obligation that already has a linked CAP.
-  const capEligible =
-    obligation.status === "submitted" ||
-    obligation.status === "review_required";
-  const showCapAction = capEligible || Boolean(cap);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.3) }}
-      className="group relative flex flex-col rounded-lg border border-border bg-background p-3.5 transition-all hover:border-primary/30 hover:shadow-sm"
-    >
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex flex-1 flex-col text-left"
-      >
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="shrink-0 border-border bg-muted/50 font-mono text-[11px] font-medium text-muted-foreground"
-          >
-            {obligation.articleRef}
-          </Badge>
-          <StatusBadge status={obligation.status} size="sm" />
-          {obligation.riskLevel === "critical" && (
-            <PriorityBadge priority="critical" size="sm" />
-          )}
-        </div>
-
-        <h3 className="mt-2 line-clamp-2 text-sm font-medium leading-snug text-foreground group-hover:text-primary">
-          {obligation.title}
-        </h3>
-
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
-              dueDateTone(obligation),
-            )}
-          >
-            <CalendarClock className="size-3" aria-hidden="true" />
-            {dueDateLabel(obligation)}
-          </span>
-          <span className="text-[11px] text-muted-foreground">
-            {format(new Date(obligation.dueDate), "MMM d, yyyy")}
-          </span>
-        </div>
-      </button>
-
-      {showCapAction && (
-        <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-          {cap ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  className="gap-1.5"
-                  onClick={() => onGoToCap(cap.id)}
-                >
-                  <ClipboardCheck className="size-3.5" aria-hidden="true" />
-                  Go to CAP
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">{cap.capId}</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              variant="default"
-              size="xs"
-              className="gap-1.5"
-              onClick={() => onCreateCap([obligation.id])}
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              Create CAP
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="xs"
-            className="ml-auto text-muted-foreground"
-            onClick={onOpen}
-          >
-            Details
-            <ArrowRight className="size-3" aria-hidden="true" />
-          </Button>
-        </div>
-      )}
-    </motion.div>
   );
 }

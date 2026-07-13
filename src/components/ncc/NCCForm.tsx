@@ -2,15 +2,13 @@ import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format, addDays } from "date-fns";
-import { Loader2, Paperclip } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUploadComponent } from "@/components/cap/FileUploadComponent";
 import { useOrgUnits, useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { PRIORITY_LEVELS } from "@/constants/status";
-import type { FileAttachment } from "@/types";
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
@@ -34,11 +32,6 @@ export interface NCCFormProps {
   onCancel?: () => void;
   isSubmitting?: boolean;
   submitLabel?: string;
-  /** Files uploaded while filling out the form (orphan until the NCC exists). */
-  files?: FileAttachment[];
-  onFilesChange?: (files: FileAttachment[]) => void;
-  uploadedBy?: string;
-  uploadedById?: string;
   /** When editing, disable the owner unit select (owner unit shouldn't change after creation). */
   lockOwnerUnit?: boolean;
 }
@@ -49,10 +42,6 @@ export function NCCForm({
   onCancel,
   isSubmitting,
   submitLabel = "Create Case",
-  files,
-  onFilesChange,
-  uploadedBy,
-  uploadedById,
   lockOwnerUnit = false,
 }: NCCFormProps) {
   const orgUnitsQuery = useOrgUnits();
@@ -228,26 +217,6 @@ export function NCCForm({
           />
         </div>
       </div>
-
-      {onFilesChange && (
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1.5">
-            <Paperclip className="size-3.5" aria-hidden="true" />
-            Attachments
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            Files upload immediately. They will be linked to the case once it is
-            created.
-          </p>
-          <FileUploadComponent
-            files={files ?? []}
-            onFilesChange={onFilesChange}
-            uploadedBy={uploadedBy}
-            uploadedById={uploadedById}
-            disabled={isSubmitting}
-          />
-        </div>
-      )}
 
       <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
         {onCancel && (

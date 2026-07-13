@@ -320,15 +320,16 @@ export default function OwnerDashboardPage() {
           <ComplianceChainSummary stages={chainStages} />
         </div>
 
-        {/* Side rail: what's due, and when. */}
-        <div className="space-y-6">
-          <DeadlineCalendar obligations={obligationItems} />
-        </div>
+        {/* Side rail: what's due, and when. Direct grid item so the
+            default align-items: stretch gives it the row height (= left
+            panel), then the Card's h-full fills it. */}
+        <DeadlineCalendar obligations={obligationItems} />
       </div>
 
-      <MyObligationsWidget obligations={obligationItems} caps={capItems} />
-
-      <MyCAPsWidget caps={myCaps} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <MyObligationsWidget obligations={obligationItems} caps={capItems} />
+        <MyCAPsWidget caps={myCaps} />
+      </div>
     </motion.div>
   );
 }

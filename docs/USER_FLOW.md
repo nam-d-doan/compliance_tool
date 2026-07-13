@@ -1,70 +1,714 @@
-# User Flow — Ground Truth
+# User Flow Guide
 
-This is the ground-truth description of what the app actually does today, derived from reading the code (not from `docs/specs/`, see [Relationship to specs](#relationship-to-specs) below). Written for devs and agents who need to orient quickly before making changes.
+Comprehensive step-by-step guide to the compliance tracker's workflows, actions, and system linkages. Covers all user roles and their permission-based access patterns.
 
-## What the tool is for
+## Quick Reference: Demo Accounts
 
-A demo-first regulatory compliance tracker for a bank-like organization operating under Vietnamese banking regulations (SBV/NHNN circulars, Basel III, AML/KYC, etc.). It tracks the lifecycle of a regulatory obligation from "a regulation exists" through "a department is assigned to comply" to "the specific compliance obligations are logged and evidenced" to "if something's not compliant, a corrective action plan (CAP) fixes it." Dashboards and reports give each role a view of what's outstanding, overdue, or at risk.
+All accounts use password: `demo1234`
 
-There is no real backend. `src/mocks/` (MSW handlers + an in-memory `db.ts` singleton, seeded with faker + curated fixtures) simulates the API. Every "create"/"update" mutates that in-memory store for the lifetime of the page — a full browser reload reseeds it from scratch. AI features (risk scoring, CAP drafting, explanations) are also simulated, not real model calls.
+| Role      | Email                | Primary Actions                                        | Dashboard Access    |
+| --------- | -------------------- | ------------------------------------------------------ | ------------------- |
+| Admin     | `admin@demo.com`     | User/role management, AI config, org setup, audit logs | Admin Dashboard     |
+| Executive | `executive@demo.com` | Org-wide oversight, executive reports, risk monitoring | Executive Dashboard |
+| Owner     | `owner@demo.com`     | Creates obligations, manages CAPs, drives completion   | Owner Dashboard     |
+| Approver  | `approver@demo.com`  | Reviews/approves obligations and CAPs                  | Approver Dashboard  |
 
-## Roles
+Role permissions defined in `src/constants/rbac.ts`. Route access in `src/constants/routes.ts`.
 
-Demo accounts (`src/constants/demo-users.ts`, password `demo1234` for all — note there is no generic `demo@demo.com`, only role-scoped accounts):
+---
 
-| Role      | Email                | What they do                                        |
-| --------- | -------------------- | --------------------------------------------------- |
-| Admin     | `admin@demo.com`     | Org/user/role setup, AI config, audit logs          |
-| Executive | `executive@demo.com` | Org-wide oversight dashboard, executive reports     |
-| Owner     | `owner@demo.com`     | Creates/owns obligations, drives CAPs to completion |
-| Approver  | `approver@demo.com`  | Reviews and approves/rejects obligations and CAPs   |
+## 1. Regulation Management
 
-Role → permission mapping lives in `src/constants/rbac.ts`; role → route access and the sidebar nav tree are built in `src/constants/routes.ts`.
+### 1.1 Regulation Library (`/regulation`)
 
-## The lifecycle (Regulation → Assignment → Obligation → CAP)
+**Who can access:** Admin, Executive, Owner
 
-This is the single, unified chain as of the obligation-model unification (see [History](#history-the-obligation-model-unification) below):
+**Actions:**
 
-1. **Regulation library** (`/regulation`, `src/pages/regulation/RegulationLibraryPage.tsx`) — Admin/Owner/Executive adds or reviews a regulation, either by hand or via a simulated "VietLex" search-and-import flow (`src/pages/regulation/RegulationCreatePage.tsx`, `VietLexDoc` types). Each regulation has `articles: Article[]`, a status (Draft/Effective/Superseded/…), and supports comparison (`/regulation/compare`) and impact analysis (`/regulation/:id/impact`).
-2. **Assignment** (`/assignment`, `src/pages/assignment/*`) — an Owner/Executive/Admin routes a specific regulation to one or more departments with a due date and priority. This is the real kickoff of the compliance lifecycle — a regulation sitting in the library does nothing until it's assigned.
-3. **Obligation creation** (`/obligations/create?assignmentId=...`, `src/pages/obligations/ObligationCreatePage.tsx`) — from the Assignment detail page, the assigned department bulk-creates one or more `Obligation` records (one per relevant article/requirement), optionally AI-suggested from the regulation's text. Saved as draft or submitted.
-4. **Obligation tracking** (`/obligations`, `/obligations/:id`) — every obligation (regardless of how it was created) now lives in one dataset and is visible here: code, title, owner, approver, due date, frequency, penalty, AI risk score, tags, progress, status, comments, and an approvals workflow (Approve/Reject). The Owner Dashboard's "My Obligations" widget (`src/components/dashboard/MyObligationsWidget.tsx`) classifies an owner's obligations into needs-CAP / overdue / in-progress / done.
-5. **Corrective Action Plan (CAP)** (`/cap/create?obligations=id1,id2`, `src/pages/cap/CAPCreatePage.tsx`) — created against one or more obligations, either AI-drafted (root cause, recommended actions, timeline, priority) from the obligation's description or filled in manually. Routes through owner → approver review; tracked on `/cap` (KPI dashboard) and `/cap/:id` (tasks, timeline, approvals, evidence attachments). Creating/closing a CAP updates the linked obligations' status (e.g. to `cap_in_progress`) and the obligation detail page shows the CAP back-link under "Linked Corrective Actions."
-6. **Reports & dashboards** (`/reports/*`, role dashboards) — aggregate across regulations, assignments, obligations, and CAPs for oversight. The Early Warning System report (`/reports/ews`) trends non-compliance data specifically.
+- **View Regulations:** Browse full regulation catalog with status badges (Draft/Effective/Superseded)
+- **Search/Filter:** By title, status, regulator, date range
+- **Quick Actions:** Edit, View Details, Create New
 
-## Non-Compliance Cases (NCC) — a separate, unlinked track
+**Key Features:**
 
-`/ncc/*` (`src/pages/ncc/*`, `src/types/ncc.ts`) tracks standalone non-compliance incidents: severity, owning unit, evidence attachments, resolution text, status (`Open`/`Closed`). **This is intentionally not wired into the CAP flow** — there is no `capId` field on `NonComplianceCase` and no "Create CAP from this case" action, even though it conceptually feels like it should feed into one. This is a known gap, not a bug to silently work around — if you're asked to connect NCC → CAP, that's new scope, not a fix to something that broke.
+- Regulation cards show: title, regulator, status, effective date, article count
+- Status-based filtering highlights active vs. archived regulations
+- Bulk actions for status updates
 
-## Sidebar nav order vs. dependency order
+**Navigation Path:**
 
-The sidebar (`src/components/layout/Sidebar.tsx`, `buildNavTree` in `src/constants/routes.ts`) groups items as: **Main** (Dashboard) → **Compliance** (Obligations, Corrective Actions, Non-Compliance, Regulations with Assignments as a sub-item) → **Management** (Reports) → **Admin** → **Preferences**.
+```
+Sidebar → Regulation → Library
+```
 
-This order does **not** match the real dependency order (Regulation → Assignment → Obligation → CAP) — "Obligations" appears above "Regulations"/"Assignments" in the nav. A new user reading top-to-bottom hits Obligations before ever seeing a regulation or assignment to attach one to. This wasn't fixed as part of the data-model unification (that was a data-layer change) — reordering the nav to match the dependency chain is a reasonable follow-up UX task when the frontend overhaul happens.
+### 1.2 Create Regulation (`/regulation/create`)
 
-## History: the obligation-model unification
+**Who can access:** Admin, Executive, Owner
 
-Until mid-2026, the app had **two parallel, incompatible obligation entities** sharing the same routes:
+**Step-by-Step:**
 
-- A legacy `ComplianceObligation` type (richer: approver/reviewers, frequency, penalty, AI risk score, tags, progress, comments) linked directly to a Regulation, powering `/obligations` list/detail, all role dashboards, and the CAP obligation-picker.
-- A newer `Obligation` type linked to an Assignment (the intended flow entry point), powering only `/obligations/create` and the Owner Dashboard widget.
+1. **Basic Info:** Title, regulator, status (defaults to Draft), effective date
+2. **Articles:** Add regulation articles one by one:
+   - Article number
+   - Article title
+   - Full text content
+   - Category/Topic tags
+3. **VietLex Integration** (simulated): Search for external regulations to import
+4. **AI Assist:** (simulated) Automatic article extraction from pasted text
+5. **Save as Draft** or **Publish** (sets status to Effective)
 
-Because these were separate mock datasets with separate id prefixes (`cmp-*` vs `obg-*`), obligations created via the real intended flow (Assignment → bulk-create) never appeared on the `/obligations` list, and `CAP.obligationIds` silently mixed both id namespaces — CAPs linked to the newer type resolved as "not found" stubs on the CAP detail page.
+**System Linkages:**
 
-This was fixed by collapsing both into one canonical `Obligation` entity (superset of both field sets, `src/types/obligation.ts`) with one mock dataset (`db.obligations`), one service/hook/handler stack, and every consumer repointed to it. See git history around the "unify ComplianceObligation and Obligation" commit for the full diff. **If you encounter references to `ComplianceObligation`, `useComplianceList`, `compliance_service`, or `db.compliance` anywhere, that's dead/stale — they were removed.**
+- Creates `Regulation` record in `src/mocks/db.ts`
+- Auto-generates regulation ID (REG-YYYY-NNN format)
+- Fires API: `POST /api/regulations`
 
-## Relationship to specs
+### 1.3 Regulation Detail (`/regulation/:id`)
 
-`docs/specs/P1_Foundation_Setup.md` through `P5_Reporting_Admin_Analytics.md` describe a **larger, partially different product** than what's built: they mention License Management, a standalone Evidence Library, an Enterprise Knowledge Center, and Compliance Templates, none of which exist in `src/pages`. Conversely, the Assignment and NCC modules exist in code but aren't mentioned in the specs at all. **Treat `docs/specs/*` as historical/aspirational, not as ground truth for current behavior.** This file (`docs/USER_FLOW.md`) and `docs/DOX.md` reflect what's actually built.
+**Who can access:** All roles (view-only for non-Admin/Owner)
 
-## Key files by step
+**Key Sections:**
 
-| Step       | Types                                              | Service/hooks                                                                   | Mock handlers                                  | Pages                               |
-| ---------- | -------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------- |
-| Regulation | `src/types/regulation.ts`                          | `regulation_service.ts`, `useRegulationQueries.ts`                              | `regulation_handlers.ts`                       | `src/pages/regulation/*`            |
-| Assignment | `src/types/assignment.ts`                          | `assignment_service.ts`, `useAssignmentQueries.ts`                              | `assignment_handlers.ts`                       | `src/pages/assignment/*`            |
-| Obligation | `src/types/obligation.ts`                          | `obligation_service.ts`, `useObligationQueries.ts`, `useObligationMutations.ts` | `obligation_handlers.ts`                       | `src/pages/obligations/*`           |
-| CAP        | `src/types/cap.ts`                                 | `cap_service.ts` (or equivalent), `useCAPQueries.ts`, `useCAPMutations.ts`      | `cap_handlers.ts`                              | `src/pages/cap/*`                   |
-| NCC        | `src/types/ncc.ts`                                 | `ncc_service.ts`                                                                | `ncc_handlers.ts`                              | `src/pages/ncc/*`                   |
-| RBAC/nav   | `src/constants/rbac.ts`, `src/constants/routes.ts` | —                                                                               | —                                              | `src/components/layout/Sidebar.tsx` |
-| Mock DB    | —                                                  | —                                                                               | `src/mocks/db.ts`, `src/mocks/curated-data.ts` | —                                   |
+- **Header:** Title, status, regulator, effective dates, status badges
+- **Articles List:** Expandable article cards with full text
+- **Linked Obligations:** Scrollable list of obligations derived from this regulation
+- **Action Buttons:** Edit (Admin/Owner), Impact Analysis
+
+**Navigation:**
+From Library → Click regulation card OR from direct link
+
+### 1.4 Impact Analysis (`/regulation/:id/impact`)
+
+**Who can access:** Admin, Executive, Owner
+
+**Analysis Areas:**
+
+- **Department Impact:** Which departments are affected
+- **Risk Score:** AI-calculated impact severity
+- **Implementation Timeline:** Suggested rollout schedule
+- **Resource Requirements:** Staffing and tool needs
+
+---
+
+## 2. Assignment Management
+
+### 2.1 Assignment List (`/assignment`)
+
+**Who can access:** All roles (view-only for non-Admin/Owner)
+
+**Key Features:**
+
+- Filter by status, department, due date, priority
+- Sort by due date, priority, creation date
+- Quick status updates via dropdown
+- Bulk status changes
+
+**Card Information:**
+
+- Assignment title and regulation reference
+- Assigned departments
+- Due date with urgency indicators
+- Status badge
+- Compliance progress bar
+- Quick action buttons
+
+### 2.2 Create Assignment (`/assignment/create`)
+
+**Who can access:** Admin, Executive, Owner
+
+**Step-by-Step:**
+
+1. **Select Regulation:** Search and select from regulation library
+2. **Assign Departments:** Multi-select from organization departments
+3. **Set Timeline:**
+   - Due date (mandatory)
+   - Review dates (optional)
+   - Implementation milestones
+4. **Priority Level:** High/Medium/Low with color coding
+5. **Description:** Assignment purpose and scope
+6. **Save** → Creates assignment record
+
+**System Linkages:**
+
+- Links Assignment to Regulation
+- Triggers obligation creation workflow
+- Updates dashboard counts
+
+### 2.3 Assignment Detail (`/assignment/:id`)
+
+**Who can access:** All roles (edit permissions for Admin/Owner)
+
+**Key Sections:**
+
+- **Assignment Header:** Title, regulation link, departments
+- **Timeline View:** Gantt-style timeline with milestones
+- **Obligations Tab:** All obligations created from this assignment
+  - Create new obligations button
+  - Bulk obligation creation from regulation articles
+  - Status tracking for each obligation
+- **Activity Feed:** Comments, status changes, approvals
+
+**Action Buttons:**
+
+- **Create Obligations:** Bulk create from regulation articles
+- **Edit Assignment:** Update departments, dates, priority
+
+---
+
+## 3. Obligation Management
+
+### 3.1 Obligation List (`/obligations`)
+
+**Who can access:** All roles
+
+**Filtering/Sorting:**
+
+- Status filters: Draft/Pending/In-Review/Approved/Completed/Overdue
+- Department filters
+- Due date ranges
+- Priority levels
+- Risk score ranges
+
+**Card Display:**
+
+- Obligation code and title
+- Regulation reference
+- Owner and approver
+- Due date with urgency indicator
+- Progress percentage
+- Status badge
+- Risk score indicator
+- Quick action buttons
+
+### 3.2 Create Obligation (`/obligations/create`)
+
+**Routes:**
+
+- Standalone: `/obligations/create`
+- From Assignment: `/obligations/create?assignmentId=...`
+
+**Who can access:** Owner, Admin (assignment-based only)
+
+**Creation Flow:**
+
+1. **Source Selection:**
+   - Manual entry
+   - From Assignment (auto-fills regulation connection)
+   - AI Assist (simulated text parsing)
+2. **Obligation Details:**
+   - Unique code (auto-generated)
+   - Title and description
+   - Regulation article reference
+   - Department assignment
+   - Owner assignment
+   - Approver assignment
+3. **Compliance Details:**
+   - Due date
+   - Frequency (one-time/recurring)
+   - Priority level
+   - Risk factors
+   - Penalty amount
+4. **Evidence Requirements:** What constitutes compliance
+5. **Save as Draft** or **Submit for Review**
+
+### 3.3 Obligation Detail (`/obligations/:id`)
+
+**Who can access:** All roles (role-based actions)
+
+**Tab Navigation:**
+
+- **Overview Tab:** Complete obligation details, status, timeline
+- **Evidence Tab:** Upload/download compliance evidence
+- **Activity Tab:** Comments, status changes, approvals
+- **Linked Regulations:** Reference to parent regulation
+
+**Action Buttons (role-based):**
+
+- **Owner:** Edit, Upload Evidence, Create CAP
+- **Approver:** Approve/Reject, Request Changes
+- **Executive:** View Only
+
+**Status Workflow:**
+
+1. **Draft** → **Pending Review** (Owner submits)
+2. **Pending Review** → **Approved** OR **Rejected** (Approver decision)
+3. **Approved** → **Completed** (Owner marks complete)
+4. Any status can generate **CAP** if non-compliant
+
+---
+
+## 4. Corrective Action Plans (CAPs)
+
+### 4.1 CAP List (`/cap/list`)
+
+**Who can access:** All roles
+
+**Unified View Info:**
+
+- **Summary Cards:** Compliance Rate, CAP Status, Urgency Metrics
+- **Chart Widgets:** CAP Trend, Risk Distribution, Owner Performance
+- **Filters Table:** Status, assignee, due date, priority
+- **Action Buttons:** Create, Bulk Actions, Export
+
+**Key Features:**
+
+- Role-aware view (all users see same page, different data)
+- Progress indicators for each CAP
+- Risk scoring and priority flags
+- Linked obligations references
+
+### 4.2 Create CAP (`/cap/create`)
+
+**Who can access:** Owner, Admin
+
+**Creation Routes:**
+
+- From Obligation: `/cap/create?obligations=id1,id2`
+- Standalone: `/cap/create`
+
+**Step-by-Step:**
+
+1. **Link Obligations:** Select obligations that need corrective action
+2. **Root Cause Analysis:**
+   - AI-generated causes (simulated)
+   - Manual cause selection
+3. **Recommended Actions:**
+   - AI-suggested actions (simulated)
+   - Manual action items with owner assignment
+4. **Timeline Planning:**
+   - Due date (auto-calculated from risk level)
+   - Milestone creation
+5. **Resources Required:** People, tools, budget
+6. **Risk Assessment:** Implementation risk factors
+7. **Save Draft** or **Submit for Approval**
+
+### 4.3 CAP Detail (`/cap/:id`)
+
+**Who can access:** All roles (role-based actions)
+
+**Page Structure:**
+
+- **Header:** CAP title, status, risk level, linked obligations
+- **Progress View:** Timeline with completion status
+- **Actions Tab:** Action items, owners, due dates
+- **Evidence Tab:** Progress evidence and documentation
+- **Comments Tab:** Discussion and status updates
+
+**Status Workflow:**
+
+1. **Draft** → **Pending Approval** (Owner submits)
+2. **Pending Approval** → **Approved** OR **Rejected** (Approver)
+3. **Approved** → **In Progress** (Owner starts implementation)
+4. **In Progress** → **Completed** (All actions complete)
+5. **Rejected** → **Draft** (Owner revises)
+
+---
+
+## 5. Non-Compliance Cases (NCCs)
+
+### 5.1 NCC List (`/ncc/list`)
+
+**Who can access:** All roles
+
+**Dashboard Elements:**
+
+- Summary cards with KPI metrics
+- Trend charts for NCC creation/closure
+- Severity distribution pie chart
+- Filterable NCC table
+
+**Filter Options:**
+
+- Status: Open/Closed/Escalated
+- Severity: Critical/High/Medium/Low
+- Department
+- Date Range
+
+### 5.2 Create NCC (`/ncc/create`)
+
+**Who can access:** Owner, Admin
+
+**Required Fields:**
+
+- Reference to regulation/obligation
+- Description of non-compliance
+- Severity level
+- Business impact assessment
+- Affected departments
+- Root cause analysis
+- Mitigation requirements
+
+### 5.3 NCC Detail (`/ncc/:id`)
+
+**Who can access:** All roles
+
+**Tracking Elements:**
+
+- **Case Overview:** Initial report details and status
+- **Investigation Tab:** Findings and analysis
+- **Actions Tab:** Remediation steps and owners
+- **Timeline Tab:** Key milestones and deadlines
+- **Comments Tab:** Team communication
+
+---
+
+## 6. Report Generation
+
+### 6.1 Reports Index (`/reports`)
+
+**Who can access:** Executive, Admin, Owner, Approver
+
+**Report Types:**
+
+- **Executive Summary** (`/reports/executive`): Org-wide health overview
+- **CAP Report** (`/reports/cap`): CAP performance and trends
+- **Early Warning System** (`/reports/ews`): Risk indicators and alerts
+- **Status Report** (`/reports/status`): Detailed obligation status
+- **Calendar Report** (`/reports/calendar`): Due dates and deadlines
+
+**Navigation:**
+
+```
+Sidebar → Reports → [Report Type]
+```
+
+### 6.2 Executive Summary (`/reports/executive`)
+
+**Who can access:** Executive, Admin
+
+**Content Sections:**
+
+- **AI Executive Summary:** Organization-wide insights and recommendations
+- **Key Insights:** AI-generated compliance highlights
+- **Recommended Actions:** Prioritized improvement suggestions
+- **Risk Heatmap:** Department-by-department compliance risks
+- **Chart Analysis:** Status trends, priority distribution
+
+**Features:**
+
+- Filterable date ranges
+- Department-specific views
+- Export to PDF
+- Confidence indicators for AI content
+
+### 6.3 CAP Report (`/reports/cap`)
+
+**Who can access:** Executive, Admin, Owner
+
+**Report Sections:**
+
+- **CAP Overview KPIs:** Total, completed, overdue, effectiveness
+- **Trend Analysis:** CAP creation and closure rates
+- **Owner Performance:** CAP completion by department/owner
+- **Risk Distribution:** High-priority and overdue CAPs
+- **Detailed CAP Table:** All CAPs with status and progress
+
+### 6.4 Early Warning System (`/reports/ews`)
+
+**Who can access:** Executive, Admin
+
+**Alert Categories:**
+
+- **Risk Alerts:** Emerging compliance risks
+- **Status Triggers:** Overdue obligations, failing metrics
+- **Regulatory Changes:** New or updated regulations
+- **Performance Indicators:** Department-level warnings
+
+### 6.5 Status Report (`/reports/status`)
+
+**Who can access:** Executive, Admin, Owner, Approver
+
+**Content Areas:**
+
+- **Overall Compliance Metrics:** Completion rates, trends
+- **Department Performance:** Status by business unit
+- **Regulatory Coverage:** Obligations by regulation
+- **Risk Analysis:** High-risk areas and recommendations
+- **Detailed Breakdown:** Individual obligation status
+
+### 6.6 Calendar Report (`/reports/calendar`)
+
+**Who can access:** Executive, Admin, Owner, Approver
+
+**Calendar View:**
+
+- **Monthly Calendar:** Due dates, reviews, deadlines
+- **Color Coding:** Obligation type, priority level
+- **Upcoming Deadlines:** 30-day outlook list
+- **Department Filter:** View specific commitments
+
+---
+
+## 7. Dashboard Workflows
+
+### 7.1 Navigation Structure
+
+**Sidebar Menu (`src/components/layout/Sidebar.tsx`):**
+
+```
+📊 Dashboard (role-specific)
+📘 Regulation
+   ├─ Library
+   ├─ Create
+   └─ Impact Analysis
+📋 Assignment
+   ├─ List
+   └─ Create
+📝 Obligations
+   ├─ List
+   └─ Create
+🚨 CAP
+   ├─ List
+   ├─ Create
+   └─ [CAP Details]
+⚠️ NCC
+   ├─ List
+   ├─ Create
+   └─ [NCC Details]
+📈 Reports
+   ├─ Index
+   ├─ Executive Summary
+   ├─ CAP Report
+   ├─ Early Warning
+   ├─ Status Report
+   └─ Calendar
+⚙️ Admin (Admin only)
+   ├─ Users
+   ├─ Roles
+   ├─ Organization
+   ├─ AI Config
+   └─ Audit Logs
+```
+
+### 7.2 Role-Specific Dashboards
+
+#### Admin Dashboard (`/dashboard`)
+
+- **System Metrics:** User counts, role distribution
+- **Security Overview:** Recent logins, failed attempts
+- **AI Performance:** Model usage, confidence scores
+- **Recent Activities:** Audit log summary
+
+#### Executive Dashboard (`/dashboard`)
+
+- **Org Health Score:** Overall compliance percentage
+- **Risk Heatmap:** Department-level risk visualization
+- **Key Metrics:** Overdue items, upcoming deadlines
+- **Trend Charts:** Status trends, risk indicators
+- **AI Insights:** Executive-level recommendations
+
+#### Owner Dashboard (`/dashboard`)
+
+- **My Obligations:** Personal obligation status breakdown
+- **CAP Summary:** Active CAPs and progress
+- **Upcoming Deadlines:** 30-day calendar view
+- **Risk Indicators:** High-priority items
+- **Quick Actions:** Create obligation, update status
+
+#### Approver Dashboard (`/dashboard`)
+
+- **Pending Reviews:** Obligations requiring approval
+- **CAP Approvals:** CAPs ready for review
+- **Team Performance:** Compliance rates by department
+- **Overdue Alerts:** Items needing attention
+- **Quick Approvals:** Batch approval actions
+
+---
+
+## 8. Admin Operations
+
+### 8.1 User Management (`/admin/users`)
+
+**Who can access:** Admin
+
+**User Operations:**
+
+- Create new user accounts
+- Edit existing user profiles
+- Assign/departments and roles
+- Manage user status (Active/Inactive)
+- Password reset simulation
+
+**Required Fields:**
+
+- Name (Vietnamese format preferred)
+- Email
+- Role assignment
+- Department assignment
+- Phone number
+
+### 8.2 Role Management (`/admin/roles`)
+
+**Who can access:** Admin
+
+**Role Configuration:**
+
+- View permission matrix
+- Edit role permissions
+- Create custom role definitions
+- Assign permissions by module
+
+**Permission Categories:**
+
+- Regulations (create, edit, delete, view)
+- Assignments (create, edit, delete, view)
+- Obligations (create, edit, delete, view)
+- CAPs (create, edit, delete, approve, view)
+- NCCs (create, edit, delete, view)
+- Reports (view, export)
+
+### 8.3 Organization Setup (`/admin/organization`)
+
+**Who can access:** Admin
+
+**Organization Structure:**
+
+- Company name and industry
+- Jurisdictions (Vietnam regions)
+- HO Departments (Head Office departments)
+- Branch Offices (regional branches)
+
+**Data Validation:**
+
+- Required fields for locations
+- Unique branch selection
+- Import/Export capabilities
+
+### 8.4 AI Configuration (`/admin/ai-config`)
+
+**Who can access:** Admin
+
+**AI Settings:**
+
+- Model selection (simulated options)
+- Confidence thresholds
+- Response templates
+- Rate limiting
+- Feature toggles
+
+### 8.5 Audit Logs (`/admin/audit-logs`)
+
+**Who can access:** Admin
+
+**Log Categories:**
+
+- User authentication
+- Data changes (create/update/delete)
+- Permission changes
+- System configuration
+- Data exports
+
+**Search/Filter:**
+
+- Date range filtering
+- User-specific logs
+- Action type filtering
+- Export capabilities
+
+---
+
+## 9. Common Interaction Patterns
+
+### 9.1 Status Badges and Color Coding
+
+**Standard Status Colors:**
+
+- **Green:** Complete, Approved, Low Risk
+- **Yellow:** In Progress, Pending Review, Medium Risk
+- **Red:** Overdue, Rejected, High Risk
+- **Blue:** Draft, Active
+- **Gray:** Archived, Superseded
+
+### 9.2 Permission-Based UI
+
+**Element Visibility:**
+
+- **Create Buttons:** Owner, Admin, Executive (context-dependent)
+- **Edit Buttons:** Owner, Admin (own items only)
+- **Approve/Reject:** Approver role only
+- **Delete Options:** Admin, Owner (own items only)
+- **Export Options:** Executive, Admin
+
+### 9.3 Data Persistence Flow
+
+**Mock Data Architecture:**
+
+- All data stored in `src/mocks/db.ts`
+- Changes persist during browser session
+- Page reload resets to initial/demo state
+- API calls handled by MSW in `src/mocks/handlers/`
+
+### 9.4 Search and Filter Patterns
+
+**Common Filters:**
+
+- Status dropdown multi-select
+- Department selector
+- Date range picker
+- Text search by title/description
+- Priority level filters
+
+**Keyboard Shortcuts:**
+
+- `/`: Focus search
+- `Esc`: Close modals
+- `Enter`: Submit forms
+- `Ctrl/Cmd + K`: Global search
+
+### 9.5 Modal and Sheet Interactions
+
+**Common Modals:**
+
+- **Confirmation Dialogs:** Delete actions, status changes
+- **Filter Dialogs:** Advanced search options
+- **Create/Edit Forms:** Standard create/edit workflows
+
+**Sheet Components:**
+
+- **AI Explanation:** Right-side sheet for AI insights
+- **Detail Views:** Expanded information panels
+- **Activity Feeds:** Comment and status update panels
+
+---
+
+## 10. Error Handling and Edge Cases
+
+### 10.1 Loading States
+
+- Skeleton loaders for data fetching
+- Progress bars for long operations
+- Toast notifications for quick feedback
+
+### 10.2 Error Recovery
+
+- Retry buttons on failed operations
+- Graceful degradation for missing data
+- Clear error messages with suggested actions
+
+### 10.3 Data Validation
+
+- Form validation with inline error messages
+- Required field indicators
+- Constraint validation (dates, ranges, formats)
+
+---
+
+## 11. Mobile and Responsive Behavior
+
+### 11.1 Navigation
+
+- **Mobile (<lg):** Hamburger menu, collapsible sections
+- **Desktop (≥lg):** Full sidebar presented
+- **Icon-only navigation:** On tablets (md screens)
+
+### 11.2 Data Tables
+
+- **Mobile:** Card-based view for tabular data
+- **Desktop:** Full table with sortable columns
+- **Tablet:** Hybrid view with pagination
+
+### 11.3 Charts and Visualizations
+
+- **Mobile:** Tappable legends, simplified axes
+- **Desktop:** Full interactions, tooltips, zoom
+- **Responsive sizing:** Chart containers adapt to screen size

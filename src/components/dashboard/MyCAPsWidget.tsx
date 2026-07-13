@@ -1,20 +1,23 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { PlayCircle, Hourglass, CheckCircle2, ArrowRight } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 import {
-  StatusBadge,
-  PriorityBadge,
-  EmptyState,
-  DueDateCell,
-} from "@/components/common";
+  PlayCircle,
+  Hourglass,
+  CheckCircle2,
+  ArrowRight,
+  ChevronRight,
+} from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { StatusBadge, EmptyState } from "@/components/common";
 import { cn } from "@/lib/utils";
 import type { CAP } from "@/types";
 
 type CapTab = "open" | "pending_approval" | "closed";
+
+const MAX_ROWS = 5;
 
 const TABS: {
   id: CapTab;
@@ -49,8 +52,8 @@ const TABS: {
   {
     id: "closed",
     label: "Closed",
-    match: "Closed",
     icon: CheckCircle2,
+    match: "Closed",
     accent:
       "data-[state=active]:bg-success-bg data-[state=active]:text-success",
     emptyTitle: "No closed plans yet",
@@ -105,11 +108,11 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
           </div>
           <Button
             variant="ghost"
-            size="xs"
+            size="sm"
             className="text-muted-foreground"
-            onClick={() => navigate("/cap")}
+            onClick={() => navigate("/cap/list")}
           >
-            View all
+            View All
             <ArrowRight className="size-3.5" aria-hidden="true" />
           </Button>
         </div>
@@ -172,14 +175,29 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
                         className="border-0 bg-transparent py-10"
                       />
                     ) : (
-                      <div className="grid gap-3 pb-4 sm:grid-cols-2">
-                        {items.map((cap, idx) => (
-                          <CAPCard
+                      <div className="flex flex-col">
+                        {items.slice(0, MAX_ROWS).map((cap) => (
+                          <button
                             key={cap.id}
-                            cap={cap}
-                            index={idx}
-                            onOpen={() => navigate(`/cap/${cap.id}`)}
-                          />
+                            type="button"
+                            onClick={() => navigate(`/cap/${cap.id}`)}
+                            className="group flex w-full items-center gap-3 border-b border-border/50 py-2 text-left text-sm transition-colors last:border-b-0 hover:bg-muted/50"
+                          >
+                            <StatusBadge status={cap.status} size="sm" />
+                            <span className="line-clamp-1 flex-1 font-medium text-foreground group-hover:text-primary">
+                              {cap.title}
+                            </span>
+                            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                              {format(new Date(cap.dueDate), "MMM d")}
+                            </span>
+                            <span className="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                              {cap.progress}%
+                            </span>
+                            <ChevronRight
+                              className="size-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+                              aria-hidden="true"
+                            />
+                          </button>
                         ))}
                       </div>
                     )}
@@ -191,84 +209,5 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
         </Tabs>
       </div>
     </div>
-  );
-}
-
-interface CAPCardProps {
-  cap: CAP;
-  index: number;
-  onOpen: () => void;
-}
-
-function CAPCard({ cap, index, onOpen }: CAPCardProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.3) }}
-      className="group relative flex flex-col rounded-xl border bg-muted/30 p-3.5 transition-all hover:border-foreground/20 hover:shadow-sm [border-color:var(--hairline)]"
-    >
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex flex-1 flex-col text-left"
-      >
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="shrink-0 border-border bg-muted/50 font-mono text-[11px] font-medium text-muted-foreground"
-          >
-            {cap.capId}
-          </Badge>
-          <StatusBadge status={cap.status} size="sm" />
-          <PriorityBadge priority={cap.priority} size="sm" />
-        </div>
-
-        <h3 className="mt-2 line-clamp-2 text-sm font-medium leading-snug text-foreground group-hover:text-primary">
-          {cap.title}
-        </h3>
-
-        {cap.obligationIds.length > 0 && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {cap.obligationIds.length} linked{" "}
-            {cap.obligationIds.length === 1 ? "obligation" : "obligations"}
-          </p>
-        )}
-
-        <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
-          <DueDateCell
-            dueDate={cap.dueDate}
-            completed={cap.status === "Closed"}
-          />
-        </div>
-
-        {cap.status !== "Closed" && (
-          <div className="mt-2">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Progress</span>
-              <span className="font-medium tabular-nums">{cap.progress}%</span>
-            </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="bg-chart-accent h-full rounded-full transition-all"
-                style={{ width: `${cap.progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </button>
-
-      <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-        <Button
-          variant="ghost"
-          size="xs"
-          className="ml-auto text-muted-foreground"
-          onClick={onOpen}
-        >
-          Open
-          <ArrowRight className="size-3" aria-hidden="true" />
-        </Button>
-      </div>
-    </motion.div>
   );
 }

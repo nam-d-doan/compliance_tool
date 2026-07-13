@@ -53,10 +53,11 @@ export function KPICard({
     <motion.div
       whileHover={onClick ? { y: -2 } : undefined}
       transition={{ duration: 0.2 }}
+      className="h-full"
     >
       <Card
         className={cn(
-          "overflow-hidden",
+          "h-full overflow-hidden",
           onClick && "cursor-pointer",
           className,
         )}
