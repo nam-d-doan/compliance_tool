@@ -106,7 +106,7 @@ export default function ReportsIndexPage() {
         </div>
       </PageHero>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {REPORT_TYPES.map((report, index) => {
           const Icon = report.icon;
           return (
@@ -116,6 +116,7 @@ export default function ReportsIndexPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
               whileHover={{ y: -2 }}
+              className="h-full"
             >
               <Card className="h-full transition-shadow hover:shadow-md">
                 <CardContent className="flex h-full flex-col gap-4 p-5">

@@ -328,6 +328,7 @@ export default function ReportsExecutivePage() {
             title="Risk Heatmap"
             subtitle="Compliance risk by department and month"
             data={typedReport.heatmapData}
+            className="h-full"
           />
         )}
       </div>

@@ -29,7 +29,7 @@ export function ReportKPIs({ kpis, loading, columns = 5 }: ReportKPIsProps) {
         : "sm:grid-cols-2 lg:grid-cols-5";
 
   return (
-    <div className={`grid gap-4 ${gridClass}`}>
+    <div className={`grid items-stretch gap-4 ${gridClass}`}>
       {kpis.map((kpi, index) => (
         <KPICard
           key={`${kpi.label}-${index}`}
@@ -37,6 +37,7 @@ export function ReportKPIs({ kpis, loading, columns = 5 }: ReportKPIsProps) {
           value={kpi.value}
           icon={resolveIcon(kpi.icon)}
           loading={loading}
+          className="h-full"
           trend={
             kpi.trend && kpi.trendPercent !== undefined
               ? { direction: kpi.trend, percent: kpi.trendPercent }

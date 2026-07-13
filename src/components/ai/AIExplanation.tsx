@@ -143,7 +143,7 @@ export function AIExplanation({
       {children && <SheetTrigger asChild>{children}</SheetTrigger>}
       <SheetContent
         side="right"
-        className="w-full border-primary/10 bg-gradient-to-br from-primary/5 via-card to-card sm:max-w-md dark:border-primary/20 dark:from-primary/10"
+        className="w-full border-primary/15 bg-gradient-to-br from-primary/5 via-card/70 to-card/80 shadow-[0_8px_32px_-8px_rgb(0_0_0/0.18)] ring-1 ring-inset ring-white/40 sm:max-w-md dark:border-primary/20 dark:from-primary/10 dark:ring-white/10"
       >
         <SheetHeader className="pb-2">
           <SheetTitle className="flex items-center gap-2">
