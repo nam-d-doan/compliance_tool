@@ -15,11 +15,12 @@ This is WAVE 1 of a larger feature set. Implement exactly these 3 lanes (A/B/C).
 
 == LANE A: Branding & visual (simple, do first) ==
 A1. src/components/layout/TopNav.tsx — the top-left brand block currently renders a dark chip with bold "CA" in `--chart-accent` yellow, followed by text "ComplianceAI". Change:
-  - Chip: render bold "EY" instead of "CA" (keep the same ink-chip background and `text-chart-accent`).
-  - Name text: "ComplianceAI" → "Compliance Tool".
-A2. src/pages/auth/LoginPage.tsx — there are 3 occurrences of "ComplianceAI" (brand-panel heading, footer copyright line, mobile brand row) and 2 occurrences of the "CA" mark (brand-panel mark, mobile mark). Replace all "ComplianceAI" → "Compliance Tool" and all "CA" → "EY" (keep the same styling/chip).
-A3. TopNav active nav pill highlight: currently active pill uses `bg-card font-bold text-foreground shadow-sm`. Change the active treatment to use EY primary yellow (`var(--chart-accent)` = #ffe600): give the active pill a bold text in a color that reads on the nav surface AND a subtle yellow accent. Recommended: active = `font-bold text-foreground` with a short rounded yellow underline bar or a `bg-chart-accent` tint pill. Keep it tasteful, readable in both light/dark. Inactive stays `font-semibold text-muted-foreground hover:text-foreground`. (Tailwind maps `--chart-accent` to `chart-accent`, e.g. `text-chart-accent`, `bg-chart-accent`.)
-A4. Search box collapse behavior: currently the search box toggles open/closed only when clicking the search icon button (onClick toggles searchOpen). Change so that it ALSO closes when the input loses focus (clicking elsewhere). Keep the icon-click-to-open behavior; implement onBlur on the Input to setSearchOpen(false). Ensure the icon button still opens it. Avoid race conditions (e.g. onBlur firing before icon click) — simplest: keep icon button as pure "open" (only open if closed) and let onBlur close it; or use a small timeout. Your call, keep it smooth.
+
+- Chip: render bold "EY" instead of "CA" (keep the same ink-chip background and `text-chart-accent`).
+- Name text: "ComplianceAI" → "Compliance Tool".
+  A2. src/pages/auth/LoginPage.tsx — there are 3 occurrences of "ComplianceAI" (brand-panel heading, footer copyright line, mobile brand row) and 2 occurrences of the "CA" mark (brand-panel mark, mobile mark). Replace all "ComplianceAI" → "Compliance Tool" and all "CA" → "EY" (keep the same styling/chip).
+  A3. TopNav active nav pill highlight: currently active pill uses `bg-card font-bold text-foreground shadow-sm`. Change the active treatment to use EY primary yellow (`var(--chart-accent)` = #ffe600): give the active pill a bold text in a color that reads on the nav surface AND a subtle yellow accent. Recommended: active = `font-bold text-foreground` with a short rounded yellow underline bar or a `bg-chart-accent` tint pill. Keep it tasteful, readable in both light/dark. Inactive stays `font-semibold text-muted-foreground hover:text-foreground`. (Tailwind maps `--chart-accent` to `chart-accent`, e.g. `text-chart-accent`, `bg-chart-accent`.)
+  A4. Search box collapse behavior: currently the search box toggles open/closed only when clicking the search icon button (onClick toggles searchOpen). Change so that it ALSO closes when the input loses focus (clicking elsewhere). Keep the icon-click-to-open behavior; implement onBlur on the Input to setSearchOpen(false). Ensure the icon button still opens it. Avoid race conditions (e.g. onBlur firing before icon click) — simplest: keep icon button as pure "open" (only open if closed) and let onBlur close it; or use a small timeout. Your call, keep it smooth.
 
 == LANE B: Many-to-many regulation linking ==
 B1. Types (src/types/obligation.ts): Add `regulationIds: string[]` to the `Obligation` interface (array of all linked regulation IDs incl. superseded). KEEP the existing `regulationId: string` + `regulationName` as the primary/first link (backward-compat; set it to regulationIds[0]). Add optional `regulationIds?: string[]` to `ObligationFilter` as a filter field.
@@ -31,30 +32,34 @@ B5. Services/hooks: Pass the new filter field through the service functions and 
 == LANE C: Shared role-aware "needs action" counts hook ==
 Create src/hooks/useTabActionCounts.ts (and export from the hooks barrel if there is one). Signature: useTabActionCounts(): { regulations, assignments, obligations, caps, nccs } where each value is a number = "items needing the current user's action" for that tab.
 Implementation:
-  - Read role + user id from useAuthStore() (src/stores/authStore.ts).
-  - Use the existing list query hooks (e.g. useObligationList, useAssignmentList/useAssignmentQueries, useCAPList, useNCCList, useRegulationList/useRegulationQueries) with a large pageSize to fetch data (or reuse whatever pattern the dashboards use — check src/components/dashboard/MyObligationsWidget.tsx, DashboardApprovalQueue.tsx, DashboardNeedsAttentionList.tsx for the established pattern). Disable pagination effects; fetch once.
-  - Role rules (roles are admin, executive, owner, approver):
-    * regulations: count => for admin/approver/executive/owner => regulations (effective) that have at least one Assignment in draft/published-not-yet-acknowledged OR an obligation in pending review that links to that regulation. Simpler acceptable approach: count of assignments with status 'published' not yet acknowledged (assignee action) OR obligations in 'review_required'/'submitted' that need approval, that reference that regulation. Use a pragmatic count you can compute from fetched data; accuracy within reason is fine since this is a prototype.
-    * assignments: owner => assignments where status in ('published' [need acknowledgment]) or assigned to the user awaiting their work; approver => assignments needing review; admin => all 'published'-not-acked; executive => 0 (exec only views/comments).
-    * obligations: owner => my obligations in draft/submitted/returned needing my work, OR overdue; approver => obligations in 'review_required'/'submitted' awaiting my approval; admin => all overdue + pending review; executive => count of overdue obligations (oversight).
-    * caps: owner => my open CAPs ('Open'/'In Progress') or overdue; approver => CAPs 'Pending Approval' awaiting my approval; admin => all open+overdue; executive => count overdue CAPs (oversight).
-    * nccs: owner => my open NCCs ('Open') or overdue; approver/admin/executive => high/critical severity open NCCs (oversight).
-  - Return 0 for any tab the role can't see (permission check via hasPermission from @/constants/rbac).
-  - Wrap each computation defensively in try/catch; if a query is still loading or errors, return 0 for that tab.
-  - Export the hook from src/hooks barrel (index.ts or wherever queries are re-exported).
-NOTE on executive: exec does NOT approve — only views + comments. So exec counts = oversight (overdue / high-risk / pending-other's-action) only, never "awaiting my approval". (Exec-comment emphasis is Wave 2, do not implement it here.)
+
+- Read role + user id from useAuthStore() (src/stores/authStore.ts).
+- Use the existing list query hooks (e.g. useObligationList, useAssignmentList/useAssignmentQueries, useCAPList, useNCCList, useRegulationList/useRegulationQueries) with a large pageSize to fetch data (or reuse whatever pattern the dashboards use — check src/components/dashboard/MyObligationsWidget.tsx, DashboardApprovalQueue.tsx, DashboardNeedsAttentionList.tsx for the established pattern). Disable pagination effects; fetch once.
+- Role rules (roles are admin, executive, owner, approver):
+  - regulations: count => for admin/approver/executive/owner => regulations (effective) that have at least one Assignment in draft/published-not-yet-acknowledged OR an obligation in pending review that links to that regulation. Simpler acceptable approach: count of assignments with status 'published' not yet acknowledged (assignee action) OR obligations in 'review_required'/'submitted' that need approval, that reference that regulation. Use a pragmatic count you can compute from fetched data; accuracy within reason is fine since this is a prototype.
+  - assignments: owner => assignments where status in ('published' [need acknowledgment]) or assigned to the user awaiting their work; approver => assignments needing review; admin => all 'published'-not-acked; executive => 0 (exec only views/comments).
+  - obligations: owner => my obligations in draft/submitted/returned needing my work, OR overdue; approver => obligations in 'review_required'/'submitted' awaiting my approval; admin => all overdue + pending review; executive => count of overdue obligations (oversight).
+  - caps: owner => my open CAPs ('Open'/'In Progress') or overdue; approver => CAPs 'Pending Approval' awaiting my approval; admin => all open+overdue; executive => count overdue CAPs (oversight).
+  - nccs: owner => my open NCCs ('Open') or overdue; approver/admin/executive => high/critical severity open NCCs (oversight).
+- Return 0 for any tab the role can't see (permission check via hasPermission from @/constants/rbac).
+- Wrap each computation defensively in try/catch; if a query is still loading or errors, return 0 for that tab.
+- Export the hook from src/hooks barrel (index.ts or wherever queries are re-exported).
+  NOTE on executive: exec does NOT approve — only views + comments. So exec counts = oversight (overdue / high-risk / pending-other's-action) only, never "awaiting my approval". (Exec-comment emphasis is Wave 2, do not implement it here.)
 
 == VERIFICATION (run before reporting done) ==
+
 - pnpm lint (oxlint) must pass.
 - pnpm build (tsc -b && vite build) must pass with NO TS errors. This is the hard gate.
 - Do NOT run prek (that's my job at the end).
-Report a concise diff summary + the build/lint result. Do not git commit.
+  Report a concise diff summary + the build/lint result. Do not git commit.
 
 ## Acceptance Contract
+
 Acceptance level: reviewed
 Completion is not accepted from prose alone. End with a structured acceptance report.
 
 Criteria:
+
 - criterion-1: Implement the requested change without widening scope
 - criterion-2: Return evidence sufficient for an independent acceptance review
 
@@ -64,6 +69,7 @@ Review gate: required by reviewer.
 
 Finish with a fenced JSON block tagged `acceptance-report` in this shape:
 Use empty arrays when no items apply; array fields contain strings unless object entries are shown.
+
 ```acceptance-report
 {
   "criteriaSatisfied": [

@@ -6,11 +6,13 @@ No staged files. All changes are unstaged (working tree only). The new file `src
 Implemented Wave 1 (Lanes A/B/C) of the compliance tool feature set.
 
 **Lane A — Branding & visual (TopNav + LoginPage):**
+
 - Brand chip "CA" → "EY"; brand name "ComplianceAI" → "Compliance Tool" in both TopNav and LoginPage (3 occurrences each, all updated).
 - Active nav pill: switched from `bg-card font-bold text-foreground shadow-sm` to `font-bold text-foreground` with a small rounded yellow `bg-chart-accent` underline (built via Tailwind `after:` pseudo).
 - Search box: icon button is now pure "open" (no toggle), and `onBlur` on the input closes it. The button's `onMouseDown` is `preventDefault`-ed so clicking the icon doesn't dismiss the input's focus before the click handler fires (no race condition).
 
 **Lane B — Many-to-many regulation linking:**
+
 - `Obligation.regulationIds: string[]` (new) and `ObligationFilter.regulationIds?: string[]` (new filter). Existing `regulationId` / `regulationName` preserved as the primary link.
 - `CAP.regulationIds: string[]` (new direct link) and `CAPFilter.regulation?: string` (new filter).
 - `mock db.ts`: added a `buildRegulationRelatedIndex` helper (regulation → set of dependency-related IDs) and a `dedupeRegIds` helper. Every generated Obligation now carries `regulationIds` (primary + all dependency-related regs). Every generated CAP derives `regulationIds` from its linked obligations.
@@ -19,12 +21,14 @@ Implemented Wave 1 (Lanes A/B/C) of the compliance tool feature set.
 - Services/hooks pass filters through unchanged (existing `buildQuery` already serializes arbitrary filter fields).
 
 **Lane C — `useTabActionCounts` hook:**
+
 - New `src/hooks/useTabActionCounts.ts` returning `{ regulations, assignments, obligations, caps, nccs }`.
 - Uses `useAuthStore` for role/user id, and the five existing list query hooks (pageSize 500) to derive counts.
 - Role rules per spec: owner sees their own work + overdue; approver sees items awaiting their review; admin sees broad backlogs; executive sees oversight-only (overdue, high-risk) and never "awaiting my approval".
 - All reducers wrapped in try/catch, missing/loading queries return 0. Permission-checked via `hasPermission`. Re-exported from `src/hooks/queries/index.ts`.
 
 **Verification:**
+
 - `pnpm lint` → 72 warnings (all pre-existing), 0 errors.
 - `pnpm build` → tsc -b clean, vite build succeeded (no TS errors).
 

@@ -1,18 +1,19 @@
 # Task for fixer
 
-
-
 ## Acceptance Contract
+
 Acceptance level: attested
 Completion is not accepted from prose alone. End with a structured acceptance report.
 
 Criteria:
+
 - criterion-1: Return a concise result and residual risks when applicable
 
 Required evidence: manual-notes, residual-risks
 
 Finish with a fenced JSON block tagged `acceptance-report` in this shape:
 Use empty arrays when no items apply; array fields contain strings unless object entries are shown.
+
 ```acceptance-report
 {
   "criteriaSatisfied": [

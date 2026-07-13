@@ -33,7 +33,8 @@ export function SummaryCard({
   index?: number;
 }) {
   const Icon = card.icon;
-  const tint = card.iconClassName ?? SUMMARY_TINTS[index % SUMMARY_TINTS.length];
+  const tint =
+    card.iconClassName ?? SUMMARY_TINTS[index % SUMMARY_TINTS.length];
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -87,12 +88,7 @@ export function SummaryCardBar({
   const visible = cards.filter((c) => c !== null && c !== undefined);
   if (visible.length === 0) return null;
   return (
-    <div
-      className={cn(
-        "grid gap-3 sm:grid-cols-2 lg:grid-cols-4",
-        className,
-      )}
-    >
+    <div className={cn("grid gap-3 sm:grid-cols-2 lg:grid-cols-4", className)}>
       {visible.map((card, i) => (
         <SummaryCard key={card.title} card={card} index={i} />
       ))}

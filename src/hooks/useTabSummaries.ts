@@ -76,7 +76,9 @@ export function useRegulationsSummary(): SummaryCardData[] {
   const assignedRegIds = new Set(
     (assignments.data?.items ?? []).map((a) => a.regulationId),
   );
-  const recentNotAssigned = recent.filter((r) => !assignedRegIds.has(r.id)).length;
+  const recentNotAssigned = recent.filter(
+    (r) => !assignedRegIds.has(r.id),
+  ).length;
 
   return [
     {
@@ -91,7 +93,10 @@ export function useRegulationsSummary(): SummaryCardData[] {
       value: recent.length,
       icon: CalendarClock,
       iconClassName: TINT_INFO,
-      hint: recentNotAssigned > 0 ? `${recentNotAssigned} not yet assigned` : undefined,
+      hint:
+        recentNotAssigned > 0
+          ? `${recentNotAssigned} not yet assigned`
+          : undefined,
     },
     {
       title: "Superseded",
@@ -223,7 +228,9 @@ export function useCAPsSummary(): SummaryCardData[] {
     (c) => c.status === "Pending Approval",
   ).length;
   const highCriticalOpen = items.filter(
-    (c) => c.status !== "Closed" && (isHighOrCritical(c.priority) || isHighOrCritical(c.risk)),
+    (c) =>
+      c.status !== "Closed" &&
+      (isHighOrCritical(c.priority) || isHighOrCritical(c.risk)),
   ).length;
 
   return [

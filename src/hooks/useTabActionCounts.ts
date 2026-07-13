@@ -36,10 +36,7 @@ function parseDate(value: string | undefined): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
-function isOverdue(
-  dueDate: string | undefined,
-  isTerminal: boolean,
-): boolean {
+function isOverdue(dueDate: string | undefined, isTerminal: boolean): boolean {
   if (!dueDate || isTerminal) return false;
   return parseDate(dueDate) < Date.now();
 }
@@ -105,8 +102,7 @@ export function useTabActionCounts(): TabActionCounts {
     if (role === "owner") {
       // Owners also drive acknowledged assignments toward completion.
       count += items.filter(
-        (a) =>
-          a.assignorId === userId && a.status === "acknowledged",
+        (a) => a.assignorId === userId && a.status === "acknowledged",
       ).length;
     }
     return count;
@@ -117,9 +113,7 @@ export function useTabActionCounts(): TabActionCounts {
     const items = obligations.data.items;
     if (role === "owner") {
       return items.filter((o) => {
-        const needsWork = ["draft", "submitted", "returned"].includes(
-          o.status,
-        );
+        const needsWork = ["draft", "submitted", "returned"].includes(o.status);
         const terminal = OVERDUE_OBLIGATION_TERMINAL.has(o.status);
         const overdue = isOverdue(o.dueDate, terminal);
         // Owner's own obligations needing work, or their own overdue items.
