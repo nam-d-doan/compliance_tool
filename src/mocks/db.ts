@@ -142,10 +142,73 @@ function pad(num: number, len = 3): string {
 }
 
 function generateStaffUsers(count = 15): UserProfile[] {
-  const roles = ["owner", "approver"] as const;
+  // Vietnamese person-name pools (the rest of the mock data is already in
+  // Vietnamese; faker's default locale yields English names, so we draw from
+  // curated Vietnamese pools instead).
+  const FIRST_NAMES = [
+    "Nam",
+    "Hùng",
+    "Dũng",
+    "Tuấn",
+    "Minh",
+    "Long",
+    "Trung",
+    "Huy",
+    "Quân",
+    "Bảo",
+    "Giang",
+    "Lan",
+    "Hoa",
+    "Mai",
+    "Linh",
+    "Ngọc",
+    "Trang",
+    "Hằng",
+    "Thảo",
+    "Quỳnh",
+    "Phương",
+    "Dung",
+    "Hà",
+    "Nhung",
+    "Yến",
+    "Khoa",
+    "Thắng",
+    "Phúc",
+    "Tâm",
+    "Vy",
+  ];
+  const LAST_NAMES = [
+    "Nguyễn",
+    "Trần",
+    "Lê",
+    "Phạm",
+    "Hoàng",
+    "Phan",
+    "Vũ",
+    "Võ",
+    "Đặng",
+    "Bùi",
+    "Đỗ",
+    "Hồ",
+    "Ngô",
+    "Dương",
+    "Lý",
+    "Đinh",
+    "Lương",
+    "Mai",
+    "Trịnh",
+    "Đoàn",
+  ];
+  const toHandle = (last: string, first: string) =>
+    `${last}${first}`
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
   return Array.from({ length: count }, (_, i) => {
-    const firstName = faker.person.firstName();
-    const lastName = faker.person.lastName();
+    const firstName = faker.helpers.arrayElement(FIRST_NAMES);
+    const lastName = faker.helpers.arrayElement(LAST_NAMES);
+    // Vietnamese ordering: family name first.
+    const fullName = `${lastName} ${firstName}`;
     const role = faker.helpers.weightedArrayElement([
       { weight: 5, value: "owner" },
       { weight: 3, value: "approver" },
@@ -154,8 +217,8 @@ function generateStaffUsers(count = 15): UserProfile[] {
     const createdAt = randomDate(subDays(today, 400), subDays(today, 60));
     return {
       id: uid("usr"),
-      email: faker.internet.email({ firstName, lastName }).toLowerCase(),
-      name: `${firstName} ${lastName}`,
+      email: `${toHandle(lastName, firstName)}@demo.com`,
+      name: fullName,
       role,
       status: pick(USER_STATUSES),
       isActive: true,
@@ -810,8 +873,8 @@ function generateAIConfig(): AIConfig {
 function generateOrganizationSettings(): OrganizationSettings {
   return {
     id: "org-settings-1",
-    name: "Acme Financial Services",
-    industry: "Financial Services",
+    name: "Ngân hàng ACME Việt Nam",
+    industry: "Dịch vụ Tài chính",
     jurisdictions: [
       "Vietnam",
       "Laos",

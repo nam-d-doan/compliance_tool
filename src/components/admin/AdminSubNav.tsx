@@ -1,5 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Users, UserCog, Building2, ScrollText, BrainCircuit } from "lucide-react";
+import {
+  Users,
+  UserCog,
+  Building2,
+  ScrollText,
+  BrainCircuit,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
@@ -26,7 +32,7 @@ const ITEMS: SubNavItem[] = [
  */
 export function AdminSubNav() {
   return (
-    <nav className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[16px] border bg-[var(--nav-bg)] px-2 py-1 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-[16px] border bg-[var(--nav-bg)] px-2 py-1 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {ITEMS.map(({ label, icon: Icon, path }) => (
         <NavLink
           key={path}

@@ -173,7 +173,7 @@ function PermissionMatrix({ role }: { role: RoleEntity }) {
                       />
                     ) : (
                       <X
-                        className="inline size-4 text-muted-foreground/50"
+                        className="inline size-4 font-bold text-red-600 dark:text-red-400"
                         aria-hidden="true"
                       />
                     )}

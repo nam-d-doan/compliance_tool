@@ -145,15 +145,20 @@ const NCC_STATUS_STYLES: Record<string, StatusStyle> = {
 
 export function getStatusStyle(status: string, kind?: "ncc"): StatusStyle {
   const key = status.trim().toLowerCase();
+  // Some statuses are stored snake_case (e.g. "in_progress") but the style
+  // map keys them with spaces ("in progress"). Try both so canonical labels
+  // and icons resolve instead of falling back to the raw var name.
+  const spaceKey = key.replace(/_/g, " ");
+  const lookup = (k: string) =>
+    (kind === "ncc" ? NCC_STATUS_STYLES[k] : undefined) ??
+    STATUS_STYLES[k] ??
+    undefined;
   const fallback: StatusStyle = {
     ...neutral,
     label: status.trim() || "Unknown",
     icon: Circle,
   };
-  if (kind === "ncc") {
-    return NCC_STATUS_STYLES[key] ?? STATUS_STYLES[key] ?? fallback;
-  }
-  return STATUS_STYLES[key] ?? fallback;
+  return lookup(key) ?? lookup(spaceKey) ?? fallback;
 }
 
 export function getPriorityStyle(priority: PriorityLevel): StatusStyle {
