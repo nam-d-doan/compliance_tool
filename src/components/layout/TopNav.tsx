@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationDrawer } from "./NotificationDrawer";
 import { RoleSwitch } from "@/components/auth/RoleSwitch";
+import { useTabActionCounts } from "@/hooks/useTabActionCounts";
 import {
   Search,
   Bell,
@@ -47,6 +48,23 @@ export function TopNav() {
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   const pills = getNavPillsForRole(role);
+  const tabCounts = useTabActionCounts();
+  const pillCount = (key: string): number => {
+    switch (key) {
+      case "regulations":
+        return tabCounts.regulations;
+      case "assignments":
+        return tabCounts.assignments;
+      case "obligations":
+        return tabCounts.obligations;
+      case "cap":
+        return tabCounts.caps;
+      case "ncc":
+        return tabCounts.nccs;
+      default:
+        return 0;
+    }
+  };
 
   const handleLogout = async () => {
     await AuthService.logout();
@@ -65,14 +83,17 @@ export function TopNav() {
   return (
     <>
       <header className="relative z-50 flex flex-wrap items-center gap-3.5 px-4 pt-4 sm:px-6">
-        <Link to={ROUTES.DASHBOARD.ROOT} className="flex shrink-0 items-center gap-2">
+        <Link
+          to={ROUTES.DASHBOARD.ROOT}
+          className="flex shrink-0 items-center gap-2"
+        >
           <div className="bg-ink-chip flex size-[26px] items-center justify-center rounded-[7px]">
             <span className="text-chart-accent font-heading text-[11px] font-extrabold">
-              CA
+              EY
             </span>
           </div>
           <span className="font-heading text-sm font-bold whitespace-nowrap">
-            ComplianceAI
+            Compliance Tool
           </span>
         </Link>
 
@@ -92,12 +113,24 @@ export function TopNav() {
                   className={cn(
                     "flex shrink-0 items-center gap-1.5 rounded-[9px] px-3 py-[7px] font-heading text-xs whitespace-nowrap transition-colors",
                     isActive
-                      ? "bg-card font-bold text-foreground shadow-sm"
+                      ? "font-bold text-foreground relative after:absolute after:bottom-0.5 after:left-1/2 after:h-[2px] after:w-5 after:-translate-x-1/2 after:rounded-full after:bg-chart-accent"
                       : "font-semibold text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <pill.icon className="size-3.5" />
                   <span>{pill.label}</span>
+                  {(() => {
+                    const count = pillCount(pill.key);
+                    if (count <= 0) return null;
+                    return (
+                      <span
+                        className="bg-danger flex h-[14px] min-w-[14px] shrink-0 items-center justify-center rounded-full px-[3px] text-[9px] font-bold text-white"
+                        aria-label={`${count} item${count === 1 ? "" : "s"} need${count === 1 ? "s" : ""} your attention`}
+                      >
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    );
+                  })()}
                 </Link>
               );
             })}
@@ -113,7 +146,10 @@ export function TopNav() {
           >
             <button
               type="button"
-              onClick={() => setSearchOpen((v) => !v)}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                if (!searchOpen) setSearchOpen(true);
+              }}
               className="shrink-0 text-muted-foreground"
               aria-label="Search"
             >
@@ -124,6 +160,7 @@ export function TopNav() {
                 autoFocus
                 placeholder="Search obligations, regulations…"
                 className="h-auto border-none bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+                onBlur={() => setSearchOpen(false)}
               />
             )}
           </div>
@@ -135,7 +172,10 @@ export function TopNav() {
             className="relative flex size-[38px] shrink-0 items-center justify-center rounded-full border bg-[var(--nav-bg)] shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
           >
             <Bell
-              className={cn("size-[15px]", notificationCount > 0 && "animate-shake")}
+              className={cn(
+                "size-[15px]",
+                notificationCount > 0 && "animate-shake",
+              )}
             />
             {notificationCount > 0 && (
               <span className="bg-danger absolute -top-1 -right-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full px-[3px] text-[9.5px] font-bold text-white">
@@ -177,9 +217,7 @@ export function TopNav() {
           )}
 
           <DropdownMenu>
-            <DropdownMenuTrigger
-              className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-[19px] border bg-[var(--nav-bg)] py-1 pr-1.5 pl-3.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
-            >
+            <DropdownMenuTrigger className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-[19px] border bg-[var(--nav-bg)] py-1 pr-1.5 pl-3.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]">
               <div className="bg-ink-chip flex size-7 shrink-0 items-center justify-center rounded-full">
                 <span className="text-ink-chip-foreground text-[11px] font-bold">
                   {initials}

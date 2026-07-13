@@ -79,6 +79,20 @@ function buildObligation(
       ? findById(db.regulations, assignment.regulationId)
       : undefined;
   const requester = item.ownerId ? findById(db.users, item.ownerId) : undefined;
+  const primaryRegId = regulation?.id ?? assignment?.regulationId ?? "";
+  // Expand primary with any dependency-related regulation IDs.
+  const related = new Map<string, string[]>();
+  for (const d of db.regulationDependencies) {
+    if (!related.has(d.fromRegulationId)) related.set(d.fromRegulationId, []);
+    if (!related.has(d.toRegulationId)) related.set(d.toRegulationId, []);
+    if (!related.get(d.fromRegulationId)!.includes(d.toRegulationId))
+      related.get(d.fromRegulationId)!.push(d.toRegulationId);
+    if (!related.get(d.toRegulationId)!.includes(d.fromRegulationId))
+      related.get(d.toRegulationId)!.push(d.fromRegulationId);
+  }
+  const regulationIds = primaryRegId
+    ? Array.from(new Set([primaryRegId, ...(related.get(primaryRegId) ?? [])]))
+    : [];
 
   return {
     id: `obg-${crypto.randomUUID()}`,
@@ -88,8 +102,9 @@ function buildObligation(
     articleRef: item.articleRef,
     title: item.title,
     description: item.description ?? "",
-    regulationId: regulation?.id ?? assignment?.regulationId ?? "",
+    regulationId: primaryRegId,
     regulationName: regulation?.title ?? assignment?.regulationTitle ?? "",
+    regulationIds,
     ownerDepartmentId: item.ownerDepartmentId,
     ownerDepartmentName: item.ownerDepartmentName ?? item.ownerDepartmentId,
     ownerId: item.ownerId ?? "",
@@ -187,6 +202,20 @@ export async function handleGetObligationList({
   if (q.assignmentId) {
     items = items.filter((item) => item.assignmentId === q.assignmentId);
   }
+  if (q.regulationIds) {
+    const ids = (
+      Array.isArray(q.regulationIds)
+        ? q.regulationIds
+        : String(q.regulationIds).split(",")
+    )
+      .map((s) => String(s).trim())
+      .filter(Boolean);
+    if (ids.length > 0) {
+      items = items.filter((item) =>
+        ids.some((id) => (item.regulationIds ?? []).includes(id)),
+      );
+    }
+  }
   if (q.status) {
     const statuses = normalizeArrayParam(q.status);
     items = items.filter((item) => statuses.includes(item.status));
@@ -266,9 +295,7 @@ export async function handleUpdateObligation({
   return jsonResponse(db.obligations[index]);
 }
 
-export async function handleDeleteObligation({
-  params,
-}: MockResolverContext) {
+export async function handleDeleteObligation({ params }: MockResolverContext) {
   await getDelay();
   const db = getDb();
   const index = db.obligations.findIndex((i) => i.id === params.id);

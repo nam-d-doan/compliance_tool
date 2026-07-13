@@ -24,11 +24,12 @@ import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
-import { PageHero } from "@/components/common";
+import { PageHero, SummaryCardBar } from "@/components/common";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { useAuthStore } from "@/stores";
 import { useNCCList } from "@/hooks/queries";
+import { useNCCsSummary } from "@/hooks/useTabSummaries";
 import { useDeleteNCC } from "@/hooks/mutations";
 import { useOrgUnits } from "@/hooks/queries/useAdminQueries";
 import { hasPermission } from "@/constants/rbac";
@@ -61,6 +62,7 @@ export default function NCCListPage() {
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "ncc:create");
   const canDelete = hasPermission(role, "ncc:delete");
+  const summaryCards = useNCCsSummary();
 
   const [filters, setFilters] = useState<NCCFilter>({});
   const [page, setPage] = useState(1);
@@ -212,6 +214,8 @@ export default function NCCListPage() {
           </Button>
         )}
       </PageHero>
+
+      <SummaryCardBar cards={summaryCards} />
 
       <Card>
         <CardHeader>

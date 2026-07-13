@@ -44,6 +44,12 @@ export interface CAP extends BaseEntity {
   rootCause: string;
   /** Linked Obligation IDs (1..n). Replaces the legacy single `complianceId`. */
   obligationIds: string[];
+  /**
+   * Direct many-to-many link to regulations, independent of obligations. The
+   * union of all regulation IDs reachable from the linked obligations (and
+   * their superseded/dependency-related regs). Always non-empty.
+   */
+  regulationIds: string[];
   /** Denormalized title of the primary (first) linked obligation. Backward-compat convenience. */
   complianceTitle?: string;
   actions: CAPAction[];
@@ -62,6 +68,8 @@ export interface CAPFilter {
   businessUnit?: string;
   location?: string;
   compliance?: string;
+  /** Filter to CAPs whose `regulationIds` includes this regulation id. */
+  regulation?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
   search?: string;

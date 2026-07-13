@@ -168,7 +168,11 @@ export default function RegulationComparisonPage() {
         title="Compare Regulations"
         subtitle="Side-by-side comparison of two regulations with AI-generated difference summary."
       >
-        <Button variant="ghost" size="sm" onClick={() => navigate("/regulation")}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/regulation")}
+        >
           <ArrowLeft className="size-4" aria-hidden="true" />
           Back to library
         </Button>

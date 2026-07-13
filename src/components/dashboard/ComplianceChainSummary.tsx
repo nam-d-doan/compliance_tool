@@ -35,7 +35,9 @@ export interface ComplianceChainSummaryProps {
  * full-width row with its own donut + status legend, so the page reads as
  * one story moving top to bottom instead of a grid of disconnected tiles.
  */
-export function ComplianceChainSummary({ stages }: ComplianceChainSummaryProps) {
+export function ComplianceChainSummary({
+  stages,
+}: ComplianceChainSummaryProps) {
   const navigate = useNavigate();
 
   return (

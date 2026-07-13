@@ -53,11 +53,11 @@ export default function LoginPage() {
           >
             <div className="flex size-8 items-center justify-center rounded-[9px] border border-white/15 bg-[#17161b]">
               <span className="text-chart-accent font-heading text-xs font-extrabold">
-                CA
+                EY
               </span>
             </div>
             <span className="font-heading text-base font-bold">
-              ComplianceAI
+              Compliance Tool
             </span>
           </motion.div>
 
@@ -151,7 +151,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-[11px] text-[#8a889c]">
-            &copy; {new Date().getFullYear()} ComplianceAI Demo. All rights
+            &copy; {new Date().getFullYear()} Compliance Tool Demo. All rights
             reserved.
           </p>
         </div>
@@ -161,10 +161,10 @@ export default function LoginPage() {
           <div className="mb-6 flex items-center gap-2 lg:hidden">
             <div className="flex size-9 items-center justify-center rounded-lg bg-[#17161b]">
               <span className="text-chart-accent font-heading text-sm font-extrabold">
-                CA
+                EY
               </span>
             </div>
-            <span className="text-lg font-semibold">ComplianceAI</span>
+            <span className="text-lg font-semibold">Compliance Tool</span>
           </div>
           <LoginForm />
         </div>

@@ -239,6 +239,55 @@ function generateRegulationDependencies(
 }
 
 /**
+ * Build a reverse-lookup map: regulationId → set of related regulation IDs
+ * appearing as either endpoint of a dependency. Used to enrich
+ * `Obligation.regulationIds` and `CAP.regulationIds` with superseded /
+ * amendment-related regs.
+ */
+function buildRegulationRelatedIndex(
+  dependencies: RegulationDependency[],
+): Map<string, string[]> {
+  const idx = new Map<string, Set<string>>();
+  for (const d of dependencies) {
+    if (!idx.has(d.fromRegulationId)) idx.set(d.fromRegulationId, new Set());
+    if (!idx.has(d.toRegulationId)) idx.set(d.toRegulationId, new Set());
+    idx.get(d.fromRegulationId)!.add(d.toRegulationId);
+    idx.get(d.toRegulationId)!.add(d.fromRegulationId);
+  }
+  const out = new Map<string, string[]>();
+  idx.forEach((set, key) => out.set(key, Array.from(set)));
+  return out;
+}
+
+/**
+ * Resolve a list of regulation IDs (1..n, with optional primary) into a
+ * de-duplicated array of regulation IDs expanded with dependency-related
+ * entries. Accepts either a single primary ID or an array of primaries.
+ * Always returns at least the primary ID(s) (so the array is never empty
+ * for any obligation/cap that had a valid link in the seed).
+ */
+function dedupeRegIds(
+  primaries: string | string[],
+  related: Map<string, string[]>,
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const queue = Array.isArray(primaries) ? primaries : [primaries];
+  for (const id of queue) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    for (const r of related.get(id) ?? []) {
+      if (!seen.has(r)) {
+        seen.add(r);
+        out.push(r);
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Generate the unified Obligation dataset. Every obligation links to an
  * Assignment (the real intended flow entry point: Regulation → Assignment →
  * Obligation); regulation fields are denormalized from the assignment's
@@ -250,6 +299,7 @@ function generateObligations(
   regulations: Regulation[],
   assignments: Assignment[],
   users: UserProfile[],
+  relatedRegs: Map<string, string[]>,
 ): Obligation[] {
   const regById = new Map(regulations.map((r) => [r.id, r]));
   // Owner pool: prefer real owner-role users. The demo owner ("demo-owner")
@@ -269,8 +319,7 @@ function generateObligations(
 
   return CURATED_OBLIGATIONS.map((spec, i) => {
     const assignment = assignments[spec.assignmentIndex] ?? assignments[0];
-    const regulation =
-      regById.get(assignment.regulationId) ?? regulations[0];
+    const regulation = regById.get(assignment.regulationId) ?? regulations[0];
     const owner = pickOwner();
     const approver = pick(approverUsers.length ? approverUsers : users);
     const dueDate = addDays(today, spec.dueOffset);
@@ -287,6 +336,7 @@ function generateObligations(
       description: spec.description,
       regulationId: regulation.id,
       regulationName: regulation.title,
+      regulationIds: dedupeRegIds(regulation.id, relatedRegs),
       ownerDepartmentId: assignment.assignedDepartmentIds[0] ?? "",
       ownerDepartmentName: assignment.assignedDepartmentNames?.[0],
       ownerId: owner.id,
@@ -317,7 +367,11 @@ function generateObligations(
   });
 }
 
-function generateCAPs(obligations: Obligation[], users: UserProfile[]): CAP[] {
+function generateCAPs(
+  obligations: Obligation[],
+  users: UserProfile[],
+  relatedRegs: Map<string, string[]>,
+): CAP[] {
   const ownerUsers = users.filter((u) => u.role === "owner");
   const approverUsers = users.filter(
     (u) => u.role === "approver" || u.role === "admin",
@@ -328,8 +382,7 @@ function generateCAPs(obligations: Obligation[], users: UserProfile[]): CAP[] {
     // seed CAPs no longer reference a separate legacy dataset, so this just
     // picks a stable, varied primary obligation per CAP.
     const item =
-      obligations[spec.complianceIndex % obligations.length] ??
-      obligations[0];
+      obligations[spec.complianceIndex % obligations.length] ?? obligations[0];
     const owner = pick(ownerUsers.length ? ownerUsers : users);
     const approver = pick(approverUsers.length ? approverUsers : users);
     // Link 1-3 obligations per CAP: `item` is the primary, plus 0-2 extras.
@@ -384,6 +437,14 @@ function generateCAPs(obligations: Obligation[], users: UserProfile[]): CAP[] {
       actualCost: faker.number.int({ min: 0, max: spec.estimatedCost }),
       rootCause: spec.rootCause,
       obligationIds,
+      // CAP regulations = union of all linked obligations' regulationIds,
+      // each expanded with dependency-related IDs. Always non-empty + unique.
+      regulationIds: dedupeRegIds(
+        obligationIds
+          .map((id) => obligations.find((o) => o.id === id)?.regulationId)
+          .filter((x): x is string => Boolean(x)),
+        relatedRegs,
+      ),
       complianceTitle: item.title,
       actions,
       aiSuggestions: [
@@ -1004,6 +1065,7 @@ export function getDb(): MockDb {
   const users = [...generateDemoUserProfiles(), ...generateStaffUsers()];
   const regulations = generateRegulations();
   const regulationDependencies = generateRegulationDependencies(regulations);
+  const relatedRegs = buildRegulationRelatedIndex(regulationDependencies);
   const organizationSettings = generateOrganizationSettings();
   const nccs = generateNCCs(organizationSettings, users);
   const assignments = generateAssignments(
@@ -1011,8 +1073,13 @@ export function getDb(): MockDb {
     users,
     organizationSettings.hoDepartments,
   );
-  const obligations = generateObligations(regulations, assignments, users);
-  const caps = generateCAPs(obligations, users);
+  const obligations = generateObligations(
+    regulations,
+    assignments,
+    users,
+    relatedRegs,
+  );
+  const caps = generateCAPs(obligations, users, relatedRegs);
   const files = generateFiles(caps);
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);

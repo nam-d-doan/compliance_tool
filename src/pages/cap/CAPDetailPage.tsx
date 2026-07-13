@@ -59,6 +59,7 @@ import {
 } from "@/hooks/queries/useCAPQueries";
 import { useFilesByIds } from "@/hooks/queries/useFileQueries";
 import { useObligationList } from "@/hooks/queries/useObligationQueries";
+import { useRegulationList } from "@/hooks/queries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import {
   useUpdateCAP,
@@ -245,6 +246,21 @@ export default function CAPDetailPage() {
       };
     });
   }, [item, complianceQuery.data]);
+
+  const { data: regulationsData } = useRegulationList({}, 1, 500);
+  const linkedRegulations = useMemo(() => {
+    if (!item) return [];
+    const byId = new Map((regulationsData?.items ?? []).map((r) => [r.id, r]));
+    const ids = item.regulationIds?.length ? item.regulationIds : [];
+    return ids.map((rid) => {
+      const reg = byId.get(rid);
+      return {
+        id: rid,
+        title: reg?.title ?? rid,
+        status: reg?.status,
+      };
+    });
+  }, [item, regulationsData]);
 
   const handleApprove = () => {
     update.mutate(
@@ -833,6 +849,47 @@ export default function CAPDetailPage() {
                             Due {format(parseISO(o.dueDate), "MMM d, yyyy")}
                           </p>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  Linked Regulations
+                  {linkedRegulations.length > 0 && (
+                    <Badge variant="secondary">
+                      {linkedRegulations.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {linkedRegulations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No regulations linked.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {linkedRegulations.map((reg) => (
+                      <div
+                        key={reg.id}
+                        className="rounded-md border border-border bg-card p-2 text-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <Link
+                            to={`/regulation/${reg.id}`}
+                            className="min-w-0 flex-1 truncate font-medium text-primary hover:underline"
+                          >
+                            {reg.title}
+                          </Link>
+                          {reg.status && (
+                            <StatusBadge status={reg.status} size="sm" />
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

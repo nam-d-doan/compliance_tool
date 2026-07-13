@@ -225,9 +225,7 @@ export function AICopilot() {
                 className="text-chart-accent size-4"
                 aria-hidden="true"
               />
-              <span className="font-heading text-sm font-bold">
-                AI Copilot
-              </span>
+              <span className="font-heading text-sm font-bold">AI Copilot</span>
               <Button
                 variant="ghost"
                 size="icon-sm"

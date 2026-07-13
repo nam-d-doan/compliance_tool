@@ -37,10 +37,12 @@ import {
   PriorityBadge,
   EmptyState,
   ListSkeleton,
+  SummaryCardBar,
 } from "@/components/common";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { useAssignmentList, useOrgUnits } from "@/hooks/queries";
+import { useAssignmentsSummary } from "@/hooks/useTabSummaries";
 import { useBulkUpdateAssignments } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
@@ -60,6 +62,7 @@ export default function AssignmentListPage() {
   const { role, user } = useAuthStore();
   const canCreate = hasPermission(role, "assignment:create");
   const canUpdate = hasPermission(role, "assignment:update");
+  const summaryCards = useAssignmentsSummary();
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -231,6 +234,8 @@ export default function AssignmentListPage() {
           </Button>
         )}
       </PageHero>
+
+      <SummaryCardBar cards={summaryCards} />
 
       <Card>
         <CardHeader>

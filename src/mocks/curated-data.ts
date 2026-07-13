@@ -2232,7 +2232,8 @@ const LEGACY_INDICES_TO_MERGE = [
 const CURATED_OBLIGATIONS_FROM_LEGACY: CuratedObligation[] =
   LEGACY_INDICES_TO_MERGE.map((legacyIndex, i) => {
     const legacy = CURATED_COMPLIANCE_OBLIGATIONS_SOURCE[legacyIndex];
-    const assignmentIndex = REGULATION_TO_ASSIGNMENT_INDEX[legacy.regulationId] ?? 0;
+    const assignmentIndex =
+      REGULATION_TO_ASSIGNMENT_INDEX[legacy.regulationId] ?? 0;
     return {
       assignmentIndex,
       articleRef: LEGACY_ARTICLE_REFS[i] ?? "Điều 1",

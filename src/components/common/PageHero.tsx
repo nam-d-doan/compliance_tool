@@ -10,7 +10,7 @@ export interface PageHeroProps {
 
 /**
  * Plain page header — title + subtitle + action row, no card chrome. Sits
- * directly on the aurora page background, matching the ComplianceAI design
+ * directly on the aurora page background, matching the Compliance Tool design
  * language's flat headers (as opposed to a colored banner).
  */
 export function PageHero({
@@ -34,9 +34,7 @@ export function PageHero({
           {title}
         </h1>
         {subtitle && (
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            {subtitle}
-          </p>
+          <p className="max-w-2xl text-sm text-muted-foreground">{subtitle}</p>
         )}
       </div>
       {children && <div className="shrink-0">{children}</div>}

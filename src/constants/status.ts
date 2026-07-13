@@ -37,7 +37,7 @@ export interface StatusStyle {
 }
 
 // Five-category semantic system (success/warning/danger/info/neutral) —
-// matches the badge() categorization in the ComplianceAI design prototype.
+// matches the badge() categorization in the Compliance Tool design prototype.
 const success = {
   default: "bg-success-bg text-success",
   outline: "border-success/40 text-success",

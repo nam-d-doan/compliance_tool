@@ -12,12 +12,12 @@ There is no real backend. `src/mocks/` (MSW handlers + an in-memory `db.ts` sing
 
 Demo accounts (`src/constants/demo-users.ts`, password `demo1234` for all — note there is no generic `demo@demo.com`, only role-scoped accounts):
 
-| Role | Email | What they do |
-|---|---|---|
-| Admin | `admin@demo.com` | Org/user/role setup, AI config, audit logs |
-| Executive | `executive@demo.com` | Org-wide oversight dashboard, executive reports |
-| Owner | `owner@demo.com` | Creates/owns obligations, drives CAPs to completion |
-| Approver | `approver@demo.com` | Reviews and approves/rejects obligations and CAPs |
+| Role      | Email                | What they do                                        |
+| --------- | -------------------- | --------------------------------------------------- |
+| Admin     | `admin@demo.com`     | Org/user/role setup, AI config, audit logs          |
+| Executive | `executive@demo.com` | Org-wide oversight dashboard, executive reports     |
+| Owner     | `owner@demo.com`     | Creates/owns obligations, drives CAPs to completion |
+| Approver  | `approver@demo.com`  | Reviews and approves/rejects obligations and CAPs   |
 
 Role → permission mapping lives in `src/constants/rbac.ts`; role → route access and the sidebar nav tree are built in `src/constants/routes.ts`.
 
@@ -59,12 +59,12 @@ This was fixed by collapsing both into one canonical `Obligation` entity (supers
 
 ## Key files by step
 
-| Step | Types | Service/hooks | Mock handlers | Pages |
-|---|---|---|---|---|
-| Regulation | `src/types/regulation.ts` | `regulation_service.ts`, `useRegulationQueries.ts` | `regulation_handlers.ts` | `src/pages/regulation/*` |
-| Assignment | `src/types/assignment.ts` | `assignment_service.ts`, `useAssignmentQueries.ts` | `assignment_handlers.ts` | `src/pages/assignment/*` |
-| Obligation | `src/types/obligation.ts` | `obligation_service.ts`, `useObligationQueries.ts`, `useObligationMutations.ts` | `obligation_handlers.ts` | `src/pages/obligations/*` |
-| CAP | `src/types/cap.ts` | `cap_service.ts` (or equivalent), `useCAPQueries.ts`, `useCAPMutations.ts` | `cap_handlers.ts` | `src/pages/cap/*` |
-| NCC | `src/types/ncc.ts` | `ncc_service.ts` | `ncc_handlers.ts` | `src/pages/ncc/*` |
-| RBAC/nav | `src/constants/rbac.ts`, `src/constants/routes.ts` | — | — | `src/components/layout/Sidebar.tsx` |
-| Mock DB | — | — | `src/mocks/db.ts`, `src/mocks/curated-data.ts` | — |
+| Step       | Types                                              | Service/hooks                                                                   | Mock handlers                                  | Pages                               |
+| ---------- | -------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------- |
+| Regulation | `src/types/regulation.ts`                          | `regulation_service.ts`, `useRegulationQueries.ts`                              | `regulation_handlers.ts`                       | `src/pages/regulation/*`            |
+| Assignment | `src/types/assignment.ts`                          | `assignment_service.ts`, `useAssignmentQueries.ts`                              | `assignment_handlers.ts`                       | `src/pages/assignment/*`            |
+| Obligation | `src/types/obligation.ts`                          | `obligation_service.ts`, `useObligationQueries.ts`, `useObligationMutations.ts` | `obligation_handlers.ts`                       | `src/pages/obligations/*`           |
+| CAP        | `src/types/cap.ts`                                 | `cap_service.ts` (or equivalent), `useCAPQueries.ts`, `useCAPMutations.ts`      | `cap_handlers.ts`                              | `src/pages/cap/*`                   |
+| NCC        | `src/types/ncc.ts`                                 | `ncc_service.ts`                                                                | `ncc_handlers.ts`                              | `src/pages/ncc/*`                   |
+| RBAC/nav   | `src/constants/rbac.ts`, `src/constants/routes.ts` | —                                                                               | —                                              | `src/components/layout/Sidebar.tsx` |
+| Mock DB    | —                                                  | —                                                                               | `src/mocks/db.ts`, `src/mocks/curated-data.ts` | —                                   |

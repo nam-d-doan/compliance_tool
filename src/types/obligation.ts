@@ -24,6 +24,14 @@ export interface Obligation extends BaseEntity {
   /** Denormalized from the linked Assignment's regulation. */
   regulationId: string;
   regulationName: string;
+  /**
+   * Every regulation ID this obligation links to, including any superseded /
+   * amendment-related regulations derived from the dependency graph. The
+   * first entry is the primary (current) link and matches `regulationId` for
+   * backward compatibility. The handler uses this for many-to-many
+   * filtering by regulation.
+   */
+  regulationIds: string[];
 
   ownerDepartmentId: string;
   ownerDepartmentName?: string;
@@ -101,6 +109,8 @@ export interface ObligationFilter {
   department?: string;
   location?: string;
   regulationId?: string;
+  /** Filter to obligations whose `regulationIds` includes this regulation id. */
+  regulationIds?: string[];
   approver?: string;
   tags?: string[];
   assignmentId?: string;
@@ -121,7 +131,10 @@ export interface ObligationFilter {
 
 /** Partial update payload for PATCH /api/obligations/:id. */
 export type UpdateObligationInput = Partial<
-  Omit<Obligation, "id" | "createdAt" | "updatedAt" | "assignmentId" | "assignmentTitle">
+  Omit<
+    Obligation,
+    "id" | "createdAt" | "updatedAt" | "assignmentId" | "assignmentTitle"
+  >
 >;
 
 /** Bulk update payload for PATCH /api/obligations/bulk. Either a new status

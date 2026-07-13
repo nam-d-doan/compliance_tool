@@ -24,11 +24,12 @@ import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
-import { PageHero } from "@/components/common";
+import { PageHero, SummaryCardBar } from "@/components/common";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { useAuthStore } from "@/stores";
-import { useCAPList } from "@/hooks/queries";
+import { useCAPList, useRegulationList } from "@/hooks/queries";
+import { useCAPsSummary } from "@/hooks/useTabSummaries";
 import { useDeleteCAP } from "@/hooks/mutations";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
@@ -59,6 +60,7 @@ export default function CAPListPage() {
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "cap:create");
   const canDelete = hasPermission(role, "cap:delete");
+  const summaryCards = useCAPsSummary();
 
   const [filters, setFilters] = useState<CAPFilter>({});
   const [page, setPage] = useState(1);
@@ -92,6 +94,7 @@ export default function CAPListPage() {
     () => Array.from(new Set(allCaps.map((c) => c.department))).sort(),
     [allCaps],
   );
+  const { data: regulationsData } = useRegulationList({}, 1, 200);
 
   const sortedCaps = useMemo(() => {
     const list = [...filteredCaps];
@@ -170,7 +173,8 @@ export default function CAPListPage() {
     filters.owner ||
     filters.department ||
     filters.dueDateFrom ||
-    filters.dueDateTo,
+    filters.dueDateTo ||
+    filters.regulation,
   );
 
   const handleDelete = (cap: CAP) => {
@@ -218,6 +222,8 @@ export default function CAPListPage() {
           </Button>
         )}
       </PageHero>
+
+      <SummaryCardBar cards={summaryCards} />
 
       <Card>
         <CardHeader>
@@ -286,6 +292,15 @@ export default function CAPListPage() {
               onChange={(v) => updateFilter({ department: v || undefined })}
               options={departmentOptions}
               placeholder="All departments"
+            />
+            <FilterSelect
+              value={filters.regulation ?? ""}
+              onChange={(v) => updateFilter({ regulation: v || undefined })}
+              options={(regulationsData?.items ?? []).map((r) => ({
+                label: r.title,
+                value: r.id,
+              }))}
+              placeholder="All regulations"
             />
             <div className="flex items-center gap-1.5">
               <Input

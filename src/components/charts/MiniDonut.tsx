@@ -55,9 +55,7 @@ export function MiniDonut({ data, size = 72, centerLabel }: MiniDonutProps) {
       </ResponsiveContainer>
       {centerLabel !== undefined && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-bold tabular-nums">
-            {centerLabel}
-          </span>
+          <span className="text-xs font-bold tabular-nums">{centerLabel}</span>
         </div>
       )}
     </div>

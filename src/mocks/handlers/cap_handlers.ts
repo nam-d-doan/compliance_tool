@@ -48,6 +48,10 @@ export async function handleGetCapList({ request }: { request: Request }) {
           .includes(q.compliance!.toLowerCase()),
     );
   }
+  if (q.regulation) {
+    const regId = String(q.regulation);
+    items = items.filter((item) => (item.regulationIds ?? []).includes(regId));
+  }
   if (q.dueDateFrom) {
     items = items.filter((item) => item.dueDate >= q.dueDateFrom);
   }
@@ -100,6 +104,26 @@ export async function handleCreateCap({ request }: { request: Request }) {
       ? findById(db.obligations, obligationIds[0])
       : undefined;
 
+  // Build the regulationId set from the linked obligations (plus their own
+  // dependency-related entries) so the many-to-many filter is correct on
+  // newly-created CAPs.
+  const related = new Map<string, string[]>();
+  for (const d of db.regulationDependencies) {
+    if (!related.has(d.fromRegulationId)) related.set(d.fromRegulationId, []);
+    if (!related.has(d.toRegulationId)) related.set(d.toRegulationId, []);
+    if (!related.get(d.fromRegulationId)!.includes(d.toRegulationId))
+      related.get(d.fromRegulationId)!.push(d.toRegulationId);
+    if (!related.get(d.toRegulationId)!.includes(d.fromRegulationId))
+      related.get(d.toRegulationId)!.push(d.fromRegulationId);
+  }
+  const regIdSet = new Set<string>();
+  for (const id of obligationIds) {
+    const ob = findById(db.obligations, id);
+    if (!ob) continue;
+    for (const rid of ob.regulationIds ?? []) regIdSet.add(rid);
+  }
+  const regulationIds = Array.from(regIdSet);
+
   const newItem: CAP = {
     id: `cap-${crypto.randomUUID()}`,
     capId: `CAP-${new Date().getFullYear()}-${String(db.caps.length + 1).padStart(3, "0")}`,
@@ -120,6 +144,7 @@ export async function handleCreateCap({ request }: { request: Request }) {
     actualCost: body.actualCost ?? 0,
     rootCause: body.rootCause ?? "",
     obligationIds,
+    regulationIds,
     complianceTitle: body.complianceTitle ?? primary?.title,
     actions: body.actions ?? [],
     aiSuggestions: body.aiSuggestions ?? [],

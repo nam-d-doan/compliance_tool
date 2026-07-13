@@ -30,7 +30,9 @@ export function DashboardUpcomingRegulations({
     return regulations
       .filter((r) => {
         const effective = new Date(r.effectiveDate);
-        return r.status === "Effective" && effective >= now && effective <= cutoff;
+        return (
+          r.status === "Effective" && effective >= now && effective <= cutoff
+        );
       })
       .sort(
         (a, b) =>
@@ -78,7 +80,8 @@ export function DashboardUpcomingRegulations({
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <PriorityBadge priority={reg.priority} size="sm" />
                       <span className="text-xs text-muted-foreground">
-                        Effective {format(new Date(reg.effectiveDate), "MMM d, yyyy")}
+                        Effective{" "}
+                        {format(new Date(reg.effectiveDate), "MMM d, yyyy")}
                       </span>
                     </div>
                   </div>

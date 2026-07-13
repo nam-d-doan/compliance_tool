@@ -37,11 +37,13 @@ import {
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { DueDateCell } from "@/components/common/DueDateCell";
-import { PageHero } from "@/components/common";
+import { PageHero, SummaryCardBar } from "@/components/common";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
 import { useObligationList } from "@/hooks/queries/useObligationQueries";
+import { useRegulationList } from "@/hooks/queries";
+import { useObligationsSummary } from "@/hooks/useTabSummaries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
@@ -81,6 +83,7 @@ export default function ObligationListPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "compliance:create");
+  const summaryCards = useObligationsSummary();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -88,6 +91,7 @@ export default function ObligationListPage() {
   const [priority, setPriority] = useState("");
   const [businessUnit, setBusinessUnit] = useState("");
   const [owner, setOwner] = useState("");
+  const [regulation, setRegulation] = useState("");
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -99,10 +103,10 @@ export default function ObligationListPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status, priority, businessUnit, owner]);
+  }, [debouncedSearch, status, priority, businessUnit, owner, regulation]);
 
   const hasActiveFilters = Boolean(
-    search || status || priority || businessUnit || owner,
+    search || status || priority || businessUnit || owner || regulation,
   );
   const clearFilters = () => {
     setSearch("");
@@ -110,13 +114,22 @@ export default function ObligationListPage() {
     setPriority("");
     setBusinessUnit("");
     setOwner("");
+    setRegulation("");
   };
 
   // Row selection is index-based; clear it whenever the page or filters shift
   // so selections never silently rebind to different rows.
   useEffect(() => {
     setRowSelection({});
-  }, [debouncedSearch, status, priority, businessUnit, owner, page]);
+  }, [
+    debouncedSearch,
+    status,
+    priority,
+    businessUnit,
+    owner,
+    regulation,
+    page,
+  ]);
 
   const sortField = sorting[0]?.id ?? "createdAt";
   const sortDirection = sorting[0]
@@ -134,6 +147,7 @@ export default function ObligationListPage() {
       owner: owner || undefined,
       sortField,
       sortDirection,
+      regulationIds: regulation ? [regulation] : undefined,
     }),
     [
       debouncedSearch,
@@ -141,6 +155,7 @@ export default function ObligationListPage() {
       priority,
       businessUnit,
       owner,
+      regulation,
       sortField,
       sortDirection,
     ],
@@ -155,6 +170,7 @@ export default function ObligationListPage() {
     role: "owner",
     status: "Active",
   });
+  const { data: regulationsData } = useRegulationList({}, 1, 200);
 
   const columns = useMemo<ColumnDef<Obligation>[]>(
     () => [
@@ -321,13 +337,18 @@ export default function ObligationListPage() {
             {selectedCount > 0 ? ` (${selectedCount})` : ""}
           </Button>
           {canCreate && (
-            <Button variant="outline" onClick={() => navigate("/obligations/create")}>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/obligations/create")}
+            >
               <Plus className="size-4" aria-hidden="true" />
               Create New
             </Button>
           )}
         </div>
       </PageHero>
+
+      <SummaryCardBar cards={summaryCards} />
 
       <Card>
         <CardHeader>
@@ -405,6 +426,18 @@ export default function ObligationListPage() {
               {ownersData?.items.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={regulation}
+              onChange={(e) => setRegulation(e.target.value)}
+              className={cn(selectClass, "min-w-[14rem]")}
+            >
+              <option value="">All regulations</option>
+              {regulationsData?.items.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.title}
                 </option>
               ))}
             </select>

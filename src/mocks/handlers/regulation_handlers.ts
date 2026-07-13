@@ -1,6 +1,12 @@
 import { http } from "msw";
 import { faker } from "@faker-js/faker";
-import { getDb, findById, paginate, filterByText, DEMO_TODAY } from "@/mocks/db";
+import {
+  getDb,
+  findById,
+  paginate,
+  filterByText,
+  DEMO_TODAY,
+} from "@/mocks/db";
 import {
   getDelay,
   jsonResponse,

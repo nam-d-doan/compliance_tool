@@ -35,9 +35,7 @@ export function ComplianceCard({
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <span className="text-xs text-muted-foreground">
-                {item.code}
-              </span>
+              <span className="text-xs text-muted-foreground">{item.code}</span>
               <CardTitle className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug">
                 {item.title}
               </CardTitle>

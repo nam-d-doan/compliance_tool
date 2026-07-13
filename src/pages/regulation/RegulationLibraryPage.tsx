@@ -41,7 +41,8 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton, CardSkeleton } from "@/components/common/Skeletons";
-import { PageHero } from "@/components/common";
+import { PageHero, SummaryCardBar } from "@/components/common";
+import { useRegulationsSummary } from "@/hooks/useTabSummaries";
 import { useRegulationList } from "@/hooks/queries/useRegulationQueries";
 import {
   useArchiveRegulation,
@@ -106,6 +107,7 @@ export default function RegulationLibraryPage() {
 
   const archive = useArchiveRegulation();
   const bulkArchive = useBulkArchiveRegulations();
+  const summaryCards = useRegulationsSummary();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -406,6 +408,8 @@ export default function RegulationLibraryPage() {
         title="Regulatory Intelligence"
         subtitle="Monitor, compare, and analyze regulations across jurisdictions. Understand AI-predicted impact on your compliance program."
       />
+
+      <SummaryCardBar cards={summaryCards} />
 
       <Card>
         <CardHeader>

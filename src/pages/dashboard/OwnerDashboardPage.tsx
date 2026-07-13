@@ -187,7 +187,11 @@ export default function OwnerDashboardPage() {
       value: assignmentItems.length,
       path: "/assignment",
       breakdown: [
-        { label: "active", value: activeAssignments.length, color: "var(--info)" },
+        {
+          label: "active",
+          value: activeAssignments.length,
+          color: "var(--info)",
+        },
         {
           label: "not started",
           value: notStartedAssignments.length,

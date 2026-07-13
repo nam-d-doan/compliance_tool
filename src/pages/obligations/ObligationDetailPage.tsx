@@ -52,6 +52,7 @@ import {
   useObligationComments,
 } from "@/hooks/queries/useObligationQueries";
 import { useCAPList } from "@/hooks/queries/useCAPQueries";
+import { useRegulationList } from "@/hooks/queries";
 import {
   useUpdateObligation,
   useDeleteObligation,
@@ -134,6 +135,7 @@ export default function ObligationDetailPage() {
   const timeline = useObligationTimeline(id);
   const comments = useObligationComments(id);
   const caps = useCAPList({ compliance: id }, 1, 20);
+  const { data: regulationsData } = useRegulationList({}, 1, 500);
   const update = useUpdateObligation(id);
   const remove = useDeleteObligation();
   const addComment = useAddObligationComment(id);
@@ -145,6 +147,22 @@ export default function ObligationDetailPage() {
     : 0;
 
   const insight = useMemo(() => (item ? buildInsight(item) : null), [item]);
+
+  const linkedRegulations = useMemo(() => {
+    if (!item) return [];
+    const byId = new Map((regulationsData?.items ?? []).map((r) => [r.id, r]));
+    const ids = item.regulationIds?.length
+      ? item.regulationIds
+      : [item.regulationId];
+    return ids.map((rid) => {
+      const reg = byId.get(rid);
+      return {
+        id: rid,
+        title: reg?.title ?? item.regulationName,
+        status: reg?.status,
+      };
+    });
+  }, [item, regulationsData]);
 
   const timelineItems: ActivityFeedItem[] = useMemo(() => {
     if (!timeline.data) return [];
@@ -311,7 +329,11 @@ export default function ObligationDetailPage() {
             Create CAP
           </Button>
           {canEdit && (
-            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(true)}
+            >
               <Pencil className="size-4" aria-hidden="true" />
               Edit
             </Button>
@@ -585,13 +607,29 @@ export default function ObligationDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
-                Linked Regulation
+                Linked Regulations
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <p className="text-sm font-medium text-foreground">
-                {item.regulationName}
-              </p>
+              {linkedRegulations.length === 0 && (
+                <p className="text-sm text-muted-foreground">None</p>
+              )}
+              {linkedRegulations.map((reg) => (
+                <div key={reg.id} className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/regulation/${reg.id}`)}
+                      className="text-left text-sm font-medium text-foreground hover:underline"
+                    >
+                      {reg.title}
+                    </button>
+                    {reg.status && (
+                      <StatusBadge status={reg.status} variant="outline" />
+                    )}
+                  </div>
+                </div>
+              ))}
               <Button
                 variant="outline"
                 size="sm"
@@ -599,7 +637,7 @@ export default function ObligationDetailPage() {
                 onClick={() => navigate(`/regulation/${item.regulationId}`)}
               >
                 <ExternalLink className="size-4" aria-hidden="true" />
-                View regulation
+                View primary regulation
               </Button>
             </CardContent>
           </Card>
