@@ -34,6 +34,7 @@ import { ROUTES } from "@/constants/routes";
 import { isOverdueDueDate } from "@/lib/due-date";
 import type { CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
+import { statusLabel, priorityLabel } from "@/lib/chart-labels";
 
 const PRIORITY_ORDER: Record<PriorityLevel, number> = {
   low: 1,
@@ -112,12 +113,17 @@ export default function CAPDashboardPage() {
       pendingApprovalCount: pendingItems.length,
       closedThisMonthCount: closedThisMonthItems.length,
       avgDaysToClose: avgDays,
-      statusData: countBy(caps, "status"),
-      priorityData: countBy(caps, "priority").sort(
-        (a, b) =>
-          PRIORITY_ORDER[a.name as PriorityLevel] -
-          PRIORITY_ORDER[b.name as PriorityLevel],
-      ),
+      statusData: countBy(caps, "status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
+      priorityData: countBy(caps, "priority")
+        .sort(
+          (a, b) =>
+            PRIORITY_ORDER[a.name as PriorityLevel] -
+            PRIORITY_ORDER[b.name as PriorityLevel],
+        )
+        .map((d) => ({ name: priorityLabel(d.name), value: d.value })),
       trendData: sortedTrend,
       departmentData: countBy(caps, "department").sort(
         (a, b) => b.value - a.value,

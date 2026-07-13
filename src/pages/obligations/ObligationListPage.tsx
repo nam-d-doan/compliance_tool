@@ -52,6 +52,7 @@ import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { OBLIGATION_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
+import { statusLabel, priorityLabel } from "@/lib/chart-labels";
 import { cn } from "@/lib/utils";
 import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
 import { riskScoreTextClasses } from "@/lib/risk-score";
@@ -198,11 +199,19 @@ export default function ObligationListPage() {
   // Unfiltered dataset for the chart aggregations (parity with the CAP tab).
   const { data: chartData } = useObligationList({}, 1, 500);
   const statusChart = useMemo(
-    () => countBy(chartData?.items ?? [], "status"),
+    () =>
+      countBy(chartData?.items ?? [], "status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
     [chartData],
   );
   const riskChart = useMemo(
-    () => countBy(chartData?.items ?? [], "riskLevel"),
+    () =>
+      countBy(chartData?.items ?? [], "riskLevel").map((d) => ({
+        name: priorityLabel(d.name),
+        value: d.value,
+      })),
     [chartData],
   );
   const trendChart = useMemo(

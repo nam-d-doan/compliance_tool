@@ -53,6 +53,7 @@ import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
 import { ASSIGNMENT_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
 import type { AssignmentStatus, PriorityLevel } from "@/constants/status";
+import { statusLabel } from "@/lib/chart-labels";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DUE_DATE_COLOR_GUIDE, isOverdueDueDate } from "@/lib/due-date";
@@ -147,7 +148,10 @@ export default function AssignmentListPage() {
       const v = String(a.status ?? "Unknown");
       m.set(v, (m.get(v) ?? 0) + 1);
     });
-    return Array.from(m.entries()).map(([name, value]) => ({ name, value }));
+    return Array.from(m.entries()).map(([name, value]) => ({
+      name: statusLabel(name),
+      value,
+    }));
   }, [allAssignments]);
   const deptChart = useMemo(() => {
     const m = new Map<string, number>();

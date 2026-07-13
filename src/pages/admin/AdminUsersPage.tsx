@@ -43,6 +43,7 @@ import {
   useUpdateUser,
 } from "@/hooks/mutations/useAdminMutations";
 import { USER_STATUSES, type UserStatus } from "@/constants/status";
+import { statusLabel, capitalizeLabel } from "@/lib/chart-labels";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types";
@@ -297,8 +298,22 @@ export default function AdminUsersPage() {
   // Admin oversight: distribution of users across role / status / department,
   // computed from the full org user set (not the paginated table page).
   const allUsers = useMemo(() => allUsersData?.items ?? [], [allUsersData]);
-  const roleChart = useMemo(() => countBy(allUsers, "role"), [allUsers]);
-  const statusChart = useMemo(() => countBy(allUsers, "status"), [allUsers]);
+  const roleChart = useMemo(
+    () =>
+      countBy(allUsers, "role").map((d) => ({
+        name: capitalizeLabel(d.name),
+        value: d.value,
+      })),
+    [allUsers],
+  );
+  const statusChart = useMemo(
+    () =>
+      countBy(allUsers, "status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
+    [allUsers],
+  );
   const deptChart = useMemo(() => {
     const m = new Map<string, number>();
     allUsers.forEach((u) => {

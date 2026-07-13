@@ -45,6 +45,7 @@ import {
   type PriorityLevel,
 } from "@/constants/status";
 import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
+import { statusLabel, priorityLabel } from "@/lib/chart-labels";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { NonComplianceCase, NCCFilter } from "@/types";
@@ -250,7 +251,10 @@ export default function NCCListPage() {
       <ChartGrid>
         <PieChartCard
           title="NCCs by Status"
-          data={countBy(allNcc, "status")}
+          data={countBy(allNcc, "status").map((d) => ({
+            name: statusLabel(d.name),
+            value: d.value,
+          }))}
           nameKey="name"
           valueKey="value"
           loading={allNccQuery.isPending}
@@ -259,7 +263,10 @@ export default function NCCListPage() {
         />
         <BarChartCard
           title="By Severity"
-          data={countBy(allNcc, "severity")}
+          data={countBy(allNcc, "severity").map((d) => ({
+            name: priorityLabel(d.name),
+            value: d.value,
+          }))}
           xKey="name"
           yKeys={[{ key: "value", name: "Cases" }]}
           loading={allNccQuery.isPending}

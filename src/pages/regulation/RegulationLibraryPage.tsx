@@ -54,6 +54,7 @@ import {
 import { useAuthStore } from "@/stores";
 import { hasMinimumRole } from "@/constants/rbac";
 import { REGULATION_STATUSES } from "@/constants/status";
+import { statusLabel } from "@/lib/chart-labels";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { riskScoreTextClasses } from "@/lib/risk-score";
@@ -211,7 +212,11 @@ export default function RegulationLibraryPage() {
   // Unfiltered dataset for the chart aggregations.
   const { data: chartData } = useRegulationList({}, 1, 500);
   const statusChart = useMemo(
-    () => countBy(chartData?.items ?? [], "status"),
+    () =>
+      countBy(chartData?.items ?? [], "status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
     [chartData],
   );
   const categoryChart = useMemo(
