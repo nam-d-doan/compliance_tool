@@ -98,7 +98,7 @@ export function TopNav() {
         </Link>
 
         <div className="flex min-w-0 flex-1 justify-center">
-          <nav className="relative flex max-w-full items-center gap-1 overflow-x-auto rounded-[18px] border bg-[var(--nav-bg)] px-3 py-1.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
+          <nav className="relative flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[18px] border bg-[var(--nav-bg)] px-2.5 py-1.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {pills.map((pill) => {
               const isActive =
                 location.pathname === pill.path ||
@@ -111,16 +111,16 @@ export function TopNav() {
                   to={pill.path}
                   title={pill.label}
                   className={cn(
-                    "flex min-w-[2rem] shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-3 py-[7px] font-heading text-xs whitespace-nowrap transition-colors",
+                    "flex min-w-[2rem] shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 py-[7px] font-heading text-xs whitespace-nowrap transition-all",
                     isActive
-                      ? "bg-chart-accent font-bold text-black"
-                      : "font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      ? "bg-chart-accent/25 font-bold text-foreground border border-white/40 backdrop-blur-md shadow-[0_6px_16px_-4px_rgb(0_0_0/0.18),0_2px_4px_-2px_rgb(0_0_0/0.12)]"
+                      : "font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent",
                   )}
                 >
                   <pill.icon className="size-3.5" />
                   {/* On cramped widths, hide the label for inactive tabs; keep
                       it for the active tab so the current location is obvious. */}
-                  <span className={isActive ? "inline" : "hidden lg:inline"}>
+                  <span className={isActive ? "inline" : "hidden xl:inline"}>
                     {pill.label}
                   </span>
                   {(() => {
