@@ -30,6 +30,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
 import { PageHero } from "@/components/common";
+import { AdminSubNav } from "@/components/admin/AdminSubNav";
 import { useAdminRoles } from "@/hooks/queries/useAdminQueries";
 import { useCreateRole } from "@/hooks/mutations/useAdminMutations";
 import { cn } from "@/lib/utils";
@@ -241,6 +242,7 @@ export default function AdminRolesPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
+      <AdminSubNav />
       <PageHero
         title="Role Management"
         subtitle="Review default roles and create custom roles for the organization."

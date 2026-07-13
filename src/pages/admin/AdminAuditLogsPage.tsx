@@ -32,6 +32,8 @@ import {
 import { KPICard } from "@/components/common/KPICard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
+import { PageHero } from "@/components/common";
+import { AdminSubNav } from "@/components/admin/AdminSubNav";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
 import { LineChartCard, BarChartCard, PieChartCard } from "@/components/charts";
@@ -182,15 +184,11 @@ export default function AdminAuditLogsPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <div className="rounded-[20px] bg-gradient-to-br from-[#0c3767] via-[#185b95] to-[#147769] p-6 text-white shadow-lg sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Audit Logs
-        </h1>
-        <p className="mt-1 text-sm text-[#dcecff]">
-          Track system activity, user actions, and configuration changes across
-          all modules.
-        </p>
-      </div>
+      <AdminSubNav />
+      <PageHero
+        title="Audit Logs"
+        subtitle="Track system activity, user actions, and configuration changes across all modules."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KPICard

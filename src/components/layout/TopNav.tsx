@@ -113,7 +113,7 @@ export function TopNav() {
                   className={cn(
                     "flex min-w-[2rem] shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 py-[7px] font-heading text-xs whitespace-nowrap transition-all",
                     isActive
-                      ? "bg-chart-accent/25 font-bold text-foreground border border-white/40 backdrop-blur-md shadow-[0_6px_16px_-4px_rgb(0_0_0/0.18),0_2px_4px_-2px_rgb(0_0_0/0.12)]"
+                      ? "bg-chart-accent/85 font-bold text-black border border-white/50 backdrop-blur-md shadow-[0_8px_20px_-4px_rgb(2_0_0/0.25),0_3px_6px_-2px_rgb(0_0_0/0.15)]"
                       : "font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent",
                   )}
                 >

@@ -28,6 +28,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { KPICard } from "@/components/common/KPICard";
+import { PageHero } from "@/components/common";
+import { AdminSubNav } from "@/components/admin/AdminSubNav";
+import { ChartGrid } from "@/components/common/ChartGrid";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { BarChartCard } from "@/components/charts/BarChartCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
@@ -44,6 +49,15 @@ import type { UserProfile } from "@/types";
 
 const ROLES = ["admin", "executive", "owner", "approver"] as const;
 const PAGE_SIZE = 10;
+
+function countBy<T>(items: T[], key: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const value = String(item[key] ?? "Unknown");
+    map.set(value, (map.get(value) ?? 0) + 1);
+  });
+  return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+}
 const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
 
@@ -280,6 +294,22 @@ export default function AdminUsersPage() {
     };
   }, [data]);
 
+  // Admin oversight: distribution of users across role / status / department,
+  // computed from the full org user set (not the paginated table page).
+  const allUsers = useMemo(() => allUsersData?.items ?? [], [allUsersData]);
+  const roleChart = useMemo(() => countBy(allUsers, "role"), [allUsers]);
+  const statusChart = useMemo(() => countBy(allUsers, "status"), [allUsers]);
+  const deptChart = useMemo(() => {
+    const m = new Map<string, number>();
+    allUsers.forEach((u) => {
+      const v = u.department || "Unknown";
+      m.set(v, (m.get(v) ?? 0) + 1);
+    });
+    return Array.from(m.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }));
+  }, [allUsers]);
+
   const handleInvite = (values: UserFormValues) => {
     createUser.mutate(
       { ...values, isActive: values.status === "Active" },
@@ -319,21 +349,19 @@ export default function AdminUsersPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <div className="rounded-[20px] bg-gradient-to-br from-[#0c3767] via-[#185b95] to-[#147769] p-6 text-white shadow-lg sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          User Management
-        </h1>
-        <p className="mt-1 text-sm text-[#dcecff]">
-          Invite, manage, and deactivate users across the organization.
-        </p>
-      </div>
+      <AdminSubNav />
+      <PageHero
+        title="User Management"
+        subtitle="Invite, manage, and deactivate users across the organization."
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KPICard
           label="Total Users"
           value={kpis.total}
           icon={Users}
           loading={isPending}
+          className="h-full"
         />
         <KPICard
           label="Active Users"
@@ -341,6 +369,7 @@ export default function AdminUsersPage() {
           icon={UserCheck}
           loading={isPending}
           subtitle="on this page"
+          className="h-full"
         />
         <KPICard
           label="Invited"
@@ -348,6 +377,7 @@ export default function AdminUsersPage() {
           icon={Mail}
           loading={isPending}
           subtitle="on this page"
+          className="h-full"
         />
         <KPICard
           label="Deactivated"
@@ -355,8 +385,39 @@ export default function AdminUsersPage() {
           icon={UserX}
           loading={isPending}
           subtitle="on this page"
+          className="h-full"
         />
       </div>
+
+      <ChartGrid>
+        <PieChartCard
+          title="Users by Role"
+          data={roleChart}
+          nameKey="name"
+          valueKey="value"
+          loading={allUsersData == null}
+          height={240}
+          className="h-full"
+        />
+        <PieChartCard
+          title="Users by Status"
+          data={statusChart}
+          nameKey="name"
+          valueKey="value"
+          loading={allUsersData == null}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="Users by Department"
+          data={deptChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Users" }]}
+          loading={allUsersData == null}
+          height={240}
+          className="h-full"
+        />
+      </ChartGrid>
 
       <Card>
         <CardHeader>
@@ -495,7 +556,8 @@ export default function AdminUsersPage() {
                     {data?.items.map((user) => (
                       <tr
                         key={user.id}
-                        className="border-b border-border transition-colors hover:bg-muted/50"
+                        onClick={() => setEditingUser(user)}
+                        className="cursor-pointer border-b border-border transition-colors hover:bg-muted/50"
                       >
                         <td className="px-4 py-3 font-medium whitespace-nowrap">
                           {user.name}

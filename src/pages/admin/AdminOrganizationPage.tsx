@@ -26,6 +26,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KPICard } from "@/components/common/KPICard";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
+import { PageHero } from "@/components/common";
+import { AdminSubNav } from "@/components/admin/AdminSubNav";
 import {
   useAdminOrganization,
   useAdminUsers,
@@ -160,15 +162,11 @@ export default function AdminOrganizationPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <div className="rounded-[20px] bg-gradient-to-br from-[#0c3767] via-[#185b95] to-[#147769] p-6 text-white shadow-lg sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Organization Settings
-        </h1>
-        <p className="mt-1 text-sm text-[#dcecff]">
-          Manage entity structure, jurisdictions, and default compliance
-          parameters.
-        </p>
-      </div>
+      <AdminSubNav />
+      <PageHero
+        title="Organization Settings"
+        subtitle="Manage entity structure, jurisdictions, and default compliance parameters."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KPICard

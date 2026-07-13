@@ -21,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChartCard } from "@/components/charts";
 import { LoadingState } from "@/components/common/LoadingState";
 import { ErrorState } from "@/components/common/ErrorState";
+import { PageHero } from "@/components/common";
+import { AdminSubNav } from "@/components/admin/AdminSubNav";
 import { useAdminAIConfig } from "@/hooks/queries/useAdminQueries";
 import { useAdminAuditLogs } from "@/hooks/queries/useAdminQueries";
 import { useUpdateAIConfig } from "@/hooks/mutations/useAdminMutations";
@@ -144,15 +146,11 @@ export default function AdminAIConfigPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <div className="rounded-[20px] bg-gradient-to-br from-[#0c3767] via-[#185b95] to-[#147769] p-6 text-white shadow-lg sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          AI Configuration
-        </h1>
-        <p className="mt-1 text-sm text-[#dcecff]">
-          Control model selection, confidence thresholds, and explainability
-          preferences.
-        </p>
-      </div>
+      <AdminSubNav />
+      <PageHero
+        title="AI Configuration"
+        subtitle="Control model selection, confidence thresholds, and explainability preferences."
+      />
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
         <div className="flex items-start gap-3">
