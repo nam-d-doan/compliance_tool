@@ -190,7 +190,7 @@
   /* Base surfaces */
   --background: #efeae6;
   --foreground: #1e1d1b;
-  --card: rgb(255 255 255 / 32%);
+  --card: rgb(255 255 255 / 65%);
   --card-foreground: #1e1d1b;
   --popover: rgb(255 255 255 / 92%);
   --popover-foreground: #1e1d1b;
@@ -223,8 +223,8 @@
   --card-border: rgb(255 255 255 / 65%);
   --card-shadow:
     0 12px 34px -16px rgb(60 40 50 / 22%), inset 0 1px 0 rgb(255 255 255 / 50%);
-  --nav-bg: rgb(255 255 255 / 38%);
-  --nav-border: rgb(255 255 255 / 60%);
+  --nav-bg: rgb(255 255 255 / 65%);
+  --nav-border: rgb(255 255 255 / 70%);
 
   /* Aurora page background — soft, low-saturation wash */
   --page-gradient: linear-gradient(
@@ -270,7 +270,7 @@
 .dark {
   --background: #14131a;
   --foreground: #f1efea;
-  --card: rgb(255 255 255 / 5%);
+  --card: rgb(255 255 255 / 12%);
   --card-foreground: #f1efea;
   --popover: rgb(20 19 26 / 95%);
   --popover-foreground: #f1efea;
@@ -298,8 +298,8 @@
   --ring-inner: #14131a;
   --card-border: rgb(255 255 255 / 12%);
   --card-shadow: 0 20px 45px -20px rgb(0 0 0 / 60%);
-  --nav-bg: rgb(255 255 255 / 6%);
-  --nav-border: rgb(255 255 255 / 14%);
+  --nav-bg: rgb(255 255 255 / 14%);
+  --nav-border: rgb(255 255 255 / 18%);
 
   --page-gradient: linear-gradient(
     135deg,
@@ -337,6 +337,29 @@
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+}
+
+/*
+ * Frosted-glass enhancement.
+ *
+ * Regular glassmorphism = blur only (you can see through it like a window).
+ * Frosted glass = blur + saturate(180%) (milky/foggy, diffused — you can't
+ * see through clearly, content is more readable). The saturate boost is the
+ * key differentiator: it enriches colors behind the surface, creating the
+ * etched/sandblasted look instead of just blurred see-through.
+ *
+ * Overriding Tailwind's backdrop-blur utilities here (unlayered CSS wins over
+ * Tailwind's @layer utilities) so ALL glass surfaces — cards, nav, sheets,
+ * sub-navs — become frosted without touching any component file.
+ */
+.backdrop-blur-xl {
+  backdrop-filter: blur(24px) saturate(180%);
+}
+.backdrop-blur-md {
+  backdrop-filter: blur(12px) saturate(180%);
+}
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px) saturate(180%);
 }
 
 @layer base {

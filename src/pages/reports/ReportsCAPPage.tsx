@@ -44,6 +44,8 @@ function getChartComponent(chart: ReportChart) {
         data={data}
         nameKey="name"
         valueKey={chart.datasets[0]?.label ?? "value"}
+        height={240}
+        className="h-full"
       />
     );
   }
@@ -56,6 +58,8 @@ function getChartComponent(chart: ReportChart) {
         data={data}
         xKey="name"
         yKeys={keys}
+        height={240}
+        className="h-full"
       />
     );
   }
@@ -67,6 +71,8 @@ function getChartComponent(chart: ReportChart) {
       data={data}
       xKey="name"
       yKeys={keys}
+      height={240}
+      className="h-full"
     />
   );
 }
@@ -211,7 +217,7 @@ export default function ReportsCAPPage() {
         onExport={handleExport}
       />
 
-      <ReportKPIs kpis={report.kpis} columns={6} />
+      <ReportKPIs kpis={report.kpis} columns={4} />
 
       {aiInsight && (
         <motion.div
@@ -223,7 +229,7 @@ export default function ReportsCAPPage() {
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {report.charts.map((chart) => getChartComponent(chart))}
       </div>
 

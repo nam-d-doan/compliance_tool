@@ -138,13 +138,14 @@ export default function EWSReportPage() {
       </motion.div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 items-stretch gap-4 md:grid-cols-3">
         {report.kpis.map((kpi) => (
           <KPICard
             key={kpi.label}
             label={kpi.label}
             value={kpi.value}
             icon={Calendar}
+            className="h-full"
             trend={
               kpi.trend
                 ? {
@@ -225,7 +226,7 @@ export default function EWSReportPage() {
       )}
 
       {/* Charts grid */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
         <LineChartCard
           title="NCC Creation & Closure Trend"
           subtitle="New and closed non-compliance cases per month"
@@ -235,6 +236,8 @@ export default function EWSReportPage() {
             { key: "newCases", name: "New Cases" },
             { key: "closedCases", name: "Closed Cases" },
           ]}
+          height={240}
+          className="h-full"
         />
 
         <LineChartCard
@@ -243,6 +246,8 @@ export default function EWSReportPage() {
           data={report.overdueTrend as unknown as ChartDataPoint[]}
           xKey="month"
           yKeys={[{ key: "overdueRate", name: "Overdue Rate (%)" }]}
+          height={240}
+          className="h-full"
         />
 
         <BarChartCard
@@ -255,6 +260,8 @@ export default function EWSReportPage() {
             { key: "open", name: "Open" },
             { key: "overdue", name: "Overdue" },
           ]}
+          height={240}
+          className="h-full"
         />
 
         <BarChartCard
@@ -267,6 +274,8 @@ export default function EWSReportPage() {
             { key: "open", name: "Open" },
             { key: "overdue", name: "Overdue" },
           ]}
+          height={240}
+          className="h-full"
         />
 
         <PieChartCard
@@ -280,7 +289,8 @@ export default function EWSReportPage() {
           }
           nameKey="name"
           valueKey="value"
-          className="lg:col-span-2"
+          height={240}
+          className="h-full lg:col-span-2"
         />
       </div>
     </div>

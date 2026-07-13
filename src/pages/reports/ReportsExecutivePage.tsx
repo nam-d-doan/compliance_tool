@@ -61,6 +61,8 @@ function getChartComponent(chart: ReportChart) {
         data={data}
         nameKey="name"
         valueKey={chart.datasets[0]?.label ?? "value"}
+        height={240}
+        className="h-full"
       />
     );
   }
@@ -73,6 +75,8 @@ function getChartComponent(chart: ReportChart) {
         data={data}
         xKey="name"
         yKeys={keys}
+        height={240}
+        className="h-full"
       />
     );
   }
@@ -84,6 +88,8 @@ function getChartComponent(chart: ReportChart) {
       data={data}
       xKey="name"
       yKeys={keys}
+      height={240}
+      className="h-full"
     />
   );
 }
@@ -315,7 +321,7 @@ export default function ReportsExecutivePage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {normalCharts.map((chart) => getChartComponent(chart))}
         {typedReport.heatmapData && (
           <RiskHeatmap
@@ -326,12 +332,13 @@ export default function ReportsExecutivePage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
         {/* Key Insights */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.15 }}
+          className="h-full"
         >
           <Card className="h-full">
             <CardHeader>
@@ -372,6 +379,7 @@ export default function ReportsExecutivePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.25 }}
+          className="h-full"
         >
           <Card className="h-full">
             <CardHeader>
