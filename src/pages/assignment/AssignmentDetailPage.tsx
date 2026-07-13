@@ -245,6 +245,27 @@ export default function AssignmentDetailPage() {
         </motion.div>
       )}
 
+      {/* KPI cards row — full-width above the 2-column layout. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 lg:items-stretch">
+        <KPICard
+          label="Days to due"
+          value={daysToDue}
+          subtitle={
+            daysToDue < 0
+              ? `${Math.abs(daysToDue)} days overdue`
+              : daysToDue === 0
+                ? "Due today"
+                : "days remaining"
+          }
+          icon={Calendar}
+          trend={{
+            direction: daysToDue < 0 ? "down" : "flat",
+            percent: Math.abs(daysToDue),
+            positive: daysToDue >= 0,
+          }}
+        />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {/* Action bar */}
@@ -492,24 +513,6 @@ export default function AssignmentDetailPage() {
 
         {/* Right rail */}
         <div className="space-y-4">
-          <KPICard
-            label="Days to due"
-            value={daysToDue}
-            subtitle={
-              daysToDue < 0
-                ? `${Math.abs(daysToDue)} days overdue`
-                : daysToDue === 0
-                  ? "Due today"
-                  : "days remaining"
-            }
-            icon={Calendar}
-            trend={{
-              direction: daysToDue < 0 ? "down" : "flat",
-              percent: Math.abs(daysToDue),
-              positive: daysToDue >= 0,
-            }}
-          />
-
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">

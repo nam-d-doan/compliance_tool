@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
   Cell,
+  Legend,
 } from "recharts";
 import {
   DashboardLayout,
@@ -223,6 +224,15 @@ export default function ApproverDashboardPage() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    wrapperStyle={{
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}

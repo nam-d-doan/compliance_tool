@@ -12,6 +12,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Legend,
 } from "recharts";
 import {
   DashboardLayout,
@@ -285,6 +286,15 @@ export default function ExecutiveDashboardPage() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    wrapperStyle={{
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}

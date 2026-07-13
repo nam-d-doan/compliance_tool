@@ -352,6 +352,42 @@ export default function ObligationDetailPage() {
         <PriorityBadge priority={item.riskLevel} size="md" />
       </div>
 
+      {/* KPI cards row — full-width above the 2-column layout. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:items-stretch">
+        <KPICard
+          label="Days to due"
+          value={daysToDue}
+          subtitle={
+            daysToDue < 0
+              ? `${Math.abs(daysToDue)} days overdue`
+              : daysToDue === 0
+                ? "Due today"
+                : "days remaining"
+          }
+          icon={Calendar}
+          trend={{
+            direction: daysToDue < 0 ? "down" : "flat",
+            percent: Math.abs(daysToDue),
+            positive: daysToDue >= 0,
+          }}
+        />
+        <KPICard
+          label="AI risk score"
+          value={item.aiRiskScore}
+          icon={AlertTriangle}
+          trend={{
+            direction: item.aiRiskScore >= 70 ? "up" : "down",
+            percent: item.aiRiskScore,
+            positive: item.aiRiskScore < 70,
+          }}
+        />
+        <KPICard
+          label="Progress"
+          value={`${item.progress}%`}
+          icon={CheckCircle}
+        />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <div className="flex flex-wrap gap-2 border-b border-border pb-1">
@@ -571,39 +607,6 @@ export default function ObligationDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <KPICard
-            label="Days to due"
-            value={daysToDue}
-            subtitle={
-              daysToDue < 0
-                ? `${Math.abs(daysToDue)} days overdue`
-                : daysToDue === 0
-                  ? "Due today"
-                  : "days remaining"
-            }
-            icon={Calendar}
-            trend={{
-              direction: daysToDue < 0 ? "down" : "flat",
-              percent: Math.abs(daysToDue),
-              positive: daysToDue >= 0,
-            }}
-          />
-          <KPICard
-            label="AI risk score"
-            value={item.aiRiskScore}
-            icon={AlertTriangle}
-            trend={{
-              direction: item.aiRiskScore >= 70 ? "up" : "down",
-              percent: item.aiRiskScore,
-              positive: item.aiRiskScore < 70,
-            }}
-          />
-          <KPICard
-            label="Progress"
-            value={`${item.progress}%`}
-            icon={CheckCircle}
-          />
-
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">

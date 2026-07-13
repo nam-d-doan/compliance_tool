@@ -43,7 +43,7 @@ export function SummaryCard({
       className="h-full"
     >
       <Card className="h-full gap-2 py-3">
-        <CardContent className="flex items-center gap-3">
+        <CardContent className="flex flex-1 items-center gap-3">
           {Icon && (
             <div
               className={cn(

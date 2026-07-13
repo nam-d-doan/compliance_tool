@@ -333,6 +333,15 @@ export default function RegulationDetailPage() {
         </div>
       </PageHero>
 
+      {/* KPI cards row — full-width above the 2-column layout. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 lg:items-stretch">
+        <KPICard
+          label="Articles"
+          value={item.articles.length}
+          icon={CheckCircle}
+        />
+      </div>
+
       {item.expirationDate &&
         item.status !== "Expired" &&
         new Date(item.expirationDate) < new Date() && (
@@ -767,11 +776,6 @@ export default function RegulationDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <KPICard
-            label="Articles"
-            value={item.articles.length}
-            icon={CheckCircle}
-          />
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
