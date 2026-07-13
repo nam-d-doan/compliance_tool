@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { format, parseISO } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -24,7 +25,10 @@ import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
-import { PageHero, SummaryCardBar } from "@/components/common";
+import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { BarChartCard } from "@/components/charts/BarChartCard";
+import { AreaChartCard } from "@/components/charts/AreaChartCard";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { useAuthStore } from "@/stores";
@@ -57,6 +61,28 @@ type SortField =
 
 const PAGE_SIZE = 10;
 
+function countBy<T>(items: T[], key: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const value = String(item[key] ?? "Unknown");
+    map.set(value, (map.get(value) ?? 0) + 1);
+  });
+  return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+}
+
+function monthlyTrend<T>(items: T[], dateKey: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const raw = item[dateKey];
+    if (!raw || typeof raw !== "string") return;
+    const label = format(parseISO(raw), "MMM yyyy");
+    map.set(label, (map.get(label) ?? 0) + 1);
+  });
+  return Array.from(map.entries())
+    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+    .map(([name, value]) => ({ name, value }));
+}
+
 export default function NCCListPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
@@ -72,6 +98,10 @@ export default function NCCListPage() {
   } | null>(null);
 
   const allNccQuery = useNCCList({}, 1, 500);
+  const allNcc = useMemo(
+    () => allNccQuery.data?.items ?? [],
+    [allNccQuery.data],
+  );
 
   const filteredNccQuery = useNCCList(filters, 1, 500);
   const filteredNcc = useMemo(
@@ -216,6 +246,37 @@ export default function NCCListPage() {
       </PageHero>
 
       <SummaryCardBar cards={summaryCards} />
+
+      <ChartGrid>
+        <PieChartCard
+          title="NCCs by Status"
+          data={countBy(allNcc, "status")}
+          nameKey="name"
+          valueKey="value"
+          loading={allNccQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="By Severity"
+          data={countBy(allNcc, "severity")}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Cases" }]}
+          loading={allNccQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+        <AreaChartCard
+          title="Over Time"
+          subtitle="Opened by month"
+          data={monthlyTrend(allNcc, "createdAt")}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Opened" }]}
+          loading={allNccQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+      </ChartGrid>
 
       <Card>
         <CardHeader>

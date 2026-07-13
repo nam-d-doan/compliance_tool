@@ -38,7 +38,11 @@ import {
   EmptyState,
   ListSkeleton,
   SummaryCardBar,
+  ChartGrid,
 } from "@/components/common";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { BarChartCard } from "@/components/charts/BarChartCard";
+import { AreaChartCard } from "@/components/charts/AreaChartCard";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { useAssignmentList, useOrgUnits } from "@/hooks/queries";
@@ -133,6 +137,41 @@ export default function AssignmentListPage() {
   const { data, isLoading, isFetching } = useAssignmentList(filters, 1, 100);
   const { data: orgUnitsData } = useOrgUnits();
   const assignments = data?.items ?? [];
+
+  // Unfiltered dataset for the chart aggregations.
+  const { data: chartData } = useAssignmentList({}, 1, 500);
+  const allAssignments = useMemo(() => chartData?.items ?? [], [chartData]);
+  const statusChart = useMemo(() => {
+    const m = new Map<string, number>();
+    allAssignments.forEach((a) => {
+      const v = String(a.status ?? "Unknown");
+      m.set(v, (m.get(v) ?? 0) + 1);
+    });
+    return Array.from(m.entries()).map(([name, value]) => ({ name, value }));
+  }, [allAssignments]);
+  const deptChart = useMemo(() => {
+    const m = new Map<string, number>();
+    allAssignments.forEach((a) => {
+      (a.assignedDepartmentNames ?? []).forEach((d) => {
+        const v = d || "Unknown";
+        m.set(v, (m.get(v) ?? 0) + 1);
+      });
+    });
+    return Array.from(m.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }));
+  }, [allAssignments]);
+  const trendChart = useMemo(() => {
+    const m = new Map<string, number>();
+    allAssignments.forEach((a) => {
+      if (!a.createdDate) return;
+      const label = format(parseISO(a.createdDate), "MMM yyyy");
+      m.set(label, (m.get(label) ?? 0) + 1);
+    });
+    return Array.from(m.entries())
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([name, value]) => ({ name, value }));
+  }, [allAssignments]);
 
   const bulk = useBulkUpdateAssignments(filters);
 
@@ -236,6 +275,37 @@ export default function AssignmentListPage() {
       </PageHero>
 
       <SummaryCardBar cards={summaryCards} />
+
+      <ChartGrid>
+        <PieChartCard
+          title="Assignments by Status"
+          data={statusChart}
+          nameKey="name"
+          valueKey="value"
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="By Department"
+          data={deptChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Assignments" }]}
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+        <AreaChartCard
+          title="Over Time"
+          subtitle="Created by month"
+          data={trendChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Created" }]}
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+      </ChartGrid>
 
       <Card>
         <CardHeader>

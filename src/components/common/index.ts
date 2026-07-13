@@ -37,3 +37,4 @@ export {
   SummaryCardBar,
   type SummaryCardData,
 } from "./SummaryCard";
+export { ChartGrid } from "./ChartGrid";

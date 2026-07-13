@@ -84,5 +84,20 @@ export function getNavPillsForRole(role: Role | null): NavPill[] {
   return NAV_PILLS.filter(
     (pill) =>
       !pill.requiredPermission || hasPermission(role, pill.requiredPermission),
-  );
+  ).map((pill) => {
+    // The CAP tab has two landed views: a chart-heavy dashboard (oversight)
+    // and a data-dense table (operational). Route by role so owners/approvers
+    // land on the table they act on, while admin/executive land on the
+    // dashboard overview. matchPrefixes keeps /cap/* highlighting the pill
+    // regardless of which landing was chosen.
+    if (pill.key === "cap") {
+      const dashboardRoles: Role[] = ["admin", "executive"];
+      const goToDashboard = role != null && dashboardRoles.includes(role);
+      return {
+        ...pill,
+        path: goToDashboard ? ROUTES.CAP.DASHBOARD : ROUTES.CAP.LIST,
+      };
+    }
+    return pill;
+  });
 }

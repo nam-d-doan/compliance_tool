@@ -225,47 +225,47 @@ export default function CAPDashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <div className="md:col-span-1">
-          <PieChartCard
-            title="CAPs by Status"
-            data={statusData}
-            nameKey="name"
-            valueKey="value"
-            loading={capsQuery.isPending}
-          />
-        </div>
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <PieChartCard
+          title="CAPs by Status"
+          data={statusData}
+          nameKey="name"
+          valueKey="value"
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
-        <div className="md:col-span-1">
-          <BarChartCard
-            title="CAPs by Priority"
-            data={priorityData}
-            xKey="name"
-            yKeys={[{ key: "value", name: "CAPs" }]}
-            loading={capsQuery.isPending}
-          />
-        </div>
+        <BarChartCard
+          title="CAPs by Priority"
+          data={priorityData}
+          xKey="name"
+          yKeys={[{ key: "value", name: "CAPs" }]}
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
-        <div className="md:col-span-1">
-          <AreaChartCard
-            title="CAPs Over Time"
-            subtitle="Created by month"
-            data={trendData}
-            xKey="name"
-            yKeys={[{ key: "value", name: "Created" }]}
-            loading={capsQuery.isPending}
-          />
-        </div>
+        <AreaChartCard
+          title="CAPs Over Time"
+          subtitle="Created by month"
+          data={trendData}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Created" }]}
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
-        <div className="md:col-span-1">
-          <BarChartCard
-            title="CAPs by Department"
-            data={departmentData.slice(0, 8)}
-            xKey="name"
-            yKeys={[{ key: "value", name: "CAPs" }]}
-            loading={capsQuery.isPending}
-          />
-        </div>
+        <BarChartCard
+          title="CAPs by Department"
+          data={departmentData.slice(0, 8)}
+          xKey="name"
+          yKeys={[{ key: "value", name: "CAPs" }]}
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
         <div className="lg:col-span-2">
           <CAPListCard

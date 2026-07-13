@@ -82,7 +82,7 @@ export function TopNav() {
 
   return (
     <>
-      <header className="relative z-50 flex flex-wrap items-center gap-3.5 px-4 pt-4 sm:px-6">
+      <header className="relative z-50 flex items-center gap-3.5 px-4 pt-4 sm:px-6">
         <Link
           to={ROUTES.DASHBOARD.ROOT}
           className="flex shrink-0 items-center gap-2"
@@ -98,7 +98,7 @@ export function TopNav() {
         </Link>
 
         <div className="flex min-w-0 flex-1 justify-center">
-          <nav className="flex max-w-full flex-wrap items-center gap-1.5 rounded-[18px] border bg-[var(--nav-bg)] px-3 py-1.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]">
+          <nav className="relative flex max-w-full items-center gap-1 overflow-x-auto rounded-[18px] border bg-[var(--nav-bg)] px-3 py-1.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-12px),transparent)]">
             {pills.map((pill) => {
               const isActive =
                 location.pathname === pill.path ||
@@ -111,14 +111,18 @@ export function TopNav() {
                   to={pill.path}
                   title={pill.label}
                   className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-[9px] px-3 py-[7px] font-heading text-xs whitespace-nowrap transition-colors",
+                    "flex min-w-[2rem] shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-3 py-[7px] font-heading text-xs whitespace-nowrap transition-colors",
                     isActive
-                      ? "font-bold text-foreground relative after:absolute after:bottom-0.5 after:left-1/2 after:h-[2px] after:w-5 after:-translate-x-1/2 after:rounded-full after:bg-chart-accent"
-                      : "font-semibold text-muted-foreground hover:text-foreground",
+                      ? "bg-chart-accent font-bold text-black"
+                      : "font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                   )}
                 >
                   <pill.icon className="size-3.5" />
-                  <span>{pill.label}</span>
+                  {/* On cramped widths, hide the label for inactive tabs; keep
+                      it for the active tab so the current location is obvious. */}
+                  <span className={isActive ? "inline" : "hidden lg:inline"}>
+                    {pill.label}
+                  </span>
                   {(() => {
                     const count = pillCount(pill.key);
                     if (count <= 0) return null;

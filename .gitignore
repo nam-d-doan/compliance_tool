@@ -26,3 +26,4 @@ dist-ssr
 # local items
 .cortexkit/
 *.pdf
+.pi-subagents/
