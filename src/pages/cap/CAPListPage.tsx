@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { format, parseISO } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,7 +25,11 @@ import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
-import { PageHero, SummaryCardBar } from "@/components/common";
+import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { BarChartCard } from "@/components/charts/BarChartCard";
+import { AreaChartCard } from "@/components/charts/AreaChartCard";
+import { statusLabel, priorityLabel } from "@/lib/chart-labels";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { useAuthStore } from "@/stores";
@@ -94,6 +99,66 @@ export default function CAPListPage() {
     () => Array.from(new Set(allCaps.map((c) => c.department))).sort(),
     [allCaps],
   );
+
+  // Chart aggregations from the unfiltered set (parity with other tabs +
+  // the former dashboard).
+  const PRIORITY_ORDER: Record<PriorityLevel, number> = {
+    low: 1,
+    medium: 2,
+    high: 3,
+    critical: 4,
+  };
+  const chartCountBy = (key: keyof CAP) => {
+    const m = new Map<string, number>();
+    allCaps.forEach((c) => {
+      const v = String(c[key] ?? "Unknown");
+      m.set(v, (m.get(v) ?? 0) + 1);
+    });
+    return Array.from(m.entries()).map(([name, value]) => ({ name, value }));
+  };
+  const statusChart = useMemo(
+    () =>
+      chartCountBy("status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allCaps],
+  );
+  const priorityChart = useMemo(
+    () =>
+      chartCountBy("priority")
+        .sort(
+          (a, b) =>
+            PRIORITY_ORDER[a.name as PriorityLevel] -
+            PRIORITY_ORDER[b.name as PriorityLevel],
+        )
+        .map((d) => ({ name: priorityLabel(d.name), value: d.value })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allCaps],
+  );
+  const trendChart = useMemo(() => {
+    const m = new Map<string, number>();
+    allCaps.forEach((c) => {
+      if (!c.createdAt) return;
+      const label = format(parseISO(c.createdAt), "MMM yyyy");
+      m.set(label, (m.get(label) ?? 0) + 1);
+    });
+    return Array.from(m.entries())
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([name, value]) => ({ name, value }));
+  }, [allCaps]);
+  const deptChart = useMemo(() => {
+    const m = new Map<string, number>();
+    allCaps.forEach((c) => {
+      const v = c.department || "Unknown";
+      m.set(v, (m.get(v) ?? 0) + 1);
+    });
+    return Array.from(m.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([name, value]) => ({ name, value }));
+  }, [allCaps]);
   const { data: regulationsData } = useRegulationList({}, 1, 200);
 
   const sortedCaps = useMemo(() => {
@@ -224,6 +289,46 @@ export default function CAPListPage() {
       </PageHero>
 
       <SummaryCardBar cards={summaryCards} />
+
+      <ChartGrid className="xl:grid-cols-4">
+        <PieChartCard
+          title="CAPs by Status"
+          data={statusChart}
+          nameKey="name"
+          valueKey="value"
+          loading={allCapsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="By Priority"
+          data={priorityChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "CAPs" }]}
+          loading={allCapsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+        <AreaChartCard
+          title="Over Time"
+          subtitle="Created by month"
+          data={trendChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Created" }]}
+          loading={allCapsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="By Department"
+          data={deptChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "CAPs" }]}
+          loading={allCapsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+      </ChartGrid>
 
       <Card>
         <CardHeader>

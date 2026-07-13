@@ -47,9 +47,9 @@ function isHighOrCritical(value: string | undefined): boolean {
 
 /** Role label for the "needs my action" card hint. */
 function actionHint(role: string | null, fallback: string): string {
-  if (role === "executive") return "view + comment only";
-  if (role === "approver") return "awaiting my review";
-  if (role === "owner") return "awaiting my action";
+  if (role === "executive") return "View + comment only";
+  if (role === "approver") return "Awaiting my review";
+  if (role === "owner") return "Awaiting my action";
   return fallback;
 }
 
@@ -86,7 +86,7 @@ export function useRegulationsSummary(): SummaryCardData[] {
       value: effective.length,
       icon: BookOpen,
       iconClassName: TINT_SUCCESS,
-      hint: `${items.length} total`,
+      hint: `${items.length} Total`,
     },
     {
       title: "Recently Added (30d)",
@@ -103,7 +103,7 @@ export function useRegulationsSummary(): SummaryCardData[] {
       value: superseded.length,
       icon: Archive,
       iconClassName: TINT_WARN,
-      hint: "review impacted items",
+      hint: "Review impacted items",
     },
     {
       title:
@@ -115,7 +115,7 @@ export function useRegulationsSummary(): SummaryCardData[] {
       value: counts.regulations,
       icon: Eye,
       iconClassName: counts.regulations > 0 ? TINT_DANGER : TINT_INFO,
-      hint: actionHint(role, "awaiting review"),
+      hint: actionHint(role, "Awaiting review"),
     },
   ];
 }
@@ -136,28 +136,28 @@ export function useAssignmentsSummary(): SummaryCardData[] {
       value: items.length,
       icon: ClipboardCheck,
       iconClassName: TINT_INFO,
-      hint: `${published} published · ${inProgress} in progress`,
+      hint: `${published} Published · ${inProgress} In Progress`,
     },
     {
       title: "Pending Acknowledgment",
       value: published,
       icon: Mail,
       iconClassName: published > 0 ? TINT_WARN : TINT_INFO,
-      hint: "awaiting dept. ack",
+      hint: "Awaiting dept. acknowledgment",
     },
     {
       title: "In Progress",
       value: inProgress,
       icon: PlayCircle,
       iconClassName: TINT_SUCCESS,
-      hint: `${acknowledged} acknowledged`,
+      hint: `${acknowledged} Acknowledged`,
     },
     {
       title: role === "approver" ? "Needs My Review" : "Needs My Action",
       value: counts.assignments,
       icon: UserCheck,
       iconClassName: counts.assignments > 0 ? TINT_DANGER : TINT_INFO,
-      hint: actionHint(role, "awaiting ack"),
+      hint: actionHint(role, "Awaiting acknowledgment"),
     },
   ];
 }
@@ -182,7 +182,7 @@ export function useObligationsSummary(): SummaryCardData[] {
       value: items.length,
       icon: ShieldCheck,
       iconClassName: TINT_INFO,
-      hint: `${reviewRequired} pending review`,
+      hint: `${reviewRequired} Pending review`,
     },
     {
       title: "Overdue / At Risk",
@@ -209,7 +209,7 @@ export function useObligationsSummary(): SummaryCardData[] {
       value: counts.obligations,
       icon: CheckCircle,
       iconClassName: counts.obligations > 0 ? TINT_DANGER : TINT_SUCCESS,
-      hint: actionHint(role, "pending + overdue"),
+      hint: actionHint(role, "Pending + overdue"),
     },
   ];
 }
@@ -239,7 +239,7 @@ export function useCAPsSummary(): SummaryCardData[] {
       value: items.length,
       icon: ClipboardList,
       iconClassName: TINT_INFO,
-      hint: `${open} open · ${pendingApproval} pending approval`,
+      hint: `${open} Open · ${pendingApproval} Pending approval`,
     },
     {
       title: "Overdue / At Risk",
@@ -266,7 +266,7 @@ export function useCAPsSummary(): SummaryCardData[] {
       value: counts.caps,
       icon: Clock,
       iconClassName: counts.caps > 0 ? TINT_DANGER : TINT_SUCCESS,
-      hint: actionHint(role, "open + overdue"),
+      hint: actionHint(role, "Open + overdue"),
     },
   ];
 }
@@ -291,7 +291,7 @@ export function useNCCsSummary(): SummaryCardData[] {
       value: open,
       icon: ShieldAlert,
       iconClassName: open > 0 ? TINT_WARN : TINT_SUCCESS,
-      hint: `${items.length} total`,
+      hint: `${items.length} Total`,
     },
     {
       title: "High / Critical & Open",
@@ -311,7 +311,7 @@ export function useNCCsSummary(): SummaryCardData[] {
       value: counts.nccs,
       icon: UserCheck,
       iconClassName: counts.nccs > 0 ? TINT_DANGER : TINT_INFO,
-      hint: role === "owner" ? "my open / overdue" : "high & critical",
+      hint: role === "owner" ? "My open / overdue" : "High & critical",
     },
   ];
 }

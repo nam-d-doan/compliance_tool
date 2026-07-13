@@ -221,7 +221,7 @@ export function TopNav() {
           )}
 
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-[19px] border bg-[var(--nav-bg)] py-1 pr-1.5 pl-3.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]">
+            <DropdownMenuTrigger className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-[19px] border bg-[var(--nav-bg)] py-1 pr-3 pl-3.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]">
               <div className="bg-ink-chip flex size-7 shrink-0 items-center justify-center rounded-full">
                 <span className="text-ink-chip-foreground text-[11px] font-bold">
                   {initials}
