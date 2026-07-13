@@ -6,9 +6,10 @@ import {
   ComplianceChainSummary,
   CHAIN_ICONS,
   CHAIN_COLORS,
-  UpcomingCard,
   DeadlineCalendar,
   AISummaryLine,
+  MyObligationsWidget,
+  MyCAPsWidget,
   type ChainStage,
 } from "@/components/dashboard";
 import { useAuthStore } from "@/stores";
@@ -22,8 +23,6 @@ import {
   buildCapObligationMap,
   getOrphanedAttentionObligations,
   getSummaryStats,
-  isOverdue,
-  isDueSoon,
 } from "@/lib/obligation-helpers";
 import { getGreeting } from "@/lib/greeting";
 
@@ -123,16 +122,6 @@ export default function OwnerDashboardPage() {
     () => getSummaryStats(obligationItems, capItems),
     [obligationItems, capItems],
   );
-  const upcoming = useMemo(
-    () =>
-      obligationItems
-        .filter((o) => isDueSoon(o, 14) && !isOverdue(o))
-        .sort(
-          (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
-        ),
-    [obligationItems],
-  );
-
   const deptName = obligationItems.find(
     (o) => o.ownerDepartmentName,
   )?.ownerDepartmentName;
@@ -329,10 +318,13 @@ export default function OwnerDashboardPage() {
 
         {/* Side rail: what's due, and when. */}
         <div className="space-y-6">
-          <UpcomingCard obligations={upcoming} />
           <DeadlineCalendar obligations={obligationItems} />
         </div>
       </div>
+
+      <MyObligationsWidget obligations={obligationItems} caps={capItems} />
+
+      <MyCAPsWidget caps={myCaps} />
     </motion.div>
   );
 }

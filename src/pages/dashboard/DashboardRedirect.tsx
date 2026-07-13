@@ -11,8 +11,6 @@ export default function DashboardRedirect() {
       return <Navigate to="/dashboard/owner" replace />;
     case "approver":
       return <Navigate to="/dashboard/approver" replace />;
-    case "reviewer":
-      return <Navigate to="/dashboard/reviewer" replace />;
     case "admin":
       return <Navigate to="/dashboard/admin" replace />;
     default:

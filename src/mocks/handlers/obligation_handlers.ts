@@ -96,7 +96,6 @@ function buildObligation(
     ownerName: item.ownerName ?? requester?.name ?? "",
     approverId: "",
     approverName: "",
-    reviewerIds: [],
     businessUnit: "",
     department: item.ownerDepartmentName ?? item.ownerDepartmentId,
     location: "",

@@ -6,7 +6,6 @@ export const ROLE_HIERARCHY: Record<Role, number> = {
   executive: 4,
   owner: 3,
   approver: 2,
-  reviewer: 1,
 };
 
 // Role permissions
@@ -84,14 +83,6 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "compliance:approve",
     "cap:read",
     "cap:approve",
-    "regulation:read",
-    "assignment:read",
-    "ncc:read",
-    "report:read",
-  ],
-  reviewer: [
-    "compliance:read",
-    "cap:read",
     "regulation:read",
     "assignment:read",
     "ncc:read",

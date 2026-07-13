@@ -35,7 +35,6 @@ export interface Obligation extends BaseEntity {
 
   approverId: string;
   approverName: string;
-  reviewerIds: string[];
 
   /** Business unit / department / location groupings, retained from the
    * legacy entity for reporting and filtering parity. */
@@ -103,7 +102,6 @@ export interface ObligationFilter {
   location?: string;
   regulationId?: string;
   approver?: string;
-  reviewer?: string;
   tags?: string[];
   assignmentId?: string;
   /** Filter to obligations that are overdue (dueDate < now, not completed). */

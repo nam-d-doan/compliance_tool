@@ -234,7 +234,6 @@ export default function ObligationDetailPage() {
         ownerName: selected.owner?.name ?? item.ownerName,
         approverId: values.approverId,
         approverName: selected.approver?.name ?? item.approverName,
-        reviewerIds: values.reviewerIds,
         frequency: values.frequency,
         dueDate: new Date(values.dueDate).toISOString(),
         riskLevel: values.criticality,
@@ -280,7 +279,6 @@ export default function ObligationDetailPage() {
     regulationId: item.regulationId,
     ownerId: item.ownerId,
     approverId: item.approverId,
-    reviewerIds: item.reviewerIds,
     frequency: item.frequency,
     dueDate: item.dueDate.slice(0, 10),
     criticality: item.riskLevel,
@@ -391,17 +389,6 @@ export default function ObligationDetailPage() {
                       </dt>
                       <dd className="text-sm font-semibold text-foreground">
                         {item.approverName}
-                      </dd>
-                    </div>
-                    <div className="space-y-1 rounded-lg border bg-card p-3">
-                      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <User className="size-3.5" aria-hidden="true" />
-                        Reviewers
-                      </dt>
-                      <dd className="text-sm font-semibold text-foreground">
-                        {item.reviewerIds.length > 0
-                          ? `${item.reviewerIds.length} assigned`
-                          : "None"}
                       </dd>
                     </div>
                     <div className="space-y-1 rounded-lg border bg-card p-3">

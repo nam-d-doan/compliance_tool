@@ -1,6 +1,6 @@
 // Base types used across the application
 
-export type Role = "admin" | "executive" | "owner" | "approver" | "reviewer";
+export type Role = "admin" | "executive" | "owner" | "approver";
 
 export interface BaseEntity {
   id: string;

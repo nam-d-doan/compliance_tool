@@ -18,6 +18,7 @@ import {
   DashboardActivityFeed,
   DashboardApprovalQueue,
   DashboardAssignmentsCard,
+  DashboardUpcomingRegulations,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -32,24 +33,42 @@ import {
   useObligationList,
   useCAPList,
   useAssignmentList,
+  useRegulationList,
 } from "@/hooks/queries";
+import { DEMO_TODAY } from "@/mocks/db";
 
 function useApproverData() {
   const dashboard = useDashboard("approver");
   const compliance = useObligationList({}, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 }, 1, 500);
   const assignments = useAssignmentList({}, 1, 200);
+  const regulations = useRegulationList({}, 1, 200);
 
   const isLoading =
     dashboard.isPending || compliance.isPending || caps.isPending;
   const error = dashboard.error ?? compliance.error ?? caps.error;
 
-  return { dashboard, compliance, caps, assignments, isLoading, error };
+  return {
+    dashboard,
+    compliance,
+    caps,
+    assignments,
+    regulations,
+    isLoading,
+    error,
+  };
 }
 
 export default function ApproverDashboardPage() {
-  const { dashboard, compliance, caps, assignments, isLoading, error } =
-    useApproverData();
+  const {
+    dashboard,
+    compliance,
+    caps,
+    assignments,
+    regulations,
+    isLoading,
+    error,
+  } = useApproverData();
 
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
@@ -59,6 +78,10 @@ export default function ApproverDashboardPage() {
   const assignmentItems = useMemo(
     () => assignments.data?.items ?? [],
     [assignments.data],
+  );
+  const regulationItems = useMemo(
+    () => regulations.data?.items ?? [],
+    [regulations.data],
   );
 
   const pendingApprovalCount = useMemo(
@@ -83,15 +106,26 @@ export default function ApproverDashboardPage() {
     }));
   }, [complianceItems, capItems]);
 
-  const turnaroundData = useMemo(
-    () => [
-      { name: "< 1 day", value: 12 },
-      { name: "1-3 days", value: 24 },
-      { name: "3-5 days", value: 9 },
-      { name: "> 5 days", value: 5 },
-    ],
-    [],
-  );
+  const turnaroundData = useMemo(() => {
+    const decided = complianceItems.filter((item) =>
+      ["approved", "rejected", "returned"].includes(item.status),
+    );
+    const buckets = [
+      { name: "< 1 day", min: 0, max: 1, value: 0 },
+      { name: "1-3 days", min: 1, max: 3, value: 0 },
+      { name: "3-5 days", min: 3, max: 5, value: 0 },
+      { name: "> 5 days", min: 5, max: Infinity, value: 0 },
+    ];
+    decided.forEach((item) => {
+      const days =
+        (new Date(item.updatedAt).getTime() -
+          new Date(item.createdAt).getTime()) /
+        (1000 * 60 * 60 * 24);
+      const bucket = buckets.find((b) => days >= b.min && days < b.max);
+      if (bucket) bucket.value += 1;
+    });
+    return buckets.map(({ name, value }) => ({ name, value }));
+  }, [complianceItems]);
 
   if (isLoading) {
     return (
@@ -212,6 +246,14 @@ export default function ApproverDashboardPage() {
           breakdown="review"
           linkLabel="Go to assignments"
           delay={0.3}
+        />
+      </div>
+
+      <div className="md:col-span-1">
+        <DashboardUpcomingRegulations
+          regulations={regulationItems}
+          now={DEMO_TODAY}
+          delay={0.35}
         />
       </div>
     </DashboardLayout>

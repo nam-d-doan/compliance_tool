@@ -15,7 +15,7 @@ import {
   DashboardKpiCard,
   DashboardChartCard,
   DashboardAdminStats,
-  DashboardAssignmentsCard,
+  DashboardActivityFeed,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -23,23 +23,21 @@ import {
   ListSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import { useDashboard, useAssignmentList } from "@/hooks/queries";
+import { useDashboard } from "@/hooks/queries";
 import {
   useAdminUsers,
   useAdminAuditLogs,
   useAdminAIConfig,
 } from "@/hooks/queries/useAdminQueries";
-import {
-  CHART_COLORS,
-  type ChartDataPoint,
-} from "@/components/charts/chart-theme";
+import { CHART_COLORS } from "@/components/charts/chart-theme";
+import { DEMO_TODAY } from "@/mocks/db";
+import type { ActivityFeedItem } from "@/types";
 
 function useAdminData() {
   const dashboard = useDashboard("admin");
   const users = useAdminUsers(1, 500);
   const auditLogs = useAdminAuditLogs(1, 100);
   const aiConfig = useAdminAIConfig();
-  const assignments = useAssignmentList({}, 1, 200);
 
   const isLoading =
     dashboard.isPending ||
@@ -54,31 +52,19 @@ function useAdminData() {
     users,
     auditLogs,
     aiConfig,
-    assignments,
     isLoading,
     error,
   };
 }
 
 export default function AdminDashboardPage() {
-  const {
-    dashboard,
-    users,
-    auditLogs,
-    aiConfig,
-    assignments,
-    isLoading,
-    error,
-  } = useAdminData();
+  const { dashboard, users, auditLogs, aiConfig, isLoading, error } =
+    useAdminData();
 
   const userItems = useMemo(() => users.data?.items ?? [], [users.data]);
   const auditItems = useMemo(
     () => auditLogs.data?.items ?? [],
     [auditLogs.data],
-  );
-  const assignmentItems = useMemo(
-    () => assignments.data?.items ?? [],
-    [assignments.data],
   );
 
   const activeUserCount = useMemo(
@@ -112,18 +98,56 @@ export default function AdminDashboardPage() {
       .map(([name, value]) => ({ name, value }));
   }, [auditItems]);
 
-  const aiUsage = useMemo(
-    () => [
-      { name: "Mon", queries: 120 },
-      { name: "Tue", queries: 145 },
-      { name: "Wed", queries: 132 },
-      { name: "Thu", queries: 168 },
-      { name: "Fri", queries: 154 },
-      { name: "Sat", queries: 78 },
-      { name: "Sun", queries: 65 },
-    ],
-    [],
-  );
+  const aiUsage = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(DEMO_TODAY);
+      d.setDate(d.getDate() - (6 - i));
+      return d;
+    });
+    const aiLogs = auditItems.filter((l) => l.action === "ai_usage");
+    return days.map((day) => {
+      const queries = aiLogs.filter((l) => {
+        const t = new Date(l.timestamp);
+        return (
+          t.getFullYear() === day.getFullYear() &&
+          t.getMonth() === day.getMonth() &&
+          t.getDate() === day.getDate()
+        );
+      }).length;
+      return {
+        name: day.toLocaleDateString("en-US", { weekday: "short" }),
+        queries,
+      };
+    });
+  }, [auditItems]);
+
+  const securityEvents = useMemo(() => {
+    return auditItems
+      .filter(
+        (log) =>
+          log.result === "failure" ||
+          log.action === "login" ||
+          log.action === "settings_change" ||
+          log.action === "delete",
+      )
+      .map((log) => ({
+        id: log.id,
+        type: (log.result === "failure"
+          ? "rejection"
+          : log.action === "login"
+            ? "submission"
+            : "comment") as ActivityFeedItem["type"],
+        title: `${log.action} in ${log.module}${log.result === "failure" ? " (failed)" : ""}`,
+        description: log.details ?? "",
+        userId: log.userId,
+        userName: log.userName,
+        entityType: "user" as const,
+        entityId: log.object,
+        timestamp: log.timestamp,
+        createdAt: log.createdAt,
+        updatedAt: log.updatedAt,
+      }));
+  }, [auditItems]);
 
   if (isLoading) {
     return (
@@ -193,11 +217,7 @@ export default function AdminDashboardPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={
-                  (auditEvents.length
-                    ? auditEvents
-                    : aiUsage) as ChartDataPoint[]
-                }
+                data={auditEvents}
                 margin={{ top: 8, right: 16, bottom: 0, left: -16 }}
               >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -240,11 +260,9 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardAssignmentsCard
-          title="Review Assignments"
-          description="Assignments routed to departments."
-          assignments={assignmentItems}
-          breakdown="status"
+        <DashboardActivityFeed
+          items={securityEvents}
+          title="Security Events"
           delay={0.25}
         />
       </div>

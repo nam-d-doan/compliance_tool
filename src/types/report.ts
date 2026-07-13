@@ -57,7 +57,6 @@ export interface ReportFilter {
   location?: string | string[];
   owner?: string;
   approver?: string;
-  reviewer?: string;
   complianceCategory?: string;
   status?: string | string[];
   criticality?: PriorityLevel | PriorityLevel[];

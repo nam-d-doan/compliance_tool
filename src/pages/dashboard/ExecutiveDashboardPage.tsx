@@ -22,6 +22,7 @@ import {
   DashboardRiskHeatmap,
   DashboardNeedsAttentionList,
   DashboardAssignmentsCard,
+  DashboardUpcomingRegulations,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -34,6 +35,7 @@ import {
   useObligationList,
   useCAPList,
   useAssignmentList,
+  useRegulationList,
 } from "@/hooks/queries";
 import { useExecutiveSummary } from "@/hooks/queries/useAIQueries";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -41,15 +43,14 @@ import {
   CHART_COLORS,
   RISK_CHART_COLORS,
 } from "@/components/charts/chart-theme";
-
-const TREND_MONTHS = ["Aug", "Sep", "Oct", "Nov", "Dec", "Jan"];
-const TREND_VALUES = [91, 92, 90, 93, 94, 95];
+import { DEMO_TODAY } from "@/mocks/db";
 
 function useExecutiveData() {
   const dashboard = useDashboard("executive");
   const compliance = useObligationList({}, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 });
   const assignments = useAssignmentList({}, 1, 200);
+  const regulations = useRegulationList({}, 1, 200);
   const aiSummary = useExecutiveSummary();
 
   const isLoading =
@@ -62,6 +63,7 @@ function useExecutiveData() {
     compliance,
     caps,
     assignments,
+    regulations,
     aiSummary,
     isLoading,
     error,
@@ -74,6 +76,7 @@ export default function ExecutiveDashboardPage() {
     compliance,
     caps,
     assignments,
+    regulations,
     aiSummary,
     isLoading,
     error,
@@ -87,6 +90,10 @@ export default function ExecutiveDashboardPage() {
   const assignmentItems = useMemo(
     () => assignments.data?.items ?? [],
     [assignments.data],
+  );
+  const regulationItems = useMemo(
+    () => regulations.data?.items ?? [],
+    [regulations.data],
   );
 
   const complianceByBU = useMemo(() => {
@@ -123,14 +130,42 @@ export default function ExecutiveDashboardPage() {
     }));
   }, [capItems]);
 
-  const trendData = useMemo(
-    () =>
-      TREND_MONTHS.map((month, index) => ({
-        month,
-        value: TREND_VALUES[index],
-      })),
-    [],
-  );
+  const trendData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(DEMO_TODAY);
+      d.setMonth(d.getMonth() - (5 - i));
+      return d;
+    });
+    // Monthly completion rate among obligations last updated in that month.
+    // Months with no activity carry forward the prior month's rate (and
+    // leading gaps back-fill from the first observed rate) so the line stays
+    // continuous instead of showing misleading gaps/zeros.
+    const raw = months.map((monthDate) => {
+      const inMonth = complianceItems.filter((item) => {
+        const updated = new Date(item.updatedAt);
+        return (
+          updated.getFullYear() === monthDate.getFullYear() &&
+          updated.getMonth() === monthDate.getMonth()
+        );
+      });
+      const completed = inMonth.filter((item) =>
+        ["completed", "approved"].includes(item.status),
+      ).length;
+      return inMonth.length
+        ? Math.round((completed / inMonth.length) * 1000) / 10
+        : null;
+    });
+    const firstKnown = raw.find((v) => v !== null) ?? 0;
+    let lastValue = firstKnown;
+    const filled = raw.map((v) => {
+      if (v !== null) lastValue = v;
+      return lastValue;
+    });
+    return months.map((monthDate, i) => ({
+      month: monthDate.toLocaleDateString("en-US", { month: "short" }),
+      value: filled[i],
+    }));
+  }, [complianceItems]);
 
   if (isLoading) {
     return (
@@ -218,7 +253,11 @@ export default function ExecutiveDashboardPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis domain={[80, 100]} tick={{ fontSize: 12 }} />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(v) => `${v}%`}
+                />
                 <Tooltip />
                 <Area
                   type="monotone"
@@ -359,6 +398,14 @@ export default function ExecutiveDashboardPage() {
           assignments={assignmentItems}
           breakdown="department"
           delay={0.5}
+        />
+      </div>
+
+      <div className="md:col-span-1">
+        <DashboardUpcomingRegulations
+          regulations={regulationItems}
+          now={DEMO_TODAY}
+          delay={0.55}
         />
       </div>
     </DashboardLayout>

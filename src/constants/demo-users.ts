@@ -43,14 +43,4 @@ export const DEMO_USERS: UserProfile[] = [
     createdAt: "2024-01-15T00:00:00.000Z",
     updatedAt: "2024-01-15T00:00:00.000Z",
   },
-  {
-    id: "demo-reviewer",
-    email: "reviewer@demo.com",
-    name: "Emily Nakamura",
-    role: "reviewer" as Role,
-    status: "Active",
-    isActive: true,
-    createdAt: "2024-01-15T00:00:00.000Z",
-    updatedAt: "2024-01-15T00:00:00.000Z",
-  },
 ];

@@ -31,9 +31,6 @@ const OwnerDashboardPage = lazy(
 const ApproverDashboardPage = lazy(
   () => import("@/pages/dashboard/ApproverDashboardPage"),
 );
-const ReviewerDashboardPage = lazy(
-  () => import("@/pages/dashboard/ReviewerDashboardPage"),
-);
 const AdminDashboardPage = lazy(
   () => import("@/pages/dashboard/AdminDashboardPage"),
 );
@@ -150,7 +147,6 @@ export const router = createBrowserRouter([
           ),
           route("/dashboard/owner", <OwnerDashboardPage />, "Owner"),
           route("/dashboard/approver", <ApproverDashboardPage />, "Approver"),
-          route("/dashboard/reviewer", <ReviewerDashboardPage />, "Reviewer"),
           route("/dashboard/admin", <AdminDashboardPage />, "Admin"),
 
           route("/obligations", <ObligationListPage />, "Obligations"),

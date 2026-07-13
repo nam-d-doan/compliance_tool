@@ -398,7 +398,7 @@ function capReport(db: ReturnType<typeof getDb>): Report {
     summary: `${open} CAPs remain open with ${overdue} overdue.`,
     aiInsights: [
       "High priority CAPs in Retail Banking are at risk of missing deadlines.",
-      "Average closure time is 14% above target — consider additional reviewer capacity.",
+      "Average closure time is 14% above target — consider additional approver capacity.",
     ],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -492,7 +492,7 @@ function executiveReport(
     recommendedActions: [
       "Review workload allocation in Treasury — owner capacity is below target.",
       "Escalate 5 overdue critical obligations to the regional risk committee.",
-      "Add reviewer capacity to Retail Banking CAPs to reduce closure time.",
+      "Add approver capacity to Retail Banking CAPs to reduce closure time.",
     ],
   };
 

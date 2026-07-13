@@ -142,14 +142,13 @@ function pad(num: number, len = 3): string {
 }
 
 function generateStaffUsers(count = 15): UserProfile[] {
-  const roles = ["owner", "approver", "reviewer"] as const;
+  const roles = ["owner", "approver"] as const;
   return Array.from({ length: count }, (_, i) => {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
     const role = faker.helpers.weightedArrayElement([
       { weight: 5, value: "owner" },
       { weight: 3, value: "approver" },
-      { weight: 2, value: "reviewer" },
       { weight: 1, value: "executive" },
     ]);
     const createdAt = randomDate(subDays(today, 400), subDays(today, 60));
@@ -243,7 +242,7 @@ function generateRegulationDependencies(
  * Generate the unified Obligation dataset. Every obligation links to an
  * Assignment (the real intended flow entry point: Regulation → Assignment →
  * Obligation); regulation fields are denormalized from the assignment's
- * regulation. Richer fields (approver/reviewers/frequency/penalty/tags/
+ * regulation. Richer fields (approver/frequency/penalty/tags/
  * progress) come from the curated spec when present, otherwise a reasonable
  * seed default is generated so every row still reads as real data.
  */
@@ -267,7 +266,6 @@ function generateObligations(
   const approverUsers = users.filter(
     (u) => u.role === "approver" || u.role === "admin",
   );
-  const reviewerUsers = users.filter((u) => u.role === "reviewer");
 
   return CURATED_OBLIGATIONS.map((spec, i) => {
     const assignment = assignments[spec.assignmentIndex] ?? assignments[0];
@@ -275,10 +273,6 @@ function generateObligations(
       regById.get(assignment.regulationId) ?? regulations[0];
     const owner = pickOwner();
     const approver = pick(approverUsers.length ? approverUsers : users);
-    const reviewers = faker.helpers.arrayElements(reviewerUsers, {
-      min: 0,
-      max: 2,
-    });
     const dueDate = addDays(today, spec.dueOffset);
     const createdAt = subDays(today, faker.number.int({ min: 30, max: 90 }));
     const updatedAt = randomDate(createdAt, today);
@@ -299,7 +293,6 @@ function generateObligations(
       ownerName: owner.name,
       approverId: approver.id,
       approverName: approver.name,
-      reviewerIds: reviewers.map((r) => r.id),
       businessUnit: pick(BUSINESS_UNITS),
       department: assignment.assignedDepartmentNames?.[0] ?? pick(DEPARTMENTS),
       location: pick(LOCATIONS),
@@ -700,7 +693,6 @@ function generateRoles(): RoleEntity[] {
     },
     { name: "Owner", permissions: ["view", "create", "update", "export"] },
     { name: "Approver", permissions: ["view", "approve", "update", "export"] },
-    { name: "Reviewer", permissions: ["view", "export"] },
     { name: "Executive", permissions: ["view", "export"] },
   ];
   return roles.map((r, i) => ({

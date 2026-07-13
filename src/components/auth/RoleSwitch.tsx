@@ -4,7 +4,7 @@ import type { Role } from "@/types";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { UserCircle, Check } from "lucide-react";
 
-const ROLES: Role[] = ["admin", "executive", "owner", "approver", "reviewer"];
+const ROLES: Role[] = ["admin", "executive", "owner", "approver"];
 
 // Mirrors src/pages/dashboard/DashboardRedirect so a role switch immediately
 // routes the user to the dashboard that matches their new role.
@@ -13,7 +13,6 @@ const ROLE_DASHBOARD: Record<Role, string> = {
   executive: "/dashboard/executive",
   owner: "/dashboard/owner",
   approver: "/dashboard/approver",
-  reviewer: "/dashboard/reviewer",
 };
 
 /**
@@ -24,7 +23,7 @@ const ROLE_DASHBOARD: Record<Role, string> = {
 export function RoleSwitch() {
   const { role, updateUser } = useAuthStore();
   const navigate = useNavigate();
-  const currentRole = role ?? "reviewer";
+  const currentRole = role ?? "approver";
 
   const handleRoleChange = (newRole: Role) => {
     updateUser({ role: newRole });

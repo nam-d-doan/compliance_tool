@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types";
 
-const ROLES = ["admin", "executive", "owner", "approver", "reviewer"] as const;
+const ROLES = ["admin", "executive", "owner", "approver"] as const;
 const PAGE_SIZE = 10;
 const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";

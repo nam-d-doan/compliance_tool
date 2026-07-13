@@ -17,8 +17,7 @@ Demo accounts (`src/constants/demo-users.ts`, password `demo1234` for all — no
 | Admin | `admin@demo.com` | Org/user/role setup, AI config, audit logs |
 | Executive | `executive@demo.com` | Org-wide oversight dashboard, executive reports |
 | Owner | `owner@demo.com` | Creates/owns obligations, drives CAPs to completion |
-| Approver | `approver@demo.com` | Approves/rejects obligations and CAPs |
-| Reviewer | `reviewer@demo.com` | Reviews obligations flagged for review |
+| Approver | `approver@demo.com` | Reviews and approves/rejects obligations and CAPs |
 
 Role → permission mapping lives in `src/constants/rbac.ts`; role → route access and the sidebar nav tree are built in `src/constants/routes.ts`.
 
@@ -29,7 +28,7 @@ This is the single, unified chain as of the obligation-model unification (see [H
 1. **Regulation library** (`/regulation`, `src/pages/regulation/RegulationLibraryPage.tsx`) — Admin/Owner/Executive adds or reviews a regulation, either by hand or via a simulated "VietLex" search-and-import flow (`src/pages/regulation/RegulationCreatePage.tsx`, `VietLexDoc` types). Each regulation has `articles: Article[]`, a status (Draft/Effective/Superseded/…), and supports comparison (`/regulation/compare`) and impact analysis (`/regulation/:id/impact`).
 2. **Assignment** (`/assignment`, `src/pages/assignment/*`) — an Owner/Executive/Admin routes a specific regulation to one or more departments with a due date and priority. This is the real kickoff of the compliance lifecycle — a regulation sitting in the library does nothing until it's assigned.
 3. **Obligation creation** (`/obligations/create?assignmentId=...`, `src/pages/obligations/ObligationCreatePage.tsx`) — from the Assignment detail page, the assigned department bulk-creates one or more `Obligation` records (one per relevant article/requirement), optionally AI-suggested from the regulation's text. Saved as draft or submitted.
-4. **Obligation tracking** (`/obligations`, `/obligations/:id`) — every obligation (regardless of how it was created) now lives in one dataset and is visible here: code, title, owner, approver, reviewers, due date, frequency, penalty, AI risk score, tags, progress, status, comments, and an approvals workflow (Approve/Reject). The Owner Dashboard's "My Obligations" widget (`src/components/dashboard/MyObligationsWidget.tsx`) classifies an owner's obligations into needs-CAP / overdue / in-progress / done.
+4. **Obligation tracking** (`/obligations`, `/obligations/:id`) — every obligation (regardless of how it was created) now lives in one dataset and is visible here: code, title, owner, approver, due date, frequency, penalty, AI risk score, tags, progress, status, comments, and an approvals workflow (Approve/Reject). The Owner Dashboard's "My Obligations" widget (`src/components/dashboard/MyObligationsWidget.tsx`) classifies an owner's obligations into needs-CAP / overdue / in-progress / done.
 5. **Corrective Action Plan (CAP)** (`/cap/create?obligations=id1,id2`, `src/pages/cap/CAPCreatePage.tsx`) — created against one or more obligations, either AI-drafted (root cause, recommended actions, timeline, priority) from the obligation's description or filled in manually. Routes through owner → approver review; tracked on `/cap` (KPI dashboard) and `/cap/:id` (tasks, timeline, approvals, evidence attachments). Creating/closing a CAP updates the linked obligations' status (e.g. to `cap_in_progress`) and the obligation detail page shows the CAP back-link under "Linked Corrective Actions."
 6. **Reports & dashboards** (`/reports/*`, role dashboards) — aggregate across regulations, assignments, obligations, and CAPs for oversight. The Early Warning System report (`/reports/ews`) trends non-compliance data specifically.
 
