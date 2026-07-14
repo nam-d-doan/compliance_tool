@@ -118,7 +118,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.NCC.CREATE]: ["owner", "executive", "admin"],
   [ROUTES.NCC.LIST]: ["approver", "owner", "executive", "admin"],
 
-  [ROUTES.REGULATION.CREATE]: ["admin"],
+  [ROUTES.REGULATION.CREATE]: ["admin", "approver"],
 
   [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],
   [ROUTES.ASSIGNMENTS.LIST]: ["approver", "owner", "executive", "admin"],

@@ -451,6 +451,14 @@ function mapVietLexResult(item: VietLexSearchResult): VietLexDoc {
   };
 }
 
+function filterStubDocs(q: string): VietLexDoc[] {
+  const needle = q.toLowerCase();
+  return VIETLEX_DOCS.filter((d) => {
+    const hay = `${d.docNumber} ${d.title} ${d.issuer}`.toLowerCase();
+    return hay.includes(needle);
+  });
+}
+
 export async function handleSearchVietLex({ request }: { request: Request }) {
   await getDelay();
   const url = new URL(request.url);
@@ -460,29 +468,39 @@ export async function handleSearchVietLex({ request }: { request: Request }) {
     return jsonResponse([]);
   }
 
+  // Live VietLex API (CC BY 4.0, no key, CORS open). The browser fetch sends a
+  // real browser User-Agent, so the 4xx bot block that affects default curl
+  // does not apply here. On any network/query failure (or empty live result)
+  // we fall back to the seeded local law stub so the import flow stays usable
+  // offline instead of silently returning an empty list.
   try {
-    const apiUrl = `https://vietlex.vn/api/v1/search?q=${encodeURIComponent(q)}`;
+    const apiUrl = `https://vietlex.vn/api/v1/search?q=${encodeURIComponent(q)}&limit=20`;
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
 
-    if (!response.ok) {
-      console.error(`[VietLex] Search failed: ${response.status}`);
-      return jsonResponse([]);
+    if (response.ok) {
+      const data = (await response.json()) as {
+        results?: VietLexSearchResult[];
+      };
+      const items = Array.isArray(data.results) ? data.results : [];
+      const mapped = items.map(mapVietLexResult);
+      if (mapped.length > 0) return jsonResponse(mapped);
+      console.warn(
+        "[VietLex] Live search returned no results, using local stub.",
+      );
+    } else {
+      console.warn(
+        `[VietLex] Live search failed (HTTP ${response.status}), using local stub.`,
+      );
     }
-
-    const data = (await response.json()) as {
-      results?: VietLexSearchResult[];
-    };
-    const items = Array.isArray(data.results) ? data.results : [];
-    const mapped = items.map(mapVietLexResult);
-    return jsonResponse(mapped);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[VietLex] Search error: ${message}`);
-    return jsonResponse([]);
+    console.warn(`[VietLex] Live search error: ${message}, using local stub.`);
   }
+
+  return jsonResponse(filterStubDocs(q));
 }
 
 export async function handleGetRegulationDependencies({

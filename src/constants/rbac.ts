@@ -84,6 +84,7 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "cap:read",
     "cap:approve",
     "regulation:read",
+    "regulation:create",
     "assignment:read",
     "ncc:read",
     "report:read",

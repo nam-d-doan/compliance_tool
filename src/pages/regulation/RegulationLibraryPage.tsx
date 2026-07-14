@@ -12,6 +12,7 @@ import { motion } from "motion/react";
 import { format, parseISO } from "date-fns";
 import {
   Search,
+  Plus,
   LayoutGrid,
   Table as TableIcon,
   Eye,
@@ -52,7 +53,8 @@ import {
   useBulkArchiveRegulations,
 } from "@/hooks/mutations/useRegulationMutations";
 import { useAuthStore } from "@/stores";
-import { hasMinimumRole } from "@/constants/rbac";
+import { hasMinimumRole, hasPermission } from "@/constants/rbac";
+import { ROUTES } from "@/constants/routes";
 import { REGULATION_STATUSES } from "@/constants/status";
 import { statusLabel } from "@/lib/chart-labels";
 import { toast } from "sonner";
@@ -130,6 +132,7 @@ export default function RegulationLibraryPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
   const canArchive = hasMinimumRole(role, "executive");
+  const canCreate = hasPermission(role, "regulation:create");
 
   const archive = useArchiveRegulation();
   const bulkArchive = useBulkArchiveRegulations();
@@ -452,7 +455,14 @@ export default function RegulationLibraryPage() {
       <PageHero
         title="Regulatory Intelligence"
         subtitle="Monitor, compare, and analyze regulations across jurisdictions. Understand AI-predicted impact on your compliance program."
-      />
+      >
+        {canCreate && (
+          <Button onClick={() => navigate(ROUTES.REGULATION.CREATE)}>
+            <Plus className="size-4" aria-hidden="true" />
+            Add Regulation
+          </Button>
+        )}
+      </PageHero>
 
       <SummaryCardBar cards={summaryCards} />
 

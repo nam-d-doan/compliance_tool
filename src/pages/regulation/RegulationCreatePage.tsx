@@ -158,6 +158,60 @@ function inferCategory(title: string): string {
   return "Operational Risk";
 }
 
+// --- Duplicate detection against the existing local regulation library ---
+// Used to warn before importing a VietLex doc or saving a manually uploaded
+// regulation that may already exist. Lightweight fuzzy match (overlap
+// coefficient on token sets) plus an exact reference/doc-number check — no
+// new dependency.
+function normalizeRegText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFC")
+    .replace(/[^a-z0-9à-ỹ\s/-]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function regTokenSet(s: string): Set<string> {
+  return new Set(normalizeRegText(s).split(" ").filter(Boolean));
+}
+
+function regSimilarity(a: string, b: string): number {
+  const sa = regTokenSet(a);
+  const sb = regTokenSet(b);
+  if (sa.size === 0 || sb.size === 0) return 0;
+  let inter = 0;
+  for (const t of sa) if (sb.has(t)) inter++;
+  return inter / Math.min(sa.size, sb.size);
+}
+
+interface RegulationLike {
+  id: string;
+  title: string;
+  reference?: string;
+}
+
+function extractDocNumber(title: string): string | undefined {
+  const idx = title.indexOf(" - ");
+  return idx > 0 ? title.slice(0, idx).trim() : undefined;
+}
+
+function findDuplicateRegulation(
+  existing: RegulationLike[],
+  title: string,
+  docNumber?: string,
+): RegulationLike | undefined {
+  const normDoc = docNumber ? normalizeRegText(docNumber) : "";
+  return existing.find((r) => {
+    if (normDoc && r.reference && normalizeRegText(r.reference) === normDoc)
+      return true;
+    if (regSimilarity(title, r.title) >= 0.85) return true;
+    if (regSimilarity(title, `${r.reference ?? ""} ${r.title}`) >= 0.85)
+      return true;
+    return false;
+  });
+}
+
 export default function RegulationCreatePage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
@@ -267,6 +321,17 @@ export default function RegulationCreatePage() {
   };
 
   const handleImportVietLex = (doc: VietLexDoc) => {
+    const dup = findDuplicateRegulation(
+      regulationOptions,
+      `${doc.docNumber} - ${doc.title}`,
+      doc.docNumber,
+    );
+    if (dup) {
+      toast.warning(
+        `A similar regulation already exists in the library: "${dup.title}". Review before saving.`,
+        { duration: 6000 },
+      );
+    }
     setValue("title", `${doc.docNumber} - ${doc.title}`, {
       shouldValidate: true,
     });
@@ -296,6 +361,17 @@ export default function RegulationCreatePage() {
       );
     }
     handleSubmit((values) => {
+      const dup = findDuplicateRegulation(
+        regulationOptions,
+        values.title,
+        extractDocNumber(values.title),
+      );
+      if (dup) {
+        const proceed = window.confirm(
+          `A similar regulation already exists in the library:\n\n"${dup.title}"\n\nCreate this regulation anyway?`,
+        );
+        if (!proceed) return;
+      }
       createRegulation.mutate(
         {
           ...values,
