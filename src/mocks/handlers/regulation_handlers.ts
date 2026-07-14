@@ -155,6 +155,7 @@ export async function handleCreateRegulation({
     description: body.description ?? "",
     category: body.category,
     regulatoryBody: body.regulatoryBody,
+    issueDate: body.issueDate,
     effectiveDate: body.effectiveDate,
     expirationDate: body.expirationDate,
     status: normalizeRegulationStatus(body.status),
@@ -424,6 +425,9 @@ interface VietLexSearchResult {
   ngayBanHanh?: string;
   loai?: string;
   linhVuc?: string;
+  nganh?: string;
+  pdfUrl?: string;
+  url?: string;
 }
 
 function parseVietLexDate(value?: string): string {
@@ -448,6 +452,13 @@ function mapVietLexResult(item: VietLexSearchResult): VietLexDoc {
     title: item.title || "Không có tiêu đề",
     issuer,
     date: parseVietLexDate(item.ngayBanHanh),
+    loai: item.loai,
+    nganh: item.nganh,
+    linhVuc: item.linhVuc,
+    capBanHanh: item.capBanHanh,
+    pdfUrl: item.pdfUrl,
+    url: item.url,
+    nguon: item.nguon,
   };
 }
 
@@ -608,44 +619,121 @@ export async function handleDeleteRegulationDependency({
   return jsonResponse({ success: true });
 }
 
+const VIETLEX_SEED_ARTICLES: VietLexDocDetail["articles"] = [
+  {
+    id: "art-1",
+    title: "Điều 1. Phạm vi điều chỉnh",
+    content:
+      "Quy định này áp dụng đối với các tổ chức tín dụng, chi nhánh ngân hàng nước ngoài và các tổ chức tài chính liên quan.",
+  },
+  {
+    id: "art-2",
+    title: "Điều 2. Giải thích từ ngữ",
+    content:
+      "Các thuật ngữ sử dụng trong văn bản được hiểu theo quy định của pháp luật ngân hàng và chứng khoán hiện hành.",
+  },
+  {
+    id: "art-3",
+    title: "Điều 3. Trách nhiệm tuân thủ",
+    content:
+      "Các tổ chức phải thiết lập quy trình nội bộ, phân công trách nhiệm và báo cáo định kỳ cho cơ quan quản lý.",
+  },
+  {
+    id: "art-4",
+    title: "Điều 4. Chế tài xử lý",
+    content:
+      "Vi phạm các quy định tại văn bản này sẽ bị xử lý theo quy định của pháp luật và thẩm quyền của cơ quan quản lý.",
+  },
+];
+
+// Splits raw VietLex document content into "Điều n" (article) chunks. Live
+// documents are plain text, not structured JSON, so this is a best-effort
+// parse — falls back to the seeded stub articles when it finds nothing.
+function parseVietLexArticles(content: string): VietLexDocDetail["articles"] {
+  if (!content) return [];
+  const articles: VietLexDocDetail["articles"] = [];
+  let current: { id: string; title: string; body: string } | null = null;
+  const articleHeading = /^Điều\s+(\d+)[.\s:-]*(.*)$/i;
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(articleHeading);
+    if (match) {
+      if (current) {
+        articles.push({
+          id: current.id,
+          title: current.title,
+          content: current.body.trim(),
+        });
+      }
+      const [, number, rest] = match;
+      current = {
+        id: `dieu-${number}`,
+        title: `Điều ${number.trim()}${rest ? ": " + rest.trim() : ""}`.trim(),
+        body: "",
+      };
+    } else if (current) {
+      current.body += (current.body ? "\n" : "") + line;
+    }
+  }
+  if (current) {
+    articles.push({
+      id: current.id,
+      title: current.title,
+      content: current.body.trim(),
+    });
+  }
+  return articles.filter((a) => a.content.length > 0).slice(0, 20);
+}
+
 export async function handleGetVietLexDetail({ params }: MockResolverContext) {
   await getDelay();
-  const docNumber = decodeURIComponent(params.docNumber as string);
-  const doc = VIETLEX_DOCS.find((d) => d.docNumber === docNumber);
-  if (!doc) return notFound("Document not found");
+  const key = decodeURIComponent(params.docNumber as string);
 
-  const detail: VietLexDocDetail = {
-    ...doc,
-    body: `Văn bản ${doc.docNumber} quy định chi tiết các yêu cầu về ${doc.title.toLowerCase()}. Văn bản này áp dụng đối với các tổ chức tài chính hoạt động tại Việt Nam và được ban hành bởi ${doc.issuer}. Các tổ chức cần tuân thủ các quy định về quy trình, báo cáo và giám sát theo hướng dẫn của cơ quan quản lý.`,
-    articles: [
-      {
-        id: "art-1",
-        title: "Điều 1. Phạm vi điều chỉnh",
-        content:
-          "Quy định này áp dụng đối với các tổ chức tín dụng, chi nhánh ngân hàng nước ngoài và các tổ chức tài chính liên quan.",
-      },
-      {
-        id: "art-2",
-        title: "Điều 2. Giải thích từ ngữ",
-        content:
-          "Các thuật ngữ sử dụng trong văn bản được hiểu theo quy định của pháp luật ngân hàng và chứng khoán hiện hành.",
-      },
-      {
-        id: "art-3",
-        title: "Điều 3. Trách nhiệm tuân thủ",
-        content:
-          "Các tổ chức phải thiết lập quy trình nội bộ, phân công trách nhiệm và báo cáo định kỳ cho cơ quan quản lý.",
-      },
-      {
-        id: "art-4",
-        title: "Điều 4. Chế tài xử lý",
-        content:
-          "Vi phạm các quy định tại văn bản này sẽ bị xử lý theo quy định của pháp luật và thẩm quyền của cơ quan quản lý.",
-      },
-    ],
-  };
+  const seeded = VIETLEX_DOCS.find((d) => d.id === key || d.docNumber === key);
+  if (seeded) {
+    const detail: VietLexDocDetail = {
+      ...seeded,
+      body: `Văn bản ${seeded.docNumber} quy định chi tiết các yêu cầu về ${seeded.title.toLowerCase()}. Văn bản này áp dụng đối với các tổ chức tài chính hoạt động tại Việt Nam và được ban hành bởi ${seeded.issuer}. Các tổ chức cần tuân thủ các quy định về quy trình, báo cáo và giám sát theo hướng dẫn của cơ quan quản lý.`,
+      articles: VIETLEX_SEED_ARTICLES,
+    };
+    return jsonResponse(detail);
+  }
 
-  return jsonResponse(detail);
+  try {
+    const response = await fetch(
+      `https://vietlex.vn/api/v1/document/${encodeURIComponent(key)}`,
+      { headers: { Accept: "application/json" } },
+    );
+    if (!response.ok) return notFound("Document not found");
+
+    const data = (await response.json()) as {
+      document?: Record<string, unknown>;
+    } & Record<string, unknown>;
+    const doc = (data.document ?? data) as Record<string, unknown>;
+    const content = typeof doc.content === "string" ? doc.content : "";
+    const parsedArticles = parseVietLexArticles(content);
+
+    const detail: VietLexDocDetail = {
+      id: typeof doc.id === "string" ? doc.id : key,
+      docNumber: typeof doc.soHieu === "string" ? doc.soHieu : key,
+      title: typeof doc.title === "string" ? doc.title : "",
+      issuer:
+        (typeof doc.capBanHanh === "string" && doc.capBanHanh) ||
+        (typeof doc.nguon === "string" && doc.nguon) ||
+        "VietLex",
+      date: parseVietLexDate(
+        typeof doc.ngayBanHanh === "string" ? doc.ngayBanHanh : undefined,
+      ),
+      capBanHanh:
+        typeof doc.capBanHanh === "string" ? doc.capBanHanh : undefined,
+      body: content.slice(0, 2000),
+      articles: parsedArticles.length ? parsedArticles : VIETLEX_SEED_ARTICLES,
+    };
+    return jsonResponse(detail);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[VietLex] Detail fetch error: ${message}`);
+    return notFound("Document not found");
+  }
 }
 
 export const regulationHandlers = [
