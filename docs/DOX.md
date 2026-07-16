@@ -15,6 +15,7 @@ Project-level. Specs are authored during planning; architecture docs are maintai
 - **`architecture/`** — reference docs:
   - `folder-structure.md` — intended folder layout and tech stack setup steps. May drift from actual structure; treat as reference, not source of truth.
   - `design-language.md` — visual design patterns extracted from FDM demos. Binding for UI work.
+- **`diagrams/`** — generated architecture/module diagrams (HTML + SVG + PNG). Self-contained, no build step beyond `python3 build.py`. `gen.py`/`m1.py`/`m2.py` are the regenerable source; `html/*.html` are interactive (dark mode + pan/zoom + click nodes), `sources/*.svg` are standalone slide-ready (concrete colors), `renders/*.png` are raster previews (rendered via `resvg`). Edit diagram content in `m1.py`/`m2.py`, not in the emitted artifacts.
 - **`deployment.md`** — deployment guide covering:
   - Vercel as the primary production deployment method
   - Build settings, environment variables, and custom domain configuration

@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 1080" font-family="IBM Plex Sans, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#6a9e5e"/></marker>
+    <marker id="av" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#8e6aa6"/></marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#4a7ab0"/></marker>
+    <marker id="ag" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#8a93a0"/></marker>
+  </defs>
+  <rect x="30" y="20" width="1580" height="92" rx="12" fill="#eef0f3" stroke="#8a93a0" stroke-width="1.5"/>
+  <text x="48" y="42" font-size="12" font-weight="800" fill="#3a4250" letter-spacing="1">USERS &amp; ROLES</text>
+  <g font-size="13" font-weight="700" fill="#3a4250" text-anchor="middle">
+    <rect x="60" y="54" width="290" height="46" rx="10" fill="#fff" stroke="#8a93a0"/><text x="205" y="82">Admin</text>
+    <rect x="360" y="54" width="290" height="46" rx="10" fill="#fff" stroke="#8a93a0"/><text x="505" y="82">Compliance Officer</text>
+    <rect x="660" y="54" width="290" height="46" rx="10" fill="#fff" stroke="#8a93a0"/><text x="805" y="82">Approver</text>
+    <rect x="960" y="54" width="290" height="46" rx="10" fill="#fff" stroke="#8a93a0"/><text x="1105" y="82">Executive</text>
+    <rect x="1260" y="54" width="290" height="46" rx="10" fill="#fff" stroke="#8a93a0"/><text x="1405" y="82">Owner</text>
+  </g>
+  <path d="M820,128 L820,156" stroke="#4a7ab0" stroke-width="2" marker-end="url(#ab)"/>
+  <text x="838" y="146" font-size="10" fill="#4a7ab0" font-weight="600">HTTPS</text>
+  <rect x="470" y="160" width="700" height="74" rx="12" fill="#dae8fc" stroke="#4a7ab0" stroke-width="2"/>
+  <text x="820" y="188" font-size="16" font-weight="800" fill="#2c3e5a" text-anchor="middle">Web Portal — React 19 SPA</text>
+  <text x="820" y="212" font-size="11" fill="#4a7ab0" text-anchor="middle">Vite · Vercel CDN · TopNav · Zustand stores · TanStack Query cache · MSW service worker (mock)</text>
+  <path d="M820,234 L820,262" stroke="#c9a227" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="838" y="252" font-size="10" fill="#c9a227" font-weight="600">fetch /api</text>
+  <rect x="30" y="270" width="470" height="470" rx="12" fill="#f4efff" stroke="#8e6aa6" stroke-width="1.5"/>
+  <text x="48" y="292" font-size="12" font-weight="800" fill="#3f2a52" letter-spacing="1">AI PLATFORM · LLM / RAG / AGENTS</text>
+  <g>
+    <rect x="50" y="308" width="430" height="74" rx="10" fill="#e1d5e7" stroke="#8e6aa6" stroke-width="1.5"/><text x="265" y="336" font-size="14" font-weight="700" fill="#3f2a52" text-anchor="middle">LLM Gateway</text><text x="265" y="358" font-size="11" fill="#5a4470" text-anchor="middle">prompt management · model routing</text>
+    <rect x="50" y="392" width="430" height="74" rx="10" fill="#e1d5e7" stroke="#8e6aa6" stroke-width="1.5"/><text x="265" y="420" font-size="14" font-weight="700" fill="#3f2a52" text-anchor="middle">RAG Retrieval</text><text x="265" y="442" font-size="11" fill="#5a4470" text-anchor="middle">regulation embeddings → context window</text>
+    <rect x="50" y="476" width="430" height="74" rx="10" fill="#e1d5e7" stroke="#8e6aa6" stroke-width="1.5"/><text x="265" y="504" font-size="14" font-weight="700" fill="#3f2a52" text-anchor="middle">Agent Orchestrator</text><text x="265" y="526" font-size="11" fill="#5a4470" text-anchor="middle">multi-agent compliance workflows</text>
+    <rect x="50" y="560" width="430" height="74" rx="10" fill="#e1d5e7" stroke="#8e6aa6" stroke-width="1.5"/><text x="265" y="588" font-size="14" font-weight="700" fill="#3f2a52" text-anchor="middle">Rule + Impact Engine</text><text x="265" y="610" font-size="11" fill="#5a4470" text-anchor="middle">regulatory change · policy mapping · impact %</text>
+    <rect x="50" y="650" width="430" height="60" rx="10" fill="#fff" stroke="#8e6aa6" stroke-dasharray="5 4" stroke-width="1.5"/><text x="265" y="676" font-size="12" font-weight="700" fill="#5a4470" text-anchor="middle">Human-in-the-Loop Review · Feedback Learning</text><text x="265" y="696" font-size="10" fill="#8e6aa6" text-anchor="middle">no autonomous actions — approvals required</text>
+  </g>
+  <rect x="520" y="270" width="600" height="470" rx="12" fill="#fff6df" stroke="#c9a227" stroke-width="1.5"/>
+  <text x="538" y="292" font-size="12" font-weight="800" fill="#5a4a12" letter-spacing="1">APPLICATION SERVER · DOMAIN SERVICES + API</text>
+  <rect x="540" y="308" width="560" height="58" rx="10" fill="#fff2cc" stroke="#c9a227" stroke-width="2"/><text x="820" y="334" font-size="14" font-weight="800" fill="#5a4a12" text-anchor="middle">API Gateway / Mock Layer</text><text x="820" y="354" font-size="11" fill="#7a6a22" text-anchor="middle">Now: MSW handlers (src/mocks) → Target: REST API + ESB</text>
+  <g font-size="13" font-weight="700" fill="#3c5a36" text-anchor="middle">
+    <rect x="540" y="378" width="178" height="80" rx="9" fill="#d5e8d4" stroke="#6a9e5e" stroke-width="1.5"/><text x="629" y="408">Regulations</text><text x="629" y="432" font-size="10" font-weight="500" fill="#5a7a52">service·hooks·types</text>
+    <rect x="730" y="378" width="178" height="80" rx="9" fill="#d5e8d4" stroke="#6a9e5e" stroke-width="1.5"/><text x="819" y="408">Obligations</text><text x="819" y="432" font-size="10" font-weight="500" fill="#5a7a52">effective-status logic</text>
+    <rect x="920" y="378" width="180" height="80" rx="9" fill="#d5e8d4" stroke="#6a9e5e" stroke-width="1.5"/><text x="1010" y="408">Assignments</text><text x="1010" y="432" font-size="10" font-weight="500" fill="#5a7a52">dispatch·ack·cancel</text>
+    <rect x="540" y="470" width="178" height="80" rx="9" fill="#d5e8d4" stroke="#6a9e5e" stroke-width="1.5"/><text x="629" y="500">CAP</text><text x="629" y="524" font-size="10" font-weight="500" fill="#5a7a52">Open→Pending→Closed</text>
+    <rect x="730" y="470" width="178" height="80" rx="9" fill="#d5e8d4" stroke="#6a9e5e" stroke-width="1.5"/><text x="819" y="500">NCC</text><text x="819" y="524" font-size="10" font-weight="500" fill="#5a7a52">3-step investigation</text>
+    <rect x="920" y="470" width="180" height="80" rx="9" fill="#d5e8d4" stroke="#6a9e5e" stroke-width="1.5"/><text x="1010" y="500">Reports / EWS</text><text x="1010" y="524" font-size="10" font-weight="500" fill="#5a7a52">status·calendar·exec·EWS</text>
+  </g>
+  <rect x="540" y="566" width="560" height="146" rx="10" fill="#f8fafc" stroke="#c9a227" stroke-dasharray="5 4" stroke-width="1.5"/><text x="820" y="592" font-size="13" font-weight="800" fill="#5a4a12" text-anchor="middle">Cross-cutting platform services</text>
+  <g font-size="11" fill="#5a4a12">
+    <text x="560" y="616">• Auth / RBAC (admin·owner·approver·executive)</text><text x="560" y="636">• File / evidence storage adapter</text><text x="560" y="656">• Activity feed &amp; notifications</text><text x="560" y="676">• Audit logging &amp; timeline</text><text x="560" y="696">• Scheduler (due-date, EWS generation)</text>
+  </g>
+  <rect x="1140" y="270" width="470" height="470" rx="12" fill="#eef4ff" stroke="#4a7ab0" stroke-width="1.5"/><text x="1158" y="292" font-size="12" font-weight="800" fill="#2c3e5a" letter-spacing="1">DATA TIER</text>
+  <g>
+    <rect x="1160" y="308" width="430" height="96" rx="10" fill="#dae8fc" stroke="#4a7ab0" stroke-width="1.5"/><text x="1375" y="338" font-size="14" font-weight="700" fill="#2c3e5a" text-anchor="middle">PostgreSQL</text><text x="1375" y="360" font-size="10" fill="#3c5a7a" text-anchor="middle">regulations · obligations · cap · ncc</text><text x="1375" y="378" font-size="10" fill="#3c5a7a" text-anchor="middle">assignments · reports · users · org</text>
+    <rect x="1160" y="414" width="430" height="74" rx="10" fill="#eef0f3" stroke="#8a93a0" stroke-width="1.5"/><text x="1375" y="442" font-size="14" font-weight="700" fill="#3a4250" text-anchor="middle">Object Storage (S3 / MinIO)</text><text x="1375" y="464" font-size="11" fill="#5a6270" text-anchor="middle">documents · evidence · file uploads</text>
+    <rect x="1160" y="498" width="430" height="74" rx="10" fill="#e1d5e7" stroke="#8e6aa6" stroke-width="1.5"/><text x="1375" y="526" font-size="14" font-weight="700" fill="#3f2a52" text-anchor="middle">Vector DB (pgvector / Pinecone)</text><text x="1375" y="548" font-size="11" fill="#5a4470" text-anchor="middle">regulation embeddings for RAG retrieval</text>
+    <rect x="1160" y="582" width="430" height="74" rx="10" fill="#eef0f3" stroke="#8a93a0" stroke-width="1.5"/><text x="1375" y="610" font-size="14" font-weight="700" fill="#3a4250" text-anchor="middle">Redis Cache</text><text x="1375" y="632" font-size="11" fill="#5a6270" text-anchor="middle">query cache · sessions · rate limits</text>
+    <rect x="1160" y="666" width="430" height="46" rx="10" fill="#fff" stroke="#4a7ab0" stroke-dasharray="5 4" stroke-width="1.5"/><text x="1375" y="693" font-size="12" font-weight="700" fill="#3c5a7a" text-anchor="middle">Backup &amp; Disaster Recovery</text>
+  </g>
+  <path d="M540,360 L490,360" stroke="#8e6aa6" stroke-width="2" marker-end="url(#av)"/><text x="515" y="352" font-size="10" fill="#8e6aa6" font-weight="600">ask</text>
+  <path d="M490,420 L540,420" stroke="#8e6aa6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#av)"/><text x="498" y="412" font-size="10" fill="#8e6aa6" font-weight="600">scores</text>
+  <path d="M1100,420 L1158,360" stroke="#4a7ab0" stroke-width="2" marker-end="url(#ab)"/><text x="1110" y="380" font-size="10" fill="#4a7ab0" font-weight="600">read/write</text>
+  <path d="M1158,460 L1100,520" stroke="#6a9e5e" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"/><text x="1110" y="540" font-size="10" fill="#6a9e5e" font-weight="600">results</text>
+  <path d="M480,440 L1158,540" stroke="#8e6aa6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#av)"/><text x="760" y="478" font-size="10" fill="#8e6aa6" font-weight="600">embedding retrieval</text>
+  <path d="M820,740 L820,768" stroke="#8a93a0" stroke-width="2" marker-end="url(#ag)"/>
+  <rect x="30" y="772" width="1580" height="68" rx="12" fill="#fff" stroke="#8a93a0" stroke-width="1.5"/><text x="48" y="794" font-size="12" font-weight="800" fill="#3a4250" letter-spacing="1">INTEGRATION TIER</text><text x="820" y="818" font-size="13" font-weight="700" fill="#3a4250" text-anchor="middle">API Gateway · ESB · Kafka MQ · IAM (SSO/AD) · Audit Logging · Event Streaming · Scheduler · Notification Service</text>
+  <path d="M820,840 L820,866" stroke="#8a93a0" stroke-width="2" marker-end="url(#ag)"/><text x="838" y="858" font-size="10" fill="#8a93a0" font-weight="600">bidirectional</text>
+  <rect x="30" y="870" width="1580" height="190" rx="12" fill="#eef0f3" stroke="#8a93a0" stroke-width="1.5"/><text x="48" y="892" font-size="12" font-weight="800" fill="#3a4250" letter-spacing="1">BANK IT SYSTEMS · bidirectional interlinks</text>
+  <g font-size="12" font-weight="700" fill="#2c3e5a" text-anchor="middle">
+    <rect x="50" y="906" width="180" height="58" rx="9" fill="#dae8fc" stroke="#4a7ab0"/><text x="140" y="930">Core Banking</text><text x="140" y="950" font-size="10" font-weight="500" fill="#4a7ab0">accounts · products</text>
+    <rect x="240" y="906" width="180" height="58" rx="9" fill="#eef0f3" stroke="#8a93a0"/><text x="330" y="930">CIF</text><text x="330" y="950" font-size="10" font-weight="500" fill="#5a6270">customer master</text>
+    <rect x="430" y="906" width="180" height="58" rx="9" fill="#eef0f3" stroke="#8a93a0"/><text x="520" y="930">LOS</text><text x="520" y="950" font-size="10" font-weight="500" fill="#5a6270">loan origination</text>
+    <rect x="620" y="906" width="180" height="58" rx="9" fill="#f8cecc" stroke="#b85450"/><text x="710" y="930">AML Monitoring</text><text x="710" y="950" font-size="10" font-weight="500" fill="#7a3030">transaction alerts</text>
+    <rect x="810" y="906" width="180" height="58" rx="9" fill="#eef0f3" stroke="#8a93a0"/><text x="900" y="930">KYC System</text><text x="900" y="950" font-size="10" font-weight="500" fill="#5a6270">customer due diligence</text>
+    <rect x="1000" y="906" width="180" height="58" rx="9" fill="#eef0f3" stroke="#8a93a0"/><text x="1090" y="930">Treasury</text><text x="1090" y="950" font-size="10" font-weight="500" fill="#5a6270">liquidity · capital</text>
+    <rect x="1190" y="906" width="180" height="58" rx="9" fill="#fff2cc" stroke="#c9a227"/><text x="1280" y="930">Risk Systems</text><text x="1280" y="950" font-size="10" font-weight="500" fill="#7a6a22">credit · market · op</text>
+    <rect x="1380" y="906" width="210" height="58" rx="9" fill="#d5e8d4" stroke="#6a9e5e"/><text x="1485" y="930">DWH / Data Lake</text><text x="1485" y="950" font-size="10" font-weight="500" fill="#5a7a52">analytics · MDM</text>
+    <rect x="50" y="974" width="300" height="58" rx="9" fill="#eef0f3" stroke="#8a93a0"/><text x="200" y="998">ECM — Enterprise Content Mgmt</text>
+    <rect x="360" y="974" width="300" height="58" rx="9" fill="#eef0f3" stroke="#8a93a0"/><text x="510" y="998">BPM — Business Process Mgmt</text>
+    <rect x="670" y="974" width="920" height="58" rx="9" fill="#fff" stroke="#8a93a0" stroke-dasharray="5 4"/><text x="1130" y="1006" font-size="11" fill="#5a6270">Finance / GL · Fraud Detection · Regulator portal &amp; submissions (SBV / NHCV)</text>
+  </g>
+</svg>
