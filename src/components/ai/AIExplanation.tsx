@@ -33,8 +33,8 @@ export function AIExplanation({
   const hasReasoning = explanation.reasoning.length > 0;
 
   const content = (
-    <ScrollArea className="h-full pr-2">
-      <div className={cn("space-y-6 pb-4", className)}>
+    <ScrollArea className="h-full">
+      <div className={cn("space-y-6 px-6 pb-10 pt-2", className)}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-base font-medium text-foreground">
@@ -141,8 +141,11 @@ export function AIExplanation({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       {children && <SheetTrigger asChild>{children}</SheetTrigger>}
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
+      <SheetContent
+        side="right"
+        className="w-full border-primary/15 bg-gradient-to-br from-primary/5 via-card/70 to-card/80 shadow-[0_8px_32px_-8px_rgb(0_0_0/0.18)] ring-1 ring-inset ring-white/40 sm:max-w-md dark:border-primary/20 dark:from-primary/10 dark:ring-white/10"
+      >
+        <SheetHeader className="pb-2">
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" aria-hidden="true" />
             AI Explanation

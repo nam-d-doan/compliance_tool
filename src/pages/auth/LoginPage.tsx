@@ -1,71 +1,174 @@
+import { motion } from "motion/react";
+import { Sun, Moon, Sparkles, Lock } from "lucide-react";
+import { useThemeStore } from "@/stores";
+import { AuroraBackground } from "@/components/layout/AuroraBackground";
 import { LoginForm } from "@/components/auth/LoginForm";
-import { Shield, Lock, Cpu } from "lucide-react";
+
+const CHAIN_STEPS = [
+  { label: "Regulation", color: "#8bd9c2" },
+  { label: "Assignment", color: "#6e7bff" },
+  { label: "Obligation", color: "#ffe600" },
+  { label: "CAP", color: "#ff6a52" },
+];
 
 export default function LoginPage() {
+  const { theme, toggleTheme } = useThemeStore();
+
   return (
-    <div className="flex min-h-svh bg-background">
-      {/* Brand panel */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground lg:flex">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.12),transparent_40%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,0,0,0.08),transparent_40%)]" />
+    <div className="relative flex min-h-svh items-center justify-center p-6 sm:p-10">
+      <AuroraBackground />
 
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary-foreground/10">
-            <Shield className="size-6" />
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label="Toggle theme"
+        className="fixed top-6 right-6 z-10 flex size-[38px] items-center justify-center rounded-full border bg-[var(--nav-bg)] shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
+      >
+        {theme === "dark" ? (
+          <Moon className="size-[15px]" />
+        ) : (
+          <Sun className="size-[15px]" />
+        )}
+      </button>
+
+      <motion.div
+        initial={{ opacity: 0, y: 22, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
+        className="flex w-full max-w-[980px] overflow-hidden rounded-[26px] border bg-card shadow-[var(--card-shadow)] backdrop-blur-2xl [border-color:var(--card-border)]"
+      >
+        {/* Brand panel — always dark, independent of the app theme, so its
+            light text stays legible regardless of light/dark mode. */}
+        <div
+          className="relative hidden w-[420px] shrink-0 flex-col justify-between overflow-hidden rounded-l-[26px] border-r border-white/10 p-11 text-[#f1efea] lg:flex"
+          style={{
+            background: "linear-gradient(160deg, #201d28 0%, #14131a 100%)",
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex items-center gap-2.5"
+          >
+            <div className="flex size-8 items-center justify-center rounded-[9px] border border-white/15 bg-[#17161b]">
+              <span className="text-chart-accent font-heading text-xs font-extrabold">
+                EY
+              </span>
+            </div>
+            <span className="font-heading text-base font-bold">
+              Compliance Tool
+            </span>
+          </motion.div>
+
+          <div>
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className="font-heading text-[27px] leading-[1.35] font-bold tracking-tight"
+            >
+              AI-powered compliance management for modern enterprises
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="mt-4 mb-8 text-[13.5px] leading-relaxed text-[#b7b4c8]"
+            >
+              Streamline obligations, corrective actions and regulatory
+              reporting in one intelligent platform.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+              className="mb-8 flex items-center"
+            >
+              {CHAIN_STEPS.map((step, index) => (
+                <div key={step.label} className="contents">
+                  <div className="flex flex-1 flex-col items-center gap-1.5">
+                    <div
+                      className="animate-chain-glow size-2.5 rounded-full"
+                      style={
+                        {
+                          background: step.color,
+                          "--gc": step.color,
+                          animationDelay: `${index * 1.2}s`,
+                        } as React.CSSProperties
+                      }
+                    />
+                    <div
+                      className="animate-chain-label-glow text-[9.5px]"
+                      style={{ animationDelay: `${index * 1.2}s` }}
+                    >
+                      {step.label}
+                    </div>
+                  </div>
+                  {index < CHAIN_STEPS.length - 1 && (
+                    <div
+                      className="-mt-4 h-[1.5px] flex-[1.3]"
+                      style={{
+                        background: `linear-gradient(90deg, ${step.color}, ${CHAIN_STEPS[index + 1].color})`,
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mb-3 flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.06] p-3.5"
+            >
+              <Sparkles className="text-chart-accent mt-0.5 size-[15px] shrink-0" />
+              <div>
+                <p className="text-[12.5px] font-bold">AI Copilot</p>
+                <p className="mt-0.5 text-[11.5px] text-[#b7b4c8]">
+                  Recommendations, summaries and risk insights on demand.
+                </p>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+              className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.06] p-3.5"
+            >
+              <Lock className="mt-0.5 size-[15px] shrink-0 text-[#b7b4c8]" />
+              <div>
+                <p className="text-[12.5px] font-bold">
+                  Enterprise-grade security
+                </p>
+                <p className="mt-0.5 text-[11.5px] text-[#b7b4c8]">
+                  Role-based access, audit trails and MFA.
+                </p>
+              </div>
+            </motion.div>
           </div>
-          <span className="text-xl font-semibold tracking-tight">
-            ComplianceAI
-          </span>
-        </div>
 
-        <div className="relative z-10 max-w-md">
-          <h2 className="text-3xl font-semibold leading-tight tracking-tight">
-            AI-powered compliance management for modern enterprises
-          </h2>
-          <p className="mt-4 text-base text-primary-foreground/80">
-            Streamline obligations, corrective actions, and regulatory reporting
-            in one intelligent platform.
+          <p className="text-[11px] text-[#8a889c]">
+            &copy; {new Date().getFullYear()} Compliance Tool Demo. All rights
+            reserved.
           </p>
-
-          <div className="mt-10 grid gap-4">
-            <div className="flex items-start gap-4 rounded-xl bg-primary-foreground/10 p-4">
-              <Cpu className="mt-0.5 size-5 shrink-0" />
-              <div>
-                <p className="font-medium">AI Copilot</p>
-                <p className="text-sm text-primary-foreground/80">
-                  Get recommendations, summaries, and risk insights on demand.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 rounded-xl bg-primary-foreground/10 p-4">
-              <Lock className="mt-0.5 size-5 shrink-0" />
-              <div>
-                <p className="font-medium">Enterprise-grade security</p>
-                <p className="text-sm text-primary-foreground/80">
-                  Role-based access, audit trails, and multi-factor
-                  authentication.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <p className="relative z-10 text-sm text-primary-foreground/70">
-          &copy; {new Date().getFullYear()} ComplianceAI Demo. All rights
-          reserved.
-        </p>
-      </div>
-
-      {/* Form panel */}
-      <div className="flex w-full flex-col items-center justify-center px-4 py-12 lg:w-1/2">
-        <div className="mb-6 flex items-center gap-2 lg:hidden">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Shield className="size-5" />
+        {/* Form panel */}
+        <div className="flex w-full flex-col items-center justify-center px-6 py-12 sm:px-10 lg:w-auto lg:flex-1">
+          <div className="mb-6 flex items-center gap-2 lg:hidden">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-[#17161b]">
+              <span className="text-chart-accent font-heading text-sm font-extrabold">
+                EY
+              </span>
+            </div>
+            <span className="text-lg font-semibold">Compliance Tool</span>
           </div>
-          <span className="text-lg font-semibold">ComplianceAI</span>
+          <LoginForm />
         </div>
-        <LoginForm />
-      </div>
+      </motion.div>
     </div>
   );
 }

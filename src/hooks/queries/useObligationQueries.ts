@@ -29,3 +29,21 @@ export function useObligationDetail(id: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function useObligationTimeline(id: string) {
+  return useQuery({
+    queryKey: obligationKeys.timeline(id),
+    queryFn: () => ObligationService.timeline(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useObligationComments(id: string) {
+  return useQuery({
+    queryKey: obligationKeys.comments(id),
+    queryFn: () => ObligationService.comments(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}

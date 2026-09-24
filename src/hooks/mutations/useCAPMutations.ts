@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CAPService } from "@/services";
-import { capKeys, complianceKeys } from "@/hooks/query-keys";
+import { capKeys, obligationKeys } from "@/hooks/query-keys";
 import type { CAP, CAPFilter } from "@/types";
 
 export function useCreateCAP(filters: CAPFilter = {}) {
@@ -11,7 +11,7 @@ export function useCreateCAP(filters: CAPFilter = {}) {
       queryClient.invalidateQueries({ queryKey: capKeys.lists() });
       queryClient.invalidateQueries({ queryKey: capKeys.list(filters) });
       // Creating a CAP bulk-updates linked obligations' status.
-      queryClient.invalidateQueries({ queryKey: complianceKeys.all });
+      queryClient.invalidateQueries({ queryKey: obligationKeys.all });
     },
   });
 }
@@ -25,7 +25,7 @@ export function useUpdateCAP(id: string, filters: CAPFilter = {}) {
       queryClient.invalidateQueries({ queryKey: capKeys.lists() });
       queryClient.invalidateQueries({ queryKey: capKeys.list(filters) });
       // Closing a CAP bulk-updates linked obligations to Completed.
-      queryClient.invalidateQueries({ queryKey: complianceKeys.all });
+      queryClient.invalidateQueries({ queryKey: obligationKeys.all });
     },
   });
 }

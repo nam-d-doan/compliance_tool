@@ -27,7 +27,7 @@ import { TypewriterText } from "@/components/ai/TypewriterText";
 import { AIExplanation } from "@/components/ai/AIExplanation";
 import { ConfidenceIndicator } from "@/components/ai/ConfidenceIndicator";
 import { useRegulationDetail } from "@/hooks/queries/useRegulationQueries";
-import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
 import { useRegulationImpact as useAIRegulationImpact } from "@/hooks/mutations/useAIMutations";
 import { cn } from "@/lib/utils";
 import { riskScoreStrokeClasses } from "@/lib/risk-score";
@@ -237,7 +237,7 @@ export default function RegulationImpactPage() {
   const [explanationOpen, setExplanationOpen] = useState(false);
 
   const detail = useRegulationDetail(id);
-  const obligations = useComplianceList({ regulation: id }, 1, 50);
+  const obligations = useObligationList({ regulationId: id }, 1, 50);
   const aiImpact = useAIRegulationImpact();
 
   const item = detail.data;
@@ -296,7 +296,6 @@ export default function RegulationImpactPage() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-white/90 hover:bg-white/10 hover:text-white"
           onClick={() => navigate(`/regulation/${id}`)}
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -420,7 +419,7 @@ export default function RegulationImpactPage() {
                       className="flex items-center justify-between rounded-md border border-border bg-card p-2 text-sm transition-colors hover:bg-muted/50"
                     >
                       <span className="truncate font-medium">
-                        {obligation.complianceId}
+                        {obligation.code}
                       </span>
                       <span
                         className={cn(
@@ -518,7 +517,7 @@ export default function RegulationImpactPage() {
             <CardContent>
               <DependencyGraph
                 regulation={item.title}
-                obligations={obligationItems.map((o) => o.complianceId)}
+                obligations={obligationItems.map((o) => o.code)}
                 departments={impactResult.impact.affectedDepartments}
               />
             </CardContent>

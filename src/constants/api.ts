@@ -8,15 +8,6 @@ export const API_ENDPOINTS = {
   AUTH_MFA: "/api/auth/mfa",
   AUTH_FORGOT_PASSWORD: "/api/auth/forgot-password",
 
-  // Compliance endpoints
-  COMPLIANCE_LIST: "/api/compliance",
-  COMPLIANCE_CREATE: "/api/compliance",
-  COMPLIANCE_GET: (id: string) => `/api/compliance/${id}`,
-  COMPLIANCE_UPDATE: (id: string) => `/api/compliance/${id}`,
-  COMPLIANCE_DELETE: (id: string) => `/api/compliance/${id}`,
-  COMPLIANCE_TIMELINE: (id: string) => `/api/compliance/${id}/timeline`,
-  COMPLIANCE_COMMENTS: (id: string) => `/api/compliance/${id}/comments`,
-
   // CAP (Corrective Action Plan) endpoints
   CAP_LIST: "/api/cap",
   CAP_CREATE: "/api/cap",
@@ -101,6 +92,9 @@ export const API_ENDPOINTS = {
   OBLIGATION_BULK_UPDATE: "/api/obligations/bulk",
   OBLIGATION_GET: (id: string) => `/api/obligations/${id}`,
   OBLIGATION_UPDATE: (id: string) => `/api/obligations/${id}`,
+  OBLIGATION_DELETE: (id: string) => `/api/obligations/${id}`,
+  OBLIGATION_TIMELINE: (id: string) => `/api/obligations/${id}/timeline`,
+  OBLIGATION_COMMENTS: (id: string) => `/api/obligations/${id}/comments`,
 
   // File attachment endpoints (Phase 5)
   FILE_LIST: "/api/files",

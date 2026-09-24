@@ -5,6 +5,7 @@ import {
   File as FileIcon,
   X,
   Download,
+  Eye,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -379,6 +380,15 @@ function FileRow({
           <span className="truncate">{file.uploadedBy}</span>
         </div>
       </div>
+      <a
+        href={file.url}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label={`Preview ${file.name}`}
+      >
+        <Eye className="size-3.5" aria-hidden="true" />
+      </a>
       <a
         href={file.url}
         download={file.name}

@@ -34,6 +34,7 @@ import { ROUTES } from "@/constants/routes";
 import { isOverdueDueDate } from "@/lib/due-date";
 import type { CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
+import { statusLabel, priorityLabel } from "@/lib/chart-labels";
 
 const PRIORITY_ORDER: Record<PriorityLevel, number> = {
   low: 1,
@@ -112,12 +113,17 @@ export default function CAPDashboardPage() {
       pendingApprovalCount: pendingItems.length,
       closedThisMonthCount: closedThisMonthItems.length,
       avgDaysToClose: avgDays,
-      statusData: countBy(caps, "status"),
-      priorityData: countBy(caps, "priority").sort(
-        (a, b) =>
-          PRIORITY_ORDER[a.name as PriorityLevel] -
-          PRIORITY_ORDER[b.name as PriorityLevel],
-      ),
+      statusData: countBy(caps, "status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
+      priorityData: countBy(caps, "priority")
+        .sort(
+          (a, b) =>
+            PRIORITY_ORDER[a.name as PriorityLevel] -
+            PRIORITY_ORDER[b.name as PriorityLevel],
+        )
+        .map((d) => ({ name: priorityLabel(d.name), value: d.value })),
       trendData: sortedTrend,
       departmentData: countBy(caps, "department").sort(
         (a, b) => b.value - a.value,
@@ -225,47 +231,47 @@ export default function CAPDashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <div className="md:col-span-1">
-          <PieChartCard
-            title="CAPs by Status"
-            data={statusData}
-            nameKey="name"
-            valueKey="value"
-            loading={capsQuery.isPending}
-          />
-        </div>
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <PieChartCard
+          title="CAPs by Status"
+          data={statusData}
+          nameKey="name"
+          valueKey="value"
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
-        <div className="md:col-span-1">
-          <BarChartCard
-            title="CAPs by Priority"
-            data={priorityData}
-            xKey="name"
-            yKeys={[{ key: "value", name: "CAPs" }]}
-            loading={capsQuery.isPending}
-          />
-        </div>
+        <BarChartCard
+          title="CAPs by Priority"
+          data={priorityData}
+          xKey="name"
+          yKeys={[{ key: "value", name: "CAPs" }]}
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
-        <div className="md:col-span-1">
-          <AreaChartCard
-            title="CAPs Over Time"
-            subtitle="Created by month"
-            data={trendData}
-            xKey="name"
-            yKeys={[{ key: "value", name: "Created" }]}
-            loading={capsQuery.isPending}
-          />
-        </div>
+        <AreaChartCard
+          title="CAPs Over Time"
+          subtitle="Created by month"
+          data={trendData}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Created" }]}
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
-        <div className="md:col-span-1">
-          <BarChartCard
-            title="CAPs by Department"
-            data={departmentData.slice(0, 8)}
-            xKey="name"
-            yKeys={[{ key: "value", name: "CAPs" }]}
-            loading={capsQuery.isPending}
-          />
-        </div>
+        <BarChartCard
+          title="CAPs by Department"
+          data={departmentData.slice(0, 8)}
+          xKey="name"
+          yKeys={[{ key: "value", name: "CAPs" }]}
+          loading={capsQuery.isPending}
+          height={240}
+          className="h-full"
+        />
 
         <div className="lg:col-span-2">
           <CAPListCard

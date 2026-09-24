@@ -1010,7 +1010,10 @@ export const CURATED_DEPENDENCIES: CuratedDependency[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Compliance obligations (Obligations page — ComplianceObligation)
+// Compliance obligations (legacy source data — merged into CURATED_OBLIGATIONS
+// below via `regulationId` → assignmentIndex resolution in db.ts). Kept here
+// only as the richer source rows (frequency/penalty/tags/progress/status
+// diversity) that get folded into the unified obligation list.
 // ---------------------------------------------------------------------------
 
 export interface CuratedComplianceObligation {
@@ -1027,7 +1030,7 @@ export interface CuratedComplianceObligation {
   progress: number;
 }
 
-export const CURATED_COMPLIANCE_OBLIGATIONS: CuratedComplianceObligation[] = [
+const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
   // --- Basel III / Capital Adequacy (Circular 14/2025) ---
   {
     regulationId: "reg-cir14-2025",
@@ -1706,9 +1709,15 @@ export interface CuratedObligation {
   riskLevel: "low" | "medium" | "high" | "critical";
   dueOffset: number;
   status: string;
+  /** Optional richer fields ported from the legacy compliance-obligation
+   * dataset. When omitted, db.ts fills in reasonable seed defaults. */
+  frequency?: "once" | "monthly" | "quarterly" | "biannually" | "annually";
+  penalty?: string;
+  tags?: string[];
+  progress?: number;
 }
 
-export const CURATED_OBLIGATIONS: CuratedObligation[] = [
+const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
   // Assignment 0: Basel III CAR Implementation
   {
     assignmentIndex: 0,
@@ -2160,6 +2169,89 @@ export const CURATED_OBLIGATIONS: CuratedObligation[] = [
     dueOffset: 20,
     status: "completed",
   },
+];
+
+/**
+ * `regulationId` → assignmentIndex, resolved from CURATED_ASSIGNMENTS order.
+ * Used to fold the legacy compliance-obligation rows (regulation-linked)
+ * into the unified, assignment-linked CURATED_OBLIGATIONS list below.
+ */
+const REGULATION_TO_ASSIGNMENT_INDEX: Record<string, number> = {
+  "reg-cir14-2025": 0,
+  "reg-cir83-2025": 1,
+  "reg-aml-law-2022": 2,
+  "reg-cir27-2025": 3,
+  "reg-cir18-2019": 4,
+  "reg-cir40-2024": 5,
+  "reg-cyberlaw-2015": 6,
+  "reg-law-ci-2024": 7,
+};
+
+const LEGACY_STATUS_MAP: Record<string, string> = {
+  Draft: "draft",
+  Submitted: "submitted",
+  "Pending Review": "review_required",
+  Approved: "approved",
+  Rejected: "rejected",
+  Assigned: "submitted",
+  Completed: "completed",
+  Returned: "returned",
+};
+
+/** Article refs for the selected legacy rows, in the order picked below. */
+const LEGACY_ARTICLE_REFS = [
+  "Điều 5",
+  "Điều 8",
+  "Điều 13",
+  "Điều 9",
+  "Điều 4",
+  "Điều 26",
+  "Điều 20",
+  "Điều 18",
+  "Điều 57",
+  "Điều 13",
+  "Điều 18",
+  "Điều 3",
+  "Điều 6",
+  "Điều 12",
+  "Điều 15",
+];
+
+/**
+ * A curated subset of the legacy compliance-obligation rows (rich fields:
+ * frequency/penalty/tags/progress + a broader status vocabulary spanning
+ * approved/rejected/returned) folded into the unified obligation list.
+ * Picked for topic + regulation diversity rather than exhaustively merging
+ * all 36 legacy rows (the remaining rows are close duplicates of what's
+ * already covered by CURATED_OBLIGATIONS_BASE).
+ */
+const LEGACY_INDICES_TO_MERGE = [
+  0, 1, 2, 3, 9, 11, 13, 15, 16, 19, 22, 26, 28, 33, 35,
+];
+
+const CURATED_OBLIGATIONS_FROM_LEGACY: CuratedObligation[] =
+  LEGACY_INDICES_TO_MERGE.map((legacyIndex, i) => {
+    const legacy = CURATED_COMPLIANCE_OBLIGATIONS_SOURCE[legacyIndex];
+    const assignmentIndex =
+      REGULATION_TO_ASSIGNMENT_INDEX[legacy.regulationId] ?? 0;
+    return {
+      assignmentIndex,
+      articleRef: LEGACY_ARTICLE_REFS[i] ?? "Điều 1",
+      title: legacy.title,
+      description: legacy.description,
+      riskLevel: legacy.criticality,
+      dueOffset: legacy.dueOffset,
+      status: LEGACY_STATUS_MAP[legacy.status] ?? "draft",
+      frequency: legacy.frequency,
+      penalty: legacy.penalty,
+      tags: legacy.tags,
+      progress: legacy.progress,
+    };
+  });
+
+export const CURATED_OBLIGATIONS: CuratedObligation[] = [
+  ...CURATED_OBLIGATIONS_BASE,
+  ...CURATED_OBLIGATIONS_FROM_LEGACY,
 ];
 
 // ---------------------------------------------------------------------------

@@ -40,9 +40,7 @@ export function KPICard({
   }
 
   const isPositive = trend?.positive ?? trend?.direction === "up";
-  const trendColor = isPositive
-    ? "text-emerald-600 dark:text-emerald-400"
-    : "text-red-600 dark:text-red-400";
+  const trendColor = isPositive ? "text-success" : "text-danger";
 
   const TrendIcon =
     trend?.direction === "up"
@@ -55,52 +53,60 @@ export function KPICard({
     <motion.div
       whileHover={onClick ? { y: -2 } : undefined}
       transition={{ duration: 0.2 }}
+      className="h-full"
     >
       <Card
         className={cn(
-          "overflow-hidden",
+          "h-full overflow-hidden",
           onClick && "cursor-pointer",
           className,
         )}
         onClick={onClick}
       >
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <span className="text-sm font-medium text-muted-foreground">
+        <CardHeader className="flex h-12 shrink-0 flex-row items-center justify-between pb-0">
+          <span className="truncate text-sm font-medium text-muted-foreground">
             {label}
           </span>
-          {Icon && (
+          {/* Always reserve the icon slot so cards without an icon keep the
+              same header height and label alignment. */}
+          {Icon ? (
             <div
               className={cn(
-                "flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary",
+                "flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary",
                 iconClassName,
               )}
             >
               <Icon className="size-5" aria-hidden="true" />
             </div>
+          ) : (
+            <div className="size-10 shrink-0" aria-hidden="true" />
           )}
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-semibold tracking-tight text-foreground">
+          <div className="truncate text-2xl font-semibold tracking-tight text-foreground">
             {value}
           </div>
-          {(trend || subtitle) && (
-            <div className="mt-1 flex items-center gap-2 text-xs">
-              {trend && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-0.5 font-medium",
-                    trendColor,
-                  )}
-                >
-                  <TrendIcon className="size-3" aria-hidden="true" />
-                  {trend.percent}%
-                </span>
-              )}
-              {subtitle && (
-                <span className="text-muted-foreground">{subtitle}</span>
-              )}
-            </div>
-          )}
+          {/* Always render the bottom line — blank text when no
+              trend/subtitle so every card has identical line-height and the
+              value/icon sit at the exact same vertical position. */}
+          <p className="mt-1 flex items-center gap-2 text-xs">
+            {trend && (
+              <span
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-0.5 font-medium whitespace-nowrap",
+                  trendColor,
+                )}
+              >
+                <TrendIcon className="size-3" aria-hidden="true" />
+                {trend.percent}%
+              </span>
+            )}
+            {subtitle ? (
+              <span className="truncate text-muted-foreground">{subtitle}</span>
+            ) : (
+              <span className="text-transparent select-none">&nbsp;</span>
+            )}
+          </p>
         </CardContent>
       </Card>
     </motion.div>

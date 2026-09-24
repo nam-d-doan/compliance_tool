@@ -85,7 +85,7 @@ export default function ReportsIndexPage() {
         subtitle="Interactive reports with filtering, visual insights, and AI-generated summaries for every stakeholder."
       >
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-blue-100">
+          <label className="text-xs font-medium text-muted-foreground">
             Quick date range
           </label>
           <div className="flex items-center gap-2">
@@ -93,20 +93,20 @@ export default function ReportsIndexPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-8 rounded-lg border-0 bg-white/20 px-2.5 text-xs text-white placeholder:text-blue-100 outline-none focus:bg-white/30"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
-            <span className="text-xs text-blue-100">to</span>
+            <span className="text-xs text-muted-foreground">to</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-8 rounded-lg border-0 bg-white/20 px-2.5 text-xs text-white placeholder:text-blue-100 outline-none focus:bg-white/30"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
           </div>
         </div>
       </PageHero>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {REPORT_TYPES.map((report, index) => {
           const Icon = report.icon;
           return (
@@ -116,6 +116,7 @@ export default function ReportsIndexPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
               whileHover={{ y: -2 }}
+              className="h-full"
             >
               <Card className="h-full transition-shadow hover:shadow-md">
                 <CardContent className="flex h-full flex-col gap-4 p-5">

@@ -171,7 +171,6 @@ export default function RegulationComparisonPage() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-white/90 hover:bg-white/10 hover:text-white"
           onClick={() => navigate("/regulation")}
         >
           <ArrowLeft className="size-4" aria-hidden="true" />

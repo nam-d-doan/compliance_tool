@@ -1,4 +1,3 @@
-export * from "./useComplianceQueries";
 export * from "./useCAPQueries";
 export * from "./useNCCQueries";
 export * from "./useRegulationQueries";
@@ -11,3 +10,5 @@ export * from "./useNotificationQueries";
 export * from "./useAIQueries";
 export * from "./useFileQueries";
 export * from "./useObligationQueries";
+export { useTabActionCounts } from "@/hooks/useTabActionCounts";
+export type { TabActionCounts } from "@/hooks/useTabActionCounts";

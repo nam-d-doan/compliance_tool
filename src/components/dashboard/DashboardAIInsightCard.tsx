@@ -32,13 +32,13 @@ export function DashboardAIInsightCard({
     >
       <Card
         className={cn(
-          "h-full border-violet-200 bg-gradient-to-br from-violet-50/50 to-background dark:border-violet-900/30 dark:from-violet-950/20",
+          "h-full overflow-hidden border-primary/10 bg-gradient-to-br from-primary/5 via-card to-card dark:border-primary/20 dark:from-primary/10",
           isLoading && "opacity-80",
         )}
       >
         <CardHeader className="flex flex-row items-start justify-between pb-2">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Sparkles className="size-4" aria-hidden="true" />
             </div>
             <div>
@@ -64,7 +64,7 @@ export function DashboardAIInsightCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto p-0 text-xs font-medium text-violet-700 dark:text-violet-400"
+                className="h-auto p-0 text-xs font-medium text-primary"
                 onClick={() => setShowReasoning((prev) => !prev)}
               >
                 {showReasoning ? (
@@ -89,14 +89,12 @@ export function DashboardAIInsightCard({
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="space-y-3 rounded-lg border bg-background/80 p-3 text-xs">
+                    <div className="space-y-3 rounded-lg border bg-background/80 p-4 text-xs">
                       {explanation.reasoning?.length > 0 && (
                         <ul className="space-y-1.5">
                           {explanation.reasoning.map((reason, index) => (
                             <li key={index} className="flex gap-2">
-                              <span className="text-violet-600 dark:text-violet-400">
-                                •
-                              </span>
+                              <span className="text-primary">•</span>
                               <span className="text-muted-foreground">
                                 {reason}
                               </span>
@@ -118,7 +116,7 @@ export function DashboardAIInsightCard({
                                   href={ref.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-violet-700 hover:underline dark:text-violet-400"
+                                  className="text-primary hover:underline"
                                 >
                                   {ref.title}
                                 </a>

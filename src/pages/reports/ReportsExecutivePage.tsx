@@ -61,6 +61,8 @@ function getChartComponent(chart: ReportChart) {
         data={data}
         nameKey="name"
         valueKey={chart.datasets[0]?.label ?? "value"}
+        height={240}
+        className="h-full"
       />
     );
   }
@@ -73,6 +75,8 @@ function getChartComponent(chart: ReportChart) {
         data={data}
         xKey="name"
         yKeys={keys}
+        height={240}
+        className="h-full"
       />
     );
   }
@@ -84,6 +88,8 @@ function getChartComponent(chart: ReportChart) {
       data={data}
       xKey="name"
       yKeys={keys}
+      height={240}
+      className="h-full"
     />
   );
 }
@@ -183,7 +189,7 @@ export default function ReportsExecutivePage() {
         subtitle="AI-generated enterprise health overview for leadership."
       >
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-blue-100">
+          <label className="text-xs font-medium text-muted-foreground">
             Date range
           </label>
           <div className="flex items-center gap-2">
@@ -191,14 +197,14 @@ export default function ReportsExecutivePage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-8 rounded-lg border-0 bg-white/20 px-2.5 text-xs text-white outline-none focus:bg-white/30"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
-            <span className="text-xs text-blue-100">to</span>
+            <span className="text-xs text-muted-foreground">to</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-8 rounded-lg border-0 bg-white/20 px-2.5 text-xs text-white outline-none focus:bg-white/30"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
           </div>
         </div>
@@ -315,23 +321,25 @@ export default function ReportsExecutivePage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {normalCharts.map((chart) => getChartComponent(chart))}
         {typedReport.heatmapData && (
           <RiskHeatmap
             title="Risk Heatmap"
             subtitle="Compliance risk by department and month"
             data={typedReport.heatmapData}
+            className="h-full"
           />
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
         {/* Key Insights */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.15 }}
+          className="h-full"
         >
           <Card className="h-full">
             <CardHeader>
@@ -372,6 +380,7 @@ export default function ReportsExecutivePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.25 }}
+          className="h-full"
         >
           <Card className="h-full">
             <CardHeader>

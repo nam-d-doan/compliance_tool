@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { format, parseISO } from "date-fns";
 import {
   useReactTable,
   getCoreRowModel,
@@ -37,19 +38,25 @@ import {
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { DueDateCell } from "@/components/common/DueDateCell";
-import { PageHero } from "@/components/common";
+import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { BarChartCard } from "@/components/charts/BarChartCard";
+import { AreaChartCard } from "@/components/charts/AreaChartCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
-import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
+import { useRegulationList } from "@/hooks/queries";
+import { useObligationsSummary } from "@/hooks/useTabSummaries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
-import { COMPLIANCE_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
+import { OBLIGATION_STATUSES, PRIORITY_LEVELS } from "@/constants/status";
+import { statusLabel, priorityLabel } from "@/lib/chart-labels";
 import { cn } from "@/lib/utils";
 import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
 import { riskScoreTextClasses } from "@/lib/risk-score";
-import type { ComplianceObligation, ComplianceFilter } from "@/types";
+import type { Obligation, ObligationFilter } from "@/types";
 
 const BUSINESS_UNITS = [
   "Retail Banking",
@@ -63,17 +70,41 @@ const BUSINESS_UNITS = [
 
 const PAGE_SIZE = 10;
 
+/** Tally items by a string field → recharts ChartDataPoint[]. */
+function countBy<T>(items: T[], key: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const value = String(item[key] ?? "Unknown");
+    map.set(value, (map.get(value) ?? 0) + 1);
+  });
+  return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+}
+
+/** Monthly count of items by a date field, oldest → newest. */
+function monthlyTrend<T>(items: T[], dateKey: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const raw = item[dateKey];
+    if (!raw || typeof raw !== "string") return;
+    const label = format(parseISO(raw), "MMM yyyy");
+    map.set(label, (map.get(label) ?? 0) + 1);
+  });
+  return Array.from(map.entries())
+    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+    .map(([name, value]) => ({ name, value }));
+}
+
 const selectClass =
   "h-9 rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 const HEADER_TOOLTIPS: Record<string, string> = {
-  complianceId: "Unique obligation identifier",
+  code: "Unique obligation identifier",
   title: "Obligation title",
   businessUnit: "Owning business unit",
   ownerName: "Responsible owner",
   dueDate: DUE_DATE_COLOR_GUIDE,
   status: "Current workflow status",
-  criticality: "Risk criticality",
+  riskLevel: "Risk criticality",
   aiRiskScore: "AI-assigned risk score",
 };
 
@@ -81,6 +112,7 @@ export default function ObligationListPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "compliance:create");
+  const summaryCards = useObligationsSummary();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -88,6 +120,7 @@ export default function ObligationListPage() {
   const [priority, setPriority] = useState("");
   const [businessUnit, setBusinessUnit] = useState("");
   const [owner, setOwner] = useState("");
+  const [regulation, setRegulation] = useState("");
   const [page, setPage] = useState(1);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -99,10 +132,10 @@ export default function ObligationListPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status, priority, businessUnit, owner]);
+  }, [debouncedSearch, status, priority, businessUnit, owner, regulation]);
 
   const hasActiveFilters = Boolean(
-    search || status || priority || businessUnit || owner,
+    search || status || priority || businessUnit || owner || regulation,
   );
   const clearFilters = () => {
     setSearch("");
@@ -110,13 +143,22 @@ export default function ObligationListPage() {
     setPriority("");
     setBusinessUnit("");
     setOwner("");
+    setRegulation("");
   };
 
   // Row selection is index-based; clear it whenever the page or filters shift
   // so selections never silently rebind to different rows.
   useEffect(() => {
     setRowSelection({});
-  }, [debouncedSearch, status, priority, businessUnit, owner, page]);
+  }, [
+    debouncedSearch,
+    status,
+    priority,
+    businessUnit,
+    owner,
+    regulation,
+    page,
+  ]);
 
   const sortField = sorting[0]?.id ?? "createdAt";
   const sortDirection = sorting[0]
@@ -129,11 +171,12 @@ export default function ObligationListPage() {
     () => ({
       search: debouncedSearch,
       status: status || undefined,
-      priority: priority || undefined,
+      riskLevel: priority || undefined,
       businessUnit: businessUnit || undefined,
       owner: owner || undefined,
       sortField,
       sortDirection,
+      regulationIds: regulation ? [regulation] : undefined,
     }),
     [
       debouncedSearch,
@@ -141,22 +184,47 @@ export default function ObligationListPage() {
       priority,
       businessUnit,
       owner,
+      regulation,
       sortField,
       sortDirection,
     ],
   );
 
-  const { data, isPending, isError, refetch } = useComplianceList(
-    filters as ComplianceFilter,
+  const { data, isPending, isError, refetch } = useObligationList(
+    filters as ObligationFilter,
     page,
     PAGE_SIZE,
+  );
+
+  // Unfiltered dataset for the chart aggregations (parity with the CAP tab).
+  const { data: chartData } = useObligationList({}, 1, 500);
+  const statusChart = useMemo(
+    () =>
+      countBy(chartData?.items ?? [], "status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
+    [chartData],
+  );
+  const riskChart = useMemo(
+    () =>
+      countBy(chartData?.items ?? [], "riskLevel").map((d) => ({
+        name: priorityLabel(d.name),
+        value: d.value,
+      })),
+    [chartData],
+  );
+  const trendChart = useMemo(
+    () => monthlyTrend(chartData?.items ?? [], "createdAt"),
+    [chartData],
   );
   const { data: ownersData } = useAdminUsers(1, 200, {
     role: "owner",
     status: "Active",
   });
+  const { data: regulationsData } = useRegulationList({}, 1, 200);
 
-  const columns = useMemo<ColumnDef<ComplianceObligation>[]>(
+  const columns = useMemo<ColumnDef<Obligation>[]>(
     () => [
       {
         id: "select",
@@ -186,7 +254,7 @@ export default function ObligationListPage() {
         enableSorting: false,
       },
       {
-        accessorKey: "complianceId",
+        accessorKey: "code",
         header: "Obligation ID",
         size: 140,
       },
@@ -212,7 +280,7 @@ export default function ObligationListPage() {
         cell: ({ row }) => (
           <DueDateCell
             dueDate={row.original.dueDate}
-            completed={["Completed", "Approved"].includes(row.original.status)}
+            completed={["completed", "approved"].includes(row.original.status)}
           />
         ),
       },
@@ -225,7 +293,7 @@ export default function ObligationListPage() {
         ),
       },
       {
-        accessorKey: "criticality",
+        accessorKey: "riskLevel",
         header: "Priority",
         size: 120,
         cell: ({ getValue }) => (
@@ -312,14 +380,9 @@ export default function ObligationListPage() {
       >
         <div className="flex flex-wrap items-center gap-2">
           <Button
-            variant="secondary"
+            variant={selectedCount > 0 ? "default" : "secondary"}
             onClick={handleCreateCAPFromSelected}
             disabled={selectedCount === 0}
-            className={
-              selectedCount > 0
-                ? "border-white/30 bg-white/20 text-white hover:bg-white/30 hover:text-white"
-                : ""
-            }
           >
             <ClipboardCheck className="size-4" aria-hidden="true" />
             Create CAP
@@ -329,7 +392,6 @@ export default function ObligationListPage() {
             <Button
               variant="outline"
               onClick={() => navigate("/obligations/create")}
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
               <Plus className="size-4" aria-hidden="true" />
               Create New
@@ -337,6 +399,39 @@ export default function ObligationListPage() {
           )}
         </div>
       </PageHero>
+
+      <SummaryCardBar cards={summaryCards} />
+
+      <ChartGrid>
+        <PieChartCard
+          title="Obligations by Status"
+          data={statusChart}
+          nameKey="name"
+          valueKey="value"
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="By Risk Level"
+          data={riskChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Obligations" }]}
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+        <AreaChartCard
+          title="Over Time"
+          subtitle="Created by month"
+          data={trendChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Created" }]}
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+      </ChartGrid>
 
       <Card>
         <CardHeader>
@@ -375,9 +470,9 @@ export default function ObligationListPage() {
               className={cn(selectClass, "min-w-[10rem]")}
             >
               <option value="">All statuses</option>
-              {COMPLIANCE_STATUSES.map((s) => (
+              {OBLIGATION_STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {s.replace(/_/g, " ")}
                 </option>
               ))}
             </select>
@@ -414,6 +509,18 @@ export default function ObligationListPage() {
               {ownersData?.items.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={regulation}
+              onChange={(e) => setRegulation(e.target.value)}
+              className={cn(selectClass, "min-w-[14rem]")}
+            >
+              <option value="">All regulations</option>
+              {regulationsData?.items.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.title}
                 </option>
               ))}
             </select>

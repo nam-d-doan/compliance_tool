@@ -9,9 +9,10 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { motion } from "motion/react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   Search,
+  Plus,
   LayoutGrid,
   Table as TableIcon,
   Eye,
@@ -41,15 +42,21 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton, CardSkeleton } from "@/components/common/Skeletons";
-import { PageHero } from "@/components/common";
+import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { BarChartCard } from "@/components/charts/BarChartCard";
+import { AreaChartCard } from "@/components/charts/AreaChartCard";
+import { useRegulationsSummary } from "@/hooks/useTabSummaries";
 import { useRegulationList } from "@/hooks/queries/useRegulationQueries";
 import {
   useArchiveRegulation,
   useBulkArchiveRegulations,
 } from "@/hooks/mutations/useRegulationMutations";
 import { useAuthStore } from "@/stores";
-import { hasMinimumRole } from "@/constants/rbac";
+import { hasMinimumRole, hasPermission } from "@/constants/rbac";
+import { ROUTES } from "@/constants/routes";
 import { REGULATION_STATUSES } from "@/constants/status";
+import { statusLabel } from "@/lib/chart-labels";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { riskScoreTextClasses } from "@/lib/risk-score";
@@ -96,6 +103,28 @@ const INDUSTRIES = [
 ] as const;
 const PAGE_SIZE = 12;
 
+function countBy<T>(items: T[], key: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const value = String(item[key] ?? "Unknown");
+    map.set(value, (map.get(value) ?? 0) + 1);
+  });
+  return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+}
+
+function monthlyTrend<T>(items: T[], dateKey: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const raw = item[dateKey];
+    if (!raw || typeof raw !== "string") return;
+    const label = format(parseISO(raw), "MMM yyyy");
+    map.set(label, (map.get(label) ?? 0) + 1);
+  });
+  return Array.from(map.entries())
+    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+    .map(([name, value]) => ({ name, value }));
+}
+
 const selectClass =
   "h-8 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
@@ -103,9 +132,11 @@ export default function RegulationLibraryPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
   const canArchive = hasMinimumRole(role, "executive");
+  const canCreate = hasPermission(role, "regulation:create");
 
   const archive = useArchiveRegulation();
   const bulkArchive = useBulkArchiveRegulations();
+  const summaryCards = useRegulationsSummary();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -179,6 +210,25 @@ export default function RegulationLibraryPage() {
     filters as RegulationFilter,
     page,
     PAGE_SIZE,
+  );
+
+  // Unfiltered dataset for the chart aggregations.
+  const { data: chartData } = useRegulationList({}, 1, 500);
+  const statusChart = useMemo(
+    () =>
+      countBy(chartData?.items ?? [], "status").map((d) => ({
+        name: statusLabel(d.name),
+        value: d.value,
+      })),
+    [chartData],
+  );
+  const categoryChart = useMemo(
+    () => countBy(chartData?.items ?? [], "category"),
+    [chartData],
+  );
+  const trendChart = useMemo(
+    () => monthlyTrend(chartData?.items ?? [], "createdDate"),
+    [chartData],
   );
 
   const handleArchiveToggle = useCallback(
@@ -405,7 +455,47 @@ export default function RegulationLibraryPage() {
       <PageHero
         title="Regulatory Intelligence"
         subtitle="Monitor, compare, and analyze regulations across jurisdictions. Understand AI-predicted impact on your compliance program."
-      />
+      >
+        {canCreate && (
+          <Button onClick={() => navigate(ROUTES.REGULATION.CREATE)}>
+            <Plus className="size-4" aria-hidden="true" />
+            Add Regulation
+          </Button>
+        )}
+      </PageHero>
+
+      <SummaryCardBar cards={summaryCards} />
+
+      <ChartGrid>
+        <PieChartCard
+          title="By Status"
+          data={statusChart}
+          nameKey="name"
+          valueKey="value"
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="By Category"
+          data={categoryChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Regulations" }]}
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+        <AreaChartCard
+          title="Recently Added"
+          subtitle="Added by month"
+          data={trendChart}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Added" }]}
+          loading={chartData == null}
+          height={240}
+          className="h-full"
+        />
+      </ChartGrid>
 
       <Card>
         <CardHeader>

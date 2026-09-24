@@ -1,15 +1,38 @@
-export type ObligationStatus =
-  "draft" | "submitted" | "review_required" | "cap_in_progress" | "completed";
+import type { BaseEntity } from "./base";
+import type { ObligationStatus, PriorityLevel } from "@/constants/status";
 
-export type ObligationRiskLevel = "low" | "medium" | "high" | "critical";
+export type { ObligationStatus };
+/** @deprecated use `PriorityLevel` — kept as an alias to minimize churn. */
+export type ObligationRiskLevel = PriorityLevel;
 
-export interface Obligation {
-  id: string;
+/**
+ * Canonical obligation entity. Unifies the legacy `ComplianceObligation`
+ * (business-unit/department/regulation-centric, richer approval workflow)
+ * with the assignment-linked `Obligation` (the real intended flow entry
+ * point: Regulation → Assignment → Obligation). Every obligation is linked
+ * to an Assignment; regulation fields are denormalized for direct display.
+ */
+export interface Obligation extends BaseEntity {
+  /** Display code, e.g. "OBG-2026-001". */
+  code: string;
   assignmentId: string;
   assignmentTitle?: string; // denormalized
   articleRef: string; // e.g., "Điều 3", "Article 12"
   title: string;
   description: string;
+
+  /** Denormalized from the linked Assignment's regulation. */
+  regulationId: string;
+  regulationName: string;
+  /**
+   * Every regulation ID this obligation links to, including any superseded /
+   * amendment-related regulations derived from the dependency graph. The
+   * first entry is the primary (current) link and matches `regulationId` for
+   * backward compatibility. The handler uses this for many-to-many
+   * filtering by regulation.
+   */
+  regulationIds: string[];
+
   ownerDepartmentId: string;
   ownerDepartmentName?: string;
   /** Owning user id — the person accountable for fulfilling the obligation.
@@ -17,11 +40,30 @@ export interface Obligation {
   ownerId: string;
   /** Denormalized owner display name. */
   ownerName: string;
+
+  approverId: string;
+  approverName: string;
+
+  /** Business unit / department / location groupings, retained from the
+   * legacy entity for reporting and filtering parity. */
+  businessUnit: string;
+  department: string;
+  location: string;
+
+  frequency: "once" | "monthly" | "quarterly" | "biannually" | "annually";
+
   dueDate: string; // ISO
-  riskLevel: ObligationRiskLevel;
+  riskLevel: PriorityLevel;
   status: ObligationStatus;
-  createdDate: string;
-  updatedDate: string;
+
+  penalty: string;
+
+  aiRiskScore: number;
+  aiRecommendation?: string;
+
+  tags: string[];
+  /** 0-100 completion percentage. */
+  progress: number;
 }
 
 /** Single obligation row in a bulk submission. `assignmentId` is optional to
@@ -39,7 +81,7 @@ export interface BulkObligationInputItem {
   ownerId?: string;
   ownerName?: string;
   dueDate: string; // ISO
-  riskLevel: ObligationRiskLevel;
+  riskLevel: PriorityLevel;
 }
 
 /** Payload accepted by POST /api/obligations/bulk. */
@@ -58,10 +100,19 @@ export interface BulkCreateObligationsResult {
 /** Query filters accepted by GET /api/obligations/list. */
 export interface ObligationFilter {
   status?: ObligationStatus | ObligationStatus[];
-  riskLevel?: ObligationRiskLevel;
+  riskLevel?: PriorityLevel | PriorityLevel[];
+  priority?: PriorityLevel | PriorityLevel[];
   owner?: string;
   ownerName?: string;
   ownerDepartment?: string;
+  businessUnit?: string;
+  department?: string;
+  location?: string;
+  regulationId?: string;
+  /** Filter to obligations whose `regulationIds` includes this regulation id. */
+  regulationIds?: string[];
+  approver?: string;
+  tags?: string[];
   assignmentId?: string;
   /** Filter to obligations that are overdue (dueDate < now, not completed). */
   overdue?: boolean;
@@ -82,7 +133,7 @@ export interface ObligationFilter {
 export type UpdateObligationInput = Partial<
   Omit<
     Obligation,
-    "id" | "createdDate" | "updatedDate" | "assignmentId" | "assignmentTitle"
+    "id" | "createdAt" | "updatedAt" | "assignmentId" | "assignmentTitle"
   >
 >;
 
@@ -112,11 +163,26 @@ export interface ObligationTimelineEvent {
     | "review_required"
     | "cap_in_progress"
     | "completed"
-    | "status_changed";
+    | "status_changed"
+    | "approved"
+    | "rejected"
+    | "cap_created"
+    | "closed"
+    | "commented";
   title: string;
   description: string;
   userId: string;
   userName: string;
   timestamp: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface ObligationComment {
+  id: string;
+  obligationId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  timestamp: string;
+  attachments?: string[];
 }

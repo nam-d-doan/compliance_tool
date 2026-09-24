@@ -6,16 +6,6 @@ import {
 } from "./handlers/auth_handlers";
 import { handleDashboard } from "./handlers/dashboard_handlers";
 import {
-  handleGetComplianceList,
-  handleGetComplianceDetail,
-  handleCreateCompliance,
-  handleUpdateCompliance,
-  handleDeleteCompliance,
-  handleGetComplianceTimeline,
-  handleGetComplianceComments,
-  handleCreateComplianceComment,
-} from "./handlers/compliance_handlers";
-import {
   handleGetCapList,
   handleGetCapDetail,
   handleCreateCap,
@@ -97,7 +87,11 @@ import {
   handleGetObligationList,
   handleGetObligationDetail,
   handleUpdateObligation,
+  handleDeleteObligation,
   handleBulkUpdateObligations,
+  handleGetObligationTimeline,
+  handleGetObligationComments,
+  handleCreateObligationComment,
 } from "./handlers/obligation_handlers";
 import {
   handleGetFileList,
@@ -128,48 +122,6 @@ const routes: Route[] = [
     methods: ["GET"],
     pattern: "/api/dashboard/:role",
     handler: handleDashboard,
-  },
-
-  // Compliance
-  {
-    methods: ["GET"],
-    pattern: "/api/compliance",
-    handler: handleGetComplianceList,
-  },
-  {
-    methods: ["POST"],
-    pattern: "/api/compliance",
-    handler: handleCreateCompliance,
-  },
-  {
-    methods: ["GET"],
-    pattern: "/api/compliance/:id/timeline",
-    handler: handleGetComplianceTimeline,
-  },
-  {
-    methods: ["GET"],
-    pattern: "/api/compliance/:id/comments",
-    handler: handleGetComplianceComments,
-  },
-  {
-    methods: ["POST"],
-    pattern: "/api/compliance/:id/comments",
-    handler: handleCreateComplianceComment,
-  },
-  {
-    methods: ["GET"],
-    pattern: "/api/compliance/:id",
-    handler: handleGetComplianceDetail,
-  },
-  {
-    methods: ["PUT"],
-    pattern: "/api/compliance/:id",
-    handler: handleUpdateCompliance,
-  },
-  {
-    methods: ["DELETE"],
-    pattern: "/api/compliance/:id",
-    handler: handleDeleteCompliance,
   },
 
   // CAP
@@ -348,6 +300,21 @@ const routes: Route[] = [
   },
   {
     methods: ["GET"],
+    pattern: "/api/obligations/:id/timeline",
+    handler: handleGetObligationTimeline,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/obligations/:id/comments",
+    handler: handleGetObligationComments,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/obligations/:id/comments",
+    handler: handleCreateObligationComment,
+  },
+  {
+    methods: ["GET"],
     pattern: "/api/obligations/:id",
     handler: handleGetObligationDetail,
   },
@@ -355,6 +322,11 @@ const routes: Route[] = [
     methods: ["PUT", "PATCH"],
     pattern: "/api/obligations/:id",
     handler: handleUpdateObligation,
+  },
+  {
+    methods: ["DELETE"],
+    pattern: "/api/obligations/:id",
+    handler: handleDeleteObligation,
   },
 
   // File attachments (Phase 5)

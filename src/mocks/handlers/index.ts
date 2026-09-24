@@ -1,5 +1,4 @@
 import { authHandlers } from "./auth_handlers";
-import { complianceHandlers } from "./compliance_handlers";
 import { capHandlers } from "./cap_handlers";
 import { nccHandlers } from "./ncc_handlers";
 import { regulationHandlers } from "./regulation_handlers";
@@ -17,7 +16,6 @@ import { fileHandlers } from "./file_handlers";
 
 export const handlers = [
   ...authHandlers,
-  ...complianceHandlers,
   ...capHandlers,
   ...nccHandlers,
   ...regulationHandlers,

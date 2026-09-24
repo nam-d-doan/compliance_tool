@@ -43,6 +43,7 @@ import { DetailSkeleton } from "@/components/common/Skeletons";
 import { KPICard } from "@/components/common/KPICard";
 import { TimelineEvent } from "@/components/activity/TimelineEvent";
 import { useAssignmentDetail, useAssignmentTimeline } from "@/hooks/queries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
 import {
   useUpdateAssignment,
   useAcknowledgeAssignment,
@@ -125,6 +126,15 @@ export default function AssignmentDetailPage() {
   const update = useUpdateAssignment(id);
   const acknowledge = useAcknowledgeAssignment(id);
   const cancel = useCancelAssignment(id);
+
+  // Linked obligations for this assignment (scrollable card, parity with
+  // Regulation detail's linked-obligations tile). Called unconditionally —
+  // before any early return — to satisfy rules-of-hooks.
+  const obligations = useObligationList(
+    { assignmentId: id || undefined },
+    1,
+    50,
+  );
 
   const canUpdate = hasPermission(role, "assignment:update");
 
@@ -209,7 +219,6 @@ export default function AssignmentDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-white/90 hover:bg-white/10 hover:text-white"
             onClick={() => navigate(ROUTES.ASSIGNMENTS.LIST)}
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
@@ -235,6 +244,27 @@ export default function AssignmentDetailPage() {
           </p>
         </motion.div>
       )}
+
+      {/* KPI cards row — full-width above the 2-column layout. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 lg:items-stretch">
+        <KPICard
+          label="Days to due"
+          value={daysToDue}
+          subtitle={
+            daysToDue < 0
+              ? `${Math.abs(daysToDue)} days overdue`
+              : daysToDue === 0
+                ? "Due today"
+                : "days remaining"
+          }
+          icon={Calendar}
+          trend={{
+            direction: daysToDue < 0 ? "down" : "flat",
+            percent: Math.abs(daysToDue),
+            positive: daysToDue >= 0,
+          }}
+        />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -388,11 +418,46 @@ export default function AssignmentDetailPage() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
-              <EmptyState
-                icon={<Inbox className="size-6" aria-hidden="true" />}
-                title="No obligations yet"
-                description="Obligations will appear here once submitted by the assigned department."
-              />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">
+                    Linked Obligations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {obligations.isPending ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2
+                        className="size-5 animate-spin text-primary"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  ) : obligations.data?.items.length === 0 ? (
+                    <EmptyState
+                      icon={<Inbox className="size-6" aria-hidden="true" />}
+                      title="No obligations yet"
+                      description="Obligations will appear here once submitted by the assigned department."
+                    />
+                  ) : (
+                    <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
+                      {obligations.data?.items.map((obligation) => (
+                        <button
+                          key={obligation.id}
+                          onClick={() =>
+                            navigate(`/obligations/${obligation.id}`)
+                          }
+                          className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card p-2 text-left text-sm transition-colors hover:bg-muted/50"
+                        >
+                          <span className="min-w-0 truncate font-medium">
+                            {obligation.code} — {obligation.title}
+                          </span>
+                          <StatusBadge status={obligation.status} size="sm" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
               {canCreateObligations && (
                 <div className="flex justify-center">
                   <Button
@@ -448,24 +513,6 @@ export default function AssignmentDetailPage() {
 
         {/* Right rail */}
         <div className="space-y-4">
-          <KPICard
-            label="Days to due"
-            value={daysToDue}
-            subtitle={
-              daysToDue < 0
-                ? `${Math.abs(daysToDue)} days overdue`
-                : daysToDue === 0
-                  ? "Due today"
-                  : "days remaining"
-            }
-            icon={Calendar}
-            trend={{
-              direction: daysToDue < 0 ? "down" : "flat",
-              percent: Math.abs(daysToDue),
-              positive: daysToDue >= 0,
-            }}
-          />
-
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">

@@ -8,6 +8,7 @@ export interface Regulation {
   description: string;
   category: string;
   regulatoryBody: string;
+  issueDate?: string;
   effectiveDate: string;
   expirationDate?: string;
   status: RegulationStatus;
@@ -82,6 +83,15 @@ export interface VietLexDoc {
   title: string;
   issuer: string;
   date: string; // ISO
+  // Richer metadata drawn from the VietLex search result. Optional so the
+  // legacy seeded stub keeps working; populated for live-API hits.
+  loai?: string; // Loại văn bản (Thông tư, Luật, ...)
+  nganh?: string; // Ngành (Ngân hàng, ...)
+  linhVuc?: string; // Lĩnh vực
+  capBanHanh?: string; // Cơ quan ban hành (cạnh issuer)
+  pdfUrl?: string; // direct PDF / internal pdf endpoint
+  url?: string; // official source link
+  nguon?: string; // data source label (vanban.chinhphu.vn, ...)
 }
 
 export interface VietLexDocDetail extends VietLexDoc {

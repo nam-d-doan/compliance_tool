@@ -1,3 +1,5 @@
+> **Historical/aspirational.** This spec describes a larger, partially different product than what is actually built (e.g. License Management, a standalone Evidence Library, Knowledge Center, Compliance Templates — none of these exist in `src/pages`). It does not reflect current app behavior. See `docs/USER_FLOW.md` for the ground-truth flow and `docs/DOX.md` for the current work contract.
+
 # AI Compliance Management System
 # Frontend Implementation Roadmap
 Version: 1.0

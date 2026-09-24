@@ -47,22 +47,23 @@ import {
   type ComplianceFormValues,
 } from "@/components/compliance/ComplianceForm";
 import {
-  useComplianceDetail,
-  useComplianceTimeline,
-  useComplianceComments,
-} from "@/hooks/queries/useComplianceQueries";
+  useObligationDetail,
+  useObligationTimeline,
+  useObligationComments,
+} from "@/hooks/queries/useObligationQueries";
 import { useCAPList } from "@/hooks/queries/useCAPQueries";
+import { useRegulationList } from "@/hooks/queries";
 import {
-  useUpdateCompliance,
-  useDeleteCompliance,
-  useAddComplianceComment,
-} from "@/hooks/mutations/useComplianceMutations";
+  useUpdateObligation,
+  useDeleteObligation,
+  useAddObligationComment,
+} from "@/hooks/mutations/useObligationMutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
 import type {
-  ComplianceObligation,
-  ComplianceTimelineEvent,
+  Obligation,
+  ObligationTimelineEvent,
   ActivityFeedItem,
   AIInsight,
 } from "@/types";
@@ -77,13 +78,16 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 const timelineTypeMap: Record<
-  ComplianceTimelineEvent["type"],
+  ObligationTimelineEvent["type"],
   ActivityFeedItem["type"]
 > = {
   created: "submission",
-  assigned: "submission",
   updated: "upload",
   submitted: "submission",
+  review_required: "submission",
+  cap_in_progress: "cap_created",
+  completed: "approval",
+  status_changed: "upload",
   approved: "approval",
   rejected: "rejection",
   cap_created: "cap_created",
@@ -91,7 +95,7 @@ const timelineTypeMap: Record<
   commented: "comment",
 };
 
-function buildInsight(item: ComplianceObligation): AIInsight {
+function buildInsight(item: Obligation): AIInsight {
   return {
     id: `ai-${item.id}`,
     title: "AI Risk Assessment",
@@ -102,7 +106,7 @@ function buildInsight(item: ComplianceObligation): AIInsight {
       item.aiRecommendation ??
       "Review this obligation before the due date and ensure all required documentation is collected.",
     reasoning: [
-      `Risk score of ${item.aiRiskScore} derived from obligation criticality (${item.criticality}) and due date proximity.`,
+      `Risk score of ${item.aiRiskScore} derived from obligation criticality (${item.riskLevel}) and due date proximity.`,
       "Cross-referenced with similar historical obligations and submission outcomes.",
       item.aiRecommendation
         ? "AI recommendation was generated from the obligation context."
@@ -127,13 +131,14 @@ export default function ObligationDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [editOpen, setEditOpen] = useState(false);
 
-  const detail = useComplianceDetail(id);
-  const timeline = useComplianceTimeline(id);
-  const comments = useComplianceComments(id);
+  const detail = useObligationDetail(id);
+  const timeline = useObligationTimeline(id);
+  const comments = useObligationComments(id);
   const caps = useCAPList({ compliance: id }, 1, 20);
-  const update = useUpdateCompliance(id);
-  const remove = useDeleteCompliance();
-  const addComment = useAddComplianceComment(id);
+  const { data: regulationsData } = useRegulationList({}, 1, 500);
+  const update = useUpdateObligation(id);
+  const remove = useDeleteObligation();
+  const addComment = useAddObligationComment(id);
 
   const item = detail.data;
 
@@ -143,13 +148,29 @@ export default function ObligationDetailPage() {
 
   const insight = useMemo(() => (item ? buildInsight(item) : null), [item]);
 
+  const linkedRegulations = useMemo(() => {
+    if (!item) return [];
+    const byId = new Map((regulationsData?.items ?? []).map((r) => [r.id, r]));
+    const ids = item.regulationIds?.length
+      ? item.regulationIds
+      : [item.regulationId];
+    return ids.map((rid) => {
+      const reg = byId.get(rid);
+      return {
+        id: rid,
+        title: reg?.title ?? item.regulationName,
+        status: reg?.status,
+      };
+    });
+  }, [item, regulationsData]);
+
   const timelineItems: ActivityFeedItem[] = useMemo(() => {
     if (!timeline.data) return [];
     return timeline.data.map((event) => ({
       ...event,
       type: timelineTypeMap[event.type],
       entityType: "compliance",
-      entityId: event.complianceId,
+      entityId: event.obligationId,
       createdAt: event.timestamp,
       updatedAt: event.timestamp,
     }));
@@ -170,9 +191,9 @@ export default function ObligationDetailPage() {
   const approvers = useMemo(() => {
     if (!item) return [];
     const status: "approved" | "rejected" | "pending" =
-      item.status === "Approved"
+      item.status === "approved"
         ? "approved"
-        : item.status === "Rejected"
+        : item.status === "rejected"
           ? "rejected"
           : "pending";
     return [
@@ -185,14 +206,14 @@ export default function ObligationDetailPage() {
 
   const handleApprove = () => {
     update.mutate(
-      { status: "Approved", progress: 100 },
+      { status: "approved", progress: 100 },
       { onSuccess: () => toast.success("Obligation approved") },
     );
   };
 
   const handleReject = () => {
     update.mutate(
-      { status: "Rejected" },
+      { status: "rejected" },
       { onSuccess: () => toast.success("Obligation rejected") },
     );
   };
@@ -231,10 +252,9 @@ export default function ObligationDetailPage() {
         ownerName: selected.owner?.name ?? item.ownerName,
         approverId: values.approverId,
         approverName: selected.approver?.name ?? item.approverName,
-        reviewerIds: values.reviewerIds,
         frequency: values.frequency,
         dueDate: new Date(values.dueDate).toISOString(),
-        criticality: values.criticality,
+        riskLevel: values.criticality,
         penalty: values.penalty,
         tags: values.tags
           ? values.tags
@@ -277,10 +297,9 @@ export default function ObligationDetailPage() {
     regulationId: item.regulationId,
     ownerId: item.ownerId,
     approverId: item.approverId,
-    reviewerIds: item.reviewerIds,
     frequency: item.frequency,
     dueDate: item.dueDate.slice(0, 10),
-    criticality: item.criticality,
+    criticality: item.riskLevel,
     penalty: item.penalty,
     tags: item.tags.join(", "),
   };
@@ -301,12 +320,10 @@ export default function ObligationDetailPage() {
         Back to obligations
       </Button>
 
-      <PageHero title={item.title} subtitle={item.complianceId}>
+      <PageHero title={item.title} subtitle={item.code}>
         <div className="flex flex-wrap items-center gap-2">
           <Button
-            variant="secondary"
             onClick={() => navigate(`/cap/create?obligations=${item.id}`)}
-            className="border-white/30 bg-white/20 text-white hover:bg-white/30 hover:text-white"
           >
             <Plus className="size-4" aria-hidden="true" />
             Create CAP
@@ -316,7 +333,6 @@ export default function ObligationDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => setEditOpen(true)}
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
               <Pencil className="size-4" aria-hidden="true" />
               Edit
@@ -333,7 +349,43 @@ export default function ObligationDetailPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={item.status} size="md" />
-        <PriorityBadge priority={item.criticality} size="md" />
+        <PriorityBadge priority={item.riskLevel} size="md" />
+      </div>
+
+      {/* KPI cards row — full-width above the 2-column layout. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:items-stretch">
+        <KPICard
+          label="Days to due"
+          value={daysToDue}
+          subtitle={
+            daysToDue < 0
+              ? `${Math.abs(daysToDue)} days overdue`
+              : daysToDue === 0
+                ? "Due today"
+                : "days remaining"
+          }
+          icon={Calendar}
+          trend={{
+            direction: daysToDue < 0 ? "down" : "flat",
+            percent: Math.abs(daysToDue),
+            positive: daysToDue >= 0,
+          }}
+        />
+        <KPICard
+          label="AI risk score"
+          value={item.aiRiskScore}
+          icon={AlertTriangle}
+          trend={{
+            direction: item.aiRiskScore >= 70 ? "up" : "down",
+            percent: item.aiRiskScore,
+            positive: item.aiRiskScore < 70,
+          }}
+        />
+        <KPICard
+          label="Progress"
+          value={`${item.progress}%`}
+          icon={CheckCircle}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -395,17 +447,6 @@ export default function ObligationDetailPage() {
                       </dt>
                       <dd className="text-sm font-semibold text-foreground">
                         {item.approverName}
-                      </dd>
-                    </div>
-                    <div className="space-y-1 rounded-lg border bg-card p-3">
-                      <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <User className="size-3.5" aria-hidden="true" />
-                        Reviewers
-                      </dt>
-                      <dd className="text-sm font-semibold text-foreground">
-                        {item.reviewerIds.length > 0
-                          ? `${item.reviewerIds.length} assigned`
-                          : "None"}
                       </dd>
                     </div>
                     <div className="space-y-1 rounded-lg border bg-card p-3">
@@ -566,49 +607,32 @@ export default function ObligationDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <KPICard
-            label="Days to due"
-            value={daysToDue}
-            subtitle={
-              daysToDue < 0
-                ? `${Math.abs(daysToDue)} days overdue`
-                : daysToDue === 0
-                  ? "Due today"
-                  : "days remaining"
-            }
-            icon={Calendar}
-            trend={{
-              direction: daysToDue < 0 ? "down" : "flat",
-              percent: Math.abs(daysToDue),
-              positive: daysToDue >= 0,
-            }}
-          />
-          <KPICard
-            label="AI risk score"
-            value={item.aiRiskScore}
-            icon={AlertTriangle}
-            trend={{
-              direction: item.aiRiskScore >= 70 ? "up" : "down",
-              percent: item.aiRiskScore,
-              positive: item.aiRiskScore < 70,
-            }}
-          />
-          <KPICard
-            label="Progress"
-            value={`${item.progress}%`}
-            icon={CheckCircle}
-          />
-
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
-                Linked Regulation
+                Linked Regulations
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <p className="text-sm font-medium text-foreground">
-                {item.regulationName}
-              </p>
+              {linkedRegulations.length === 0 && (
+                <p className="text-sm text-muted-foreground">None</p>
+              )}
+              {linkedRegulations.map((reg) => (
+                <div key={reg.id} className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/regulation/${reg.id}`)}
+                      className="text-left text-sm font-medium text-foreground hover:underline"
+                    >
+                      {reg.title}
+                    </button>
+                    {reg.status && (
+                      <StatusBadge status={reg.status} variant="outline" />
+                    )}
+                  </div>
+                </div>
+              ))}
               <Button
                 variant="outline"
                 size="sm"
@@ -616,7 +640,7 @@ export default function ObligationDetailPage() {
                 onClick={() => navigate(`/regulation/${item.regulationId}`)}
               >
                 <ExternalLink className="size-4" aria-hidden="true" />
-                View regulation
+                View primary regulation
               </Button>
             </CardContent>
           </Card>
@@ -678,7 +702,7 @@ export default function ObligationDetailPage() {
           <SheetHeader>
             <SheetTitle>Edit Obligation</SheetTitle>
             <SheetDescription>
-              Update the details for {item.complianceId}.
+              Update the details for {item.code}.
             </SheetDescription>
           </SheetHeader>
           <div className="py-4">

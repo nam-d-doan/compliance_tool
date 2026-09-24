@@ -177,7 +177,7 @@ export async function handleAiCapGenerate({ request }: { request: Request }) {
   };
   const db = getDb();
   const compliance = body.complianceId
-    ? findById(db.compliance, body.complianceId)
+    ? findById(db.obligations, body.complianceId)
     : undefined;
 
   const cap: AISuggestedCAP = {
@@ -213,7 +213,7 @@ export async function handleAiComplianceRiskScore({
   const body = (await request.json()) as { complianceId?: string };
   const db = getDb();
   const compliance = body.complianceId
-    ? findById(db.compliance, body.complianceId)
+    ? findById(db.obligations, body.complianceId)
     : undefined;
 
   const result: AIRiskScoreResult = {
@@ -259,7 +259,7 @@ export async function handleAiRegulationImpact({
     regulationId: regulation.id,
     regulationTitle: regulation.title,
     affectedDepartments,
-    affectedComplianceIds: db.compliance
+    affectedComplianceIds: db.obligations
       .filter((c) => c.regulationId === regulation.id)
       .map((c) => c.id),
     affectedPolicies: [

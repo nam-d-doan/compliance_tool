@@ -1,5 +1,5 @@
 import { http } from "msw";
-import { getDb } from "@/mocks/db";
+import { getDb, DEMO_TODAY } from "@/mocks/db";
 import { isOverdueDueDate } from "@/lib/due-date";
 import {
   getDelay,
@@ -15,18 +15,18 @@ import type {
 } from "@/types";
 
 function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
-  const compliance = db.compliance;
+  const compliance = db.obligations;
   const caps = db.caps;
 
   const overdue = compliance.filter((i) =>
-    isOverdueDueDate(i.dueDate, ["Completed", "Approved"].includes(i.status)),
+    isOverdueDueDate(i.dueDate, ["completed", "approved"].includes(i.status)),
   ).length;
   const pendingApproval = compliance.filter((i) =>
-    ["Pending Review", "Submitted"].includes(i.status),
+    ["review_required", "submitted"].includes(i.status),
   ).length;
   const complianceRate = compliance.length
     ? Math.round(
-        (compliance.filter((i) => ["Completed", "Approved"].includes(i.status))
+        (compliance.filter((i) => ["completed", "approved"].includes(i.status))
           .length /
           compliance.length) *
           1000,
@@ -85,10 +85,10 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "Top Risks",
           value: compliance.filter(
             (i) =>
-              i.criticality === "critical" &&
+              i.riskLevel === "critical" &&
               isOverdueDueDate(
                 i.dueDate,
-                ["Completed", "Approved"].includes(i.status),
+                ["completed", "approved"].includes(i.status),
               ),
           ).length,
           previousPeriod: 5,
@@ -110,7 +110,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
         {
           id: "todays-tasks",
           title: "Today's Tasks",
-          value: compliance.filter((i) => i.status === "Assigned").length,
+          value: compliance.filter((i) => i.status === "submitted").length,
         },
         { id: "overdue", title: "Overdue", value: overdue },
         {
@@ -136,14 +136,14 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "High Risk Cases",
           value: compliance.filter(
             (i) =>
-              i.criticality === "critical" &&
-              ["Pending Review", "Submitted"].includes(i.status),
+              i.riskLevel === "critical" &&
+              ["review_required", "submitted"].includes(i.status),
           ).length,
         },
         {
           id: "returned",
           title: "Returned Items",
-          value: compliance.filter((i) => i.status === "Returned").length,
+          value: compliance.filter((i) => i.status === "returned").length,
         },
         {
           id: "pending-cap",
@@ -151,21 +151,9 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           value: caps.filter((i) => i.status === "Pending Approval").length,
         },
       ];
-    case "reviewer":
-      return [
-        {
-          id: "compliance-trends",
-          title: "Compliance Trends",
-          value: `${complianceRate}%`,
-        },
-        { id: "overdue-stats", title: "Overdue Stats", value: overdue },
-        {
-          id: "audit-findings",
-          title: "Audit Findings",
-          value: db.auditLogs.filter((l) => l.module === "compliance").length,
-        },
-      ];
-    case "admin":
+    case "admin": {
+      const sevenDaysAgo = new Date(DEMO_TODAY);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       return [
         { id: "total-users", title: "Total Users", value: db.users.length },
         {
@@ -178,7 +166,23 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "Audit Events",
           value: db.auditLogs.length,
         },
+        {
+          id: "pending-invites",
+          title: "Pending Invites",
+          value: db.users.filter((u) => u.status === "Invited").length,
+        },
+        {
+          id: "failed-signins",
+          title: "Failed Sign-ins (7d)",
+          value: db.auditLogs.filter(
+            (l) =>
+              l.action === "login" &&
+              l.result === "failure" &&
+              new Date(l.timestamp) >= sevenDaysAgo,
+          ).length,
+        },
       ];
+    }
     default:
       return common;
   }
@@ -244,7 +248,7 @@ function buildActivity(db: ReturnType<typeof getDb>): ActivityFeedItem[] {
 export async function handleDashboard({ params }: MockResolverContext) {
   await getDelay();
   const role = (params.role as string).toLowerCase();
-  const validRoles = ["admin", "executive", "owner", "approver", "reviewer"];
+  const validRoles = ["admin", "executive", "owner", "approver"];
   if (!validRoles.includes(role)) return notFound("Dashboard role not found");
 
   const db = getDb();

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { AuthState, AuthUser } from "@/types";
 import { persist } from "zustand/middleware";
+import { useCopilotStore } from "./copilotStore";
 
 interface AuthStore extends AuthState {
   pendingUser: AuthUser | null;
@@ -36,6 +37,7 @@ export const useAuthStore = create<AuthStore>()(
           isLoading: false,
           pendingUser: null,
         });
+        useCopilotStore.getState().reset();
       },
 
       logout: () => {
@@ -47,6 +49,7 @@ export const useAuthStore = create<AuthStore>()(
           isLoading: false,
           pendingUser: null,
         });
+        useCopilotStore.getState().reset();
       },
 
       updateUser: (userData) => {

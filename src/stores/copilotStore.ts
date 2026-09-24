@@ -13,6 +13,9 @@ interface CopilotState {
   addMessage: (message: AICopilotMessage) => void;
   clearThread: () => void;
   setGenerating: (isGenerating: boolean) => void;
+  /** Full reset for a new session (login/logout) — clears the thread and
+   * closes the panel, unlike `clearThread` which just empties the thread. */
+  reset: () => void;
 }
 
 export const useCopilotStore = create<CopilotState>()(
@@ -32,6 +35,8 @@ export const useCopilotStore = create<CopilotState>()(
         })),
       clearThread: () => set({ thread: [], threadId: null }),
       setGenerating: (isGenerating) => set({ isGenerating }),
+      reset: () =>
+        set({ thread: [], threadId: null, isOpen: false, isGenerating: false }),
     }),
     {
       name: "copilot-storage",

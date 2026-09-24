@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,14 +8,13 @@ import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
-import type { FileAttachment, CreateNCCInput } from "@/types";
+import type { CreateNCCInput } from "@/types";
 
 export default function NCCCreatePage() {
   const navigate = useNavigate();
-  const { role, user } = useAuthStore();
+  const { role } = useAuthStore();
   const canCreate = hasPermission(role, "ncc:create");
 
-  const [uploadedFiles, setUploadedFiles] = useState<FileAttachment[]>([]);
   const create = useCreateNCC();
   const usersQuery = useAdminUsers(1, 200, { status: "Active" });
 
@@ -35,7 +33,6 @@ export default function NCCCreatePage() {
       ownerName: owner?.name ?? "",
       dueDate: new Date(values.dueDate).toISOString(),
       linkedDocs: values.linkedDocs || undefined,
-      fileIds: uploadedFiles.map((f) => f.id),
       tags:
         values.tags
           ?.split(",")
@@ -72,10 +69,6 @@ export default function NCCCreatePage() {
             onSubmit={handleSubmit}
             isSubmitting={create.isPending}
             submitLabel="Create Case"
-            files={uploadedFiles}
-            onFilesChange={setUploadedFiles}
-            uploadedBy={user?.name}
-            uploadedById={user?.id}
           />
         </CardContent>
       </Card>

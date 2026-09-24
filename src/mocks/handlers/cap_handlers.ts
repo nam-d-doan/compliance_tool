@@ -9,7 +9,7 @@ import {
   parseNumber,
   type MockResolverContext,
 } from "./utils";
-import type { CAP, CAPComment, ComplianceObligation } from "@/types";
+import type { CAP, CAPComment, Obligation } from "@/types";
 
 export async function handleGetCapList({ request }: { request: Request }) {
   await getDelay();
@@ -47,6 +47,10 @@ export async function handleGetCapList({ request }: { request: Request }) {
           .toLowerCase()
           .includes(q.compliance!.toLowerCase()),
     );
+  }
+  if (q.regulation) {
+    const regId = String(q.regulation);
+    items = items.filter((item) => (item.regulationIds ?? []).includes(regId));
   }
   if (q.dueDateFrom) {
     items = items.filter((item) => item.dueDate >= q.dueDateFrom);
@@ -97,8 +101,28 @@ export async function handleCreateCap({ request }: { request: Request }) {
   // Derive primary title from the first linked obligation (if any).
   const primary =
     obligationIds.length > 0
-      ? findById(db.compliance, obligationIds[0])
+      ? findById(db.obligations, obligationIds[0])
       : undefined;
+
+  // Build the regulationId set from the linked obligations (plus their own
+  // dependency-related entries) so the many-to-many filter is correct on
+  // newly-created CAPs.
+  const related = new Map<string, string[]>();
+  for (const d of db.regulationDependencies) {
+    if (!related.has(d.fromRegulationId)) related.set(d.fromRegulationId, []);
+    if (!related.has(d.toRegulationId)) related.set(d.toRegulationId, []);
+    if (!related.get(d.fromRegulationId)!.includes(d.toRegulationId))
+      related.get(d.fromRegulationId)!.push(d.toRegulationId);
+    if (!related.get(d.toRegulationId)!.includes(d.fromRegulationId))
+      related.get(d.toRegulationId)!.push(d.fromRegulationId);
+  }
+  const regIdSet = new Set<string>();
+  for (const id of obligationIds) {
+    const ob = findById(db.obligations, id);
+    if (!ob) continue;
+    for (const rid of ob.regulationIds ?? []) regIdSet.add(rid);
+  }
+  const regulationIds = Array.from(regIdSet);
 
   const newItem: CAP = {
     id: `cap-${crypto.randomUUID()}`,
@@ -120,6 +144,7 @@ export async function handleCreateCap({ request }: { request: Request }) {
     actualCost: body.actualCost ?? 0,
     rootCause: body.rootCause ?? "",
     obligationIds,
+    regulationIds,
     complianceTitle: body.complianceTitle ?? primary?.title,
     actions: body.actions ?? [],
     aiSuggestions: body.aiSuggestions ?? [],
@@ -131,7 +156,7 @@ export async function handleCreateCap({ request }: { request: Request }) {
   };
 
   // Bulk update linked obligations: mark as under active remediation.
-  bulkUpdateObligationStatus(db, obligationIds, "Pending Review");
+  bulkUpdateObligationStatus(db, obligationIds, "cap_in_progress");
 
   db.caps.unshift(newItem);
   return jsonResponse(newItem, 201);
@@ -168,25 +193,25 @@ export async function handleUpdateCap({
 
   // When a CAP transitions to Closed, mark all linked obligations as Completed.
   if (prev.status !== "Closed" && db.caps[index].status === "Closed") {
-    bulkUpdateObligationStatus(db, nextObligationIds, "Completed");
+    bulkUpdateObligationStatus(db, nextObligationIds, "completed");
   }
   return jsonResponse(db.caps[index]);
 }
 
 /**
- * Bulk-set a status on every linked ComplianceObligation (the entities surfaced
- * in the /obligations UI). Silently skips IDs that no longer exist.
+ * Bulk-set a status on every linked Obligation (the entities surfaced in the
+ * /obligations UI). Silently skips IDs that no longer exist.
  */
 function bulkUpdateObligationStatus(
   db: ReturnType<typeof getDb>,
   obligationIds: string[],
-  status: ComplianceObligation["status"],
+  status: Obligation["status"],
 ): void {
   for (const id of obligationIds) {
-    const idx = db.compliance.findIndex((c) => c.id === id);
+    const idx = db.obligations.findIndex((c) => c.id === id);
     if (idx !== -1) {
-      db.compliance[idx] = {
-        ...db.compliance[idx],
+      db.obligations[idx] = {
+        ...db.obligations[idx],
         status,
         updatedAt: new Date().toISOString(),
       };

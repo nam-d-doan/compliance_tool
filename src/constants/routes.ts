@@ -35,7 +35,6 @@ export const ROUTES = {
     EXECUTIVE: "/dashboard/executive",
     OWNER: "/dashboard/owner",
     APPROVER: "/dashboard/approver",
-    REVIEWER: "/dashboard/reviewer",
   },
 
   // Obligation routes
@@ -108,48 +107,23 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.DASHBOARD.EXECUTIVE]: ["executive", "admin"],
   [ROUTES.DASHBOARD.OWNER]: ["owner", "executive", "admin"],
   [ROUTES.DASHBOARD.APPROVER]: ["approver", "owner", "executive", "admin"],
-  [ROUTES.DASHBOARD.REVIEWER]: [
-    "reviewer",
-    "approver",
-    "owner",
-    "executive",
-    "admin",
-  ],
 
   [ROUTES.OBLIGATIONS.CREATE]: ["owner", "executive", "admin"],
-  [ROUTES.OBLIGATIONS.LIST]: [
-    "reviewer",
-    "approver",
-    "owner",
-    "executive",
-    "admin",
-  ],
+  [ROUTES.OBLIGATIONS.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.CAP.CREATE]: ["owner", "executive", "admin"],
-  [ROUTES.CAP.DASHBOARD]: [
-    "reviewer",
-    "approver",
-    "owner",
-    "executive",
-    "admin",
-  ],
-  [ROUTES.CAP.LIST]: ["reviewer", "approver", "owner", "executive", "admin"],
+  [ROUTES.CAP.DASHBOARD]: ["approver", "owner", "executive", "admin"],
+  [ROUTES.CAP.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.NCC.CREATE]: ["owner", "executive", "admin"],
-  [ROUTES.NCC.LIST]: ["reviewer", "approver", "owner", "executive", "admin"],
+  [ROUTES.NCC.LIST]: ["approver", "owner", "executive", "admin"],
 
-  [ROUTES.REGULATION.CREATE]: ["admin"],
+  [ROUTES.REGULATION.CREATE]: ["admin", "approver"],
 
   [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],
-  [ROUTES.ASSIGNMENTS.LIST]: [
-    "reviewer",
-    "approver",
-    "owner",
-    "executive",
-    "admin",
-  ],
+  [ROUTES.ASSIGNMENTS.LIST]: ["approver", "owner", "executive", "admin"],
 
-  [ROUTES.REPORTS.EWS]: ["reviewer", "approver", "owner", "executive", "admin"],
+  [ROUTES.REPORTS.EWS]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.ADMIN.USERS]: ["admin"],
   [ROUTES.ADMIN.ROLES]: ["admin"],

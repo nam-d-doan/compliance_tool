@@ -39,7 +39,7 @@ function getChartComponent(chart: ReportChart, index: number) {
     color: ds.color ?? undefined,
   }));
 
-  const className = index < 2 ? "md:col-span-1" : "md:col-span-1";
+  const className = index < 2 ? "md:col-span-1 h-full" : "md:col-span-1 h-full";
 
   if (chart.type === "pie" || chart.type === "donut") {
     return (
@@ -49,6 +49,7 @@ function getChartComponent(chart: ReportChart, index: number) {
         data={data}
         nameKey="name"
         valueKey={chart.datasets[0]?.label ?? "value"}
+        height={240}
         className={className}
       />
     );
@@ -62,6 +63,7 @@ function getChartComponent(chart: ReportChart, index: number) {
         data={data}
         xKey="name"
         yKeys={keys}
+        height={240}
         className={className}
       />
     );
@@ -75,6 +77,7 @@ function getChartComponent(chart: ReportChart, index: number) {
         data={data}
         xKey="name"
         yKeys={keys}
+        height={240}
         className={className}
       />
     );
@@ -87,6 +90,7 @@ function getChartComponent(chart: ReportChart, index: number) {
       data={data}
       xKey="name"
       yKeys={keys}
+      height={240}
       className={className}
     />
   );
@@ -239,7 +243,7 @@ export default function ReportsStatusPage() {
 
       <ReportKPIs kpis={report.kpis} />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {report.charts.map((chart, index) => getChartComponent(chart, index))}
       </div>
 

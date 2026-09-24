@@ -1,9 +1,7 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "./Sidebar";
+import { AuroraBackground } from "./AuroraBackground";
 import { TopNav } from "./TopNav";
-import { Breadcrumb } from "./Breadcrumb";
 import { AICopilot } from "@/components/ai";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -24,22 +22,15 @@ function PageSkeleton() {
 export function MainLayout() {
   return (
     <>
-      <SidebarProvider defaultOpen>
-        <AppSidebar />
-        <SidebarInset className="min-w-0">
-          <TopNav />
-          <div className="flex flex-1 flex-col min-h-0 min-w-0">
-            <div className="border-b bg-background px-6 py-3 flex-shrink-0">
-              <Breadcrumb />
-            </div>
-            <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-6 pb-24">
-              <Suspense fallback={<PageSkeleton />}>
-                <Outlet />
-              </Suspense>
-            </main>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <AuroraBackground />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1640px] flex-col">
+        <TopNav />
+        <main className="min-w-0 flex-1 px-4 pt-4 pb-24 sm:px-6">
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
       <AICopilot />
     </>
   );

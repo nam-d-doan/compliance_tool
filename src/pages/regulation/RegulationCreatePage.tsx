@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { useForm, Controller, type Resolver } from "react-hook-form";
+import {
+  useForm,
+  Controller,
+  useFieldArray,
+  type Resolver,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "motion/react";
@@ -15,6 +20,8 @@ import {
   UploadCloud,
   AlertTriangle,
   Link2,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,12 +56,6 @@ const CATEGORIES = [
   "Financial Reporting",
 ] as const;
 
-const REGULATORS = [
-  "Ngân hàng Nhà nước Việt Nam (SBV)",
-  "Ủy ban Chứng khoán Nhà nước (UBCKNN)",
-  "Basel Committee on Banking Supervision",
-] as const;
-
 const PRIORITIES = ["low", "medium", "high", "critical"] as const;
 
 const ACCEPT_FILE_TYPES =
@@ -82,6 +83,7 @@ const formSchema = z.object({
   description: z.string().min(10, "Description is required"),
   category: z.string().min(1, "Category is required"),
   regulatoryBody: z.string().min(1, "Regulatory body is required"),
+  issueDate: z.string().min(1, "Issue date is required"),
   effectiveDate: z.string().min(1, "Effective date is required"),
   expirationDate: z.string().optional(),
   status: z.enum(["Effective", "Expired", "Superseded"]),
@@ -89,9 +91,14 @@ const formSchema = z.object({
   articles: z
     .array(articleSchema)
     .min(1, "At least one article with title and summary is required"),
-  dependencyRegulationId: z.string().optional(),
-  dependencyType: z.enum(DEPENDENCY_TYPES).optional(),
-  dependencyDescription: z.string().optional(),
+  dependencies: z
+    .array(
+      z.object({
+        toRegulationId: z.string(),
+        type: z.enum(DEPENDENCY_TYPES),
+      }),
+    )
+    .optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -158,6 +165,70 @@ function inferCategory(title: string): string {
   return "Operational Risk";
 }
 
+// --- Duplicate detection against the existing local regulation library ---
+// Used to warn before importing a VietLex doc or saving a manually uploaded
+// regulation that may already exist. Lightweight fuzzy match (overlap
+// coefficient on token sets) plus an exact reference/doc-number check — no
+// new dependency.
+function normalizeRegText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFC")
+    .replace(/[^a-z0-9à-ỹ\s/-]/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function regTokenSet(s: string): Set<string> {
+  return new Set(normalizeRegText(s).split(" ").filter(Boolean));
+}
+
+function regSimilarity(a: string, b: string): number {
+  const sa = regTokenSet(a);
+  const sb = regTokenSet(b);
+  if (sa.size === 0 || sb.size === 0) return 0;
+  let inter = 0;
+  for (const t of sa) if (sb.has(t)) inter++;
+  return inter / Math.min(sa.size, sb.size);
+}
+
+interface RegulationLike {
+  id: string;
+  title: string;
+  reference?: string;
+}
+
+function extractDocNumber(title: string): string | undefined {
+  const idx = title.indexOf(" - ");
+  return idx > 0 ? title.slice(0, idx).trim() : undefined;
+}
+
+function findDuplicateRegulation(
+  existing: RegulationLike[],
+  title: string,
+  docNumber?: string,
+): RegulationLike | undefined {
+  const normDoc = docNumber ? normalizeRegText(docNumber) : "";
+  return existing.find((r) => {
+    if (normDoc && r.reference && normalizeRegText(r.reference) === normDoc)
+      return true;
+    if (regSimilarity(title, r.title) >= 0.85) return true;
+    if (regSimilarity(title, `${r.reference ?? ""} ${r.title}`) >= 0.85)
+      return true;
+    return false;
+  });
+}
+
+/** Small labelled attribute row used in the selected-regulation preview. */
+function PreviewAttr({ label, value }: { label: string; value: string }) {
+  return (
+    <p className="truncate">
+      <span className="font-medium text-foreground">{label}:</span>{" "}
+      <span className="text-muted-foreground">{value}</span>
+    </p>
+  );
+}
+
 export default function RegulationCreatePage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
@@ -169,6 +240,7 @@ export default function RegulationCreatePage() {
   const [articles, setArticles] = useState<ArticleInput[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDoc, setSelectedDoc] = useState<VietLexDoc | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -185,12 +257,18 @@ export default function RegulationCreatePage() {
       status: "Effective",
       priority: "medium",
       articles: [],
+      dependencies: [],
     },
   });
 
+  const {
+    fields: depFields,
+    append: depAppend,
+    remove: depRemove,
+  } = useFieldArray({ control, name: "dependencies" });
+
   const status = watch("status");
   const expirationDate = watch("expirationDate");
-  const dependencyRegulationId = watch("dependencyRegulationId");
 
   const { data: existingRegulations } = useRegulationList({ pageSize: 200 });
   const regulationOptions = existingRegulations?.items ?? [];
@@ -266,16 +344,48 @@ export default function RegulationCreatePage() {
     syncArticles(next);
   };
 
-  const handleImportVietLex = (doc: VietLexDoc) => {
+  const handleImportVietLex = async (doc: VietLexDoc) => {
+    const dup = findDuplicateRegulation(
+      regulationOptions,
+      `${doc.docNumber} - ${doc.title}`,
+      doc.docNumber,
+    );
+    if (dup) {
+      toast.warning(
+        `A similar regulation already exists in the library: "${dup.title}". Review before saving.`,
+        { duration: 6000 },
+      );
+    }
     setValue("title", `${doc.docNumber} - ${doc.title}`, {
       shouldValidate: true,
     });
     setValue("description", doc.title, { shouldValidate: true });
-    setValue("regulatoryBody", doc.issuer, { shouldValidate: true });
-    setValue("effectiveDate", doc.date.slice(0, 10), { shouldValidate: true });
+    setValue("regulatoryBody", doc.capBanHanh ?? doc.issuer, {
+      shouldValidate: true,
+    });
+    setValue("issueDate", doc.date.slice(0, 10), { shouldValidate: true });
     setValue("category", inferCategory(doc.title), { shouldValidate: true });
-    syncArticles(VIETLEX_STUB_ARTICLES.slice(0, 4));
-    setActiveTab("upload");
+    setSelectedDoc(doc);
+    setSearchInput("");
+    setSearchQuery("");
+
+    try {
+      const detail = await RegulationService.getVietLexDocument(doc.id);
+      const importedArticles: ArticleInput[] = detail.articles.map((a, i) => ({
+        id: `art-${crypto.randomUUID()}`,
+        number: String(i + 1),
+        title: a.title,
+        summary: a.content,
+      }));
+      syncArticles(
+        importedArticles.length
+          ? importedArticles
+          : VIETLEX_STUB_ARTICLES.slice(0, 4),
+      );
+    } catch {
+      syncArticles(VIETLEX_STUB_ARTICLES.slice(0, 4));
+    }
+
     toast.success(`Imported ${doc.docNumber}`);
   };
 
@@ -296,6 +406,17 @@ export default function RegulationCreatePage() {
       );
     }
     handleSubmit((values) => {
+      const dup = findDuplicateRegulation(
+        regulationOptions,
+        values.title,
+        extractDocNumber(values.title),
+      );
+      if (dup) {
+        const proceed = window.confirm(
+          `A similar regulation already exists in the library:\n\n"${dup.title}"\n\nCreate this regulation anyway?`,
+        );
+        if (!proceed) return;
+      }
       createRegulation.mutate(
         {
           ...values,
@@ -305,17 +426,18 @@ export default function RegulationCreatePage() {
         {
           onSuccess: async (data) => {
             toast.success("Regulation created");
-            if (values.dependencyRegulationId && values.dependencyType) {
+            const deps = (values.dependencies ?? []).filter(
+              (d) => d.toRegulationId,
+            );
+            for (const dep of deps) {
               try {
                 await RegulationService.createDependency({
                   fromRegulationId: data.id,
-                  toRegulationId: values.dependencyRegulationId,
-                  type: values.dependencyType,
-                  description:
-                    values.dependencyDescription ||
-                    `${values.dependencyType} ${data.title}`,
+                  toRegulationId: dep.toRegulationId,
+                  type: dep.type,
+                  description: `${dep.type} ${data.title}`,
                 });
-                if (values.dependencyType === "supersedes") {
+                if (dep.type === "supersedes") {
                   toast.info(
                     "The superseded regulation has been marked as Superseded",
                   );
@@ -465,6 +587,110 @@ export default function RegulationCreatePage() {
                 </Button>
               </div>
 
+              {selectedDoc && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <FileText
+                        className="mt-0.5 size-5 shrink-0 text-primary"
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {selectedDoc.docNumber}
+                          </Badge>
+                          {selectedDoc.loai && (
+                            <Badge variant="outline" className="text-xs">
+                              {selectedDoc.loai}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            Ban hành{" "}
+                            {new Date(selectedDoc.date).toLocaleDateString(
+                              "vi-VN",
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium leading-snug">
+                          {selectedDoc.title}
+                        </p>
+                        <div className="grid grid-cols-1 gap-x-6 gap-y-0.5 text-xs sm:grid-cols-2">
+                          {selectedDoc.capBanHanh && (
+                            <PreviewAttr
+                              label="Cơ quan ban hành"
+                              value={selectedDoc.capBanHanh}
+                            />
+                          )}
+                          {selectedDoc.issuer &&
+                            selectedDoc.issuer !== selectedDoc.capBanHanh && (
+                              <PreviewAttr
+                                label="Cơ quan"
+                                value={selectedDoc.issuer}
+                              />
+                            )}
+                          {selectedDoc.nganh && (
+                            <PreviewAttr
+                              label="Ngành"
+                              value={selectedDoc.nganh}
+                            />
+                          )}
+                          {selectedDoc.linhVuc && (
+                            <PreviewAttr
+                              label="Lĩnh vực"
+                              value={selectedDoc.linhVuc}
+                            />
+                          )}
+                          {selectedDoc.nguon && (
+                            <PreviewAttr
+                              label="Nguồn"
+                              value={selectedDoc.nguon}
+                            />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Metadata provided by the VietLex open API (CC BY 4.0).
+                          Effective date, status, signer and relationship graph
+                          are not exposed by the API and may differ from
+                          vbpl.vn.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0"
+                      onClick={() => setSelectedDoc(null)}
+                      aria-label="Clear selected regulation"
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                  {(selectedDoc.pdfUrl || selectedDoc.url) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const href = selectedDoc.pdfUrl || selectedDoc.url;
+                          if (href)
+                            window.open(href, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        <ExternalLink className="size-4" aria-hidden="true" />
+                        View PDF
+                      </Button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
               {searchQuery ? (
                 searching ? (
                   <div className="space-y-2">
@@ -583,23 +809,11 @@ export default function RegulationCreatePage() {
 
             <div className="space-y-2">
               <Label htmlFor="regulatoryBody">Regulatory Body</Label>
-              <Controller
-                name="regulatoryBody"
-                control={control}
-                render={({ field }) => (
-                  <select
-                    id="regulatoryBody"
-                    {...field}
-                    className={selectClass}
-                  >
-                    <option value="">Select regulatory body</option>
-                    {REGULATORS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                )}
+              <Input
+                id="regulatoryBody"
+                {...register("regulatoryBody")}
+                placeholder="Regulatory body / Cơ quan ban hành"
+                aria-invalid={errors.regulatoryBody ? "true" : "false"}
               />
               {errors.regulatoryBody && (
                 <p className="text-xs text-destructive">
@@ -608,31 +822,48 @@ export default function RegulationCreatePage() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="effectiveDate">Effective Date</Label>
-              <Input
-                id="effectiveDate"
-                type="date"
-                {...register("effectiveDate")}
-                aria-invalid={errors.effectiveDate ? "true" : "false"}
-              />
-              {errors.effectiveDate && (
-                <p className="text-xs text-destructive">
-                  {errors.effectiveDate.message}
-                </p>
-              )}
-            </div>
+            <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="issueDate">Issue Date</Label>
+                <Input
+                  id="issueDate"
+                  type="date"
+                  {...register("issueDate")}
+                  aria-invalid={errors.issueDate ? "true" : "false"}
+                />
+                {errors.issueDate && (
+                  <p className="text-xs text-destructive">
+                    {errors.issueDate.message}
+                  </p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="expirationDate">
-                Expiration Date{" "}
-                <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <Input
-                id="expirationDate"
-                type="date"
-                {...register("expirationDate")}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="effectiveDate">Effective Date</Label>
+                <Input
+                  id="effectiveDate"
+                  type="date"
+                  {...register("effectiveDate")}
+                  aria-invalid={errors.effectiveDate ? "true" : "false"}
+                />
+                {errors.effectiveDate && (
+                  <p className="text-xs text-destructive">
+                    {errors.effectiveDate.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="expirationDate">
+                  Expiration Date{" "}
+                  <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Input
+                  id="expirationDate"
+                  type="date"
+                  {...register("expirationDate")}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -700,81 +931,92 @@ export default function RegulationCreatePage() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Dependency</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Dependencies</CardTitle>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => depAppend({ toRegulationId: "", type: "amends" })}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Add Dependency
+          </Button>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="dependencyRegulationId">
-                Related Regulation{" "}
-                <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <Controller
-                name="dependencyRegulationId"
-                control={control}
-                render={({ field }) => (
-                  <select
-                    id="dependencyRegulationId"
-                    {...field}
-                    className={selectClass}
-                  >
-                    <option value="">Select regulation</option>
-                    {regulationOptions.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.title}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dependencyType">
-                Dependency Type{" "}
-                <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <Controller
-                name="dependencyType"
-                control={control}
-                render={({ field }) => (
-                  <select
-                    id="dependencyType"
-                    {...field}
-                    className={selectClass}
-                  >
-                    <option value="">Select type</option>
-                    {DEPENDENCY_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t.charAt(0).toUpperCase() + t.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dependencyDescription">
-              Description{" "}
-              <span className="text-muted-foreground">(optional)</span>
-            </Label>
-            <Textarea
-              id="dependencyDescription"
-              {...register("dependencyDescription")}
-              placeholder="Describe how this regulation relates to the selected regulation"
+        <CardContent className="space-y-3">
+          {depFields.length === 0 ? (
+            <EmptyState
+              title="No dependencies"
+              description="Add related regulations this one amends, repeals, supersedes, or references."
             />
-          </div>
-
-          {dependencyRegulationId && (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Link2 className="size-3.5" aria-hidden="true" />
-              Selecting <strong>supersedes</strong> will automatically mark the
-              related regulation as Superseded.
-            </p>
+          ) : (
+            <div className="-mx-1 overflow-x-auto px-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="py-2 pr-3 font-medium">
+                      Related Regulation
+                    </th>
+                    <th className="py-2 pr-3 font-medium">Type</th>
+                    <th className="w-10 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {depFields.map((field, index) => (
+                    <tr key={field.id} className="border-b last:border-0">
+                      <td className="py-2 pr-3">
+                        <Controller
+                          name={`dependencies.${index}.toRegulationId`}
+                          control={control}
+                          render={({ field: f }) => (
+                            <select {...f} className={selectClass}>
+                              <option value="">Select regulation</option>
+                              {regulationOptions.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.title}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Controller
+                          name={`dependencies.${index}.type`}
+                          control={control}
+                          render={({ field: f }) => (
+                            <select {...f} className={selectClass}>
+                              {DEPENDENCY_TYPES.map((t) => (
+                                <option key={t} value={t}>
+                                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        />
+                      </td>
+                      <td className="py-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => depRemove(index)}
+                          aria-label="Remove dependency"
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Link2 className="size-3.5" aria-hidden="true" />
+            Selecting <strong>supersedes</strong> will automatically mark the
+            related regulation as Superseded.
+          </p>
         </CardContent>
       </Card>
 

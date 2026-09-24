@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { format, parseISO } from "date-fns";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
@@ -24,11 +25,15 @@ import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
-import { PageHero } from "@/components/common";
+import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { BarChartCard } from "@/components/charts/BarChartCard";
+import { AreaChartCard } from "@/components/charts/AreaChartCard";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { useAuthStore } from "@/stores";
 import { useNCCList } from "@/hooks/queries";
+import { useNCCsSummary } from "@/hooks/useTabSummaries";
 import { useDeleteNCC } from "@/hooks/mutations";
 import { useOrgUnits } from "@/hooks/queries/useAdminQueries";
 import { hasPermission } from "@/constants/rbac";
@@ -40,6 +45,7 @@ import {
   type PriorityLevel,
 } from "@/constants/status";
 import { DUE_DATE_COLOR_GUIDE } from "@/lib/due-date";
+import { statusLabel, priorityLabel } from "@/lib/chart-labels";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { NonComplianceCase, NCCFilter } from "@/types";
@@ -56,11 +62,34 @@ type SortField =
 
 const PAGE_SIZE = 10;
 
+function countBy<T>(items: T[], key: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const value = String(item[key] ?? "Unknown");
+    map.set(value, (map.get(value) ?? 0) + 1);
+  });
+  return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+}
+
+function monthlyTrend<T>(items: T[], dateKey: keyof T) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const raw = item[dateKey];
+    if (!raw || typeof raw !== "string") return;
+    const label = format(parseISO(raw), "MMM yyyy");
+    map.set(label, (map.get(label) ?? 0) + 1);
+  });
+  return Array.from(map.entries())
+    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+    .map(([name, value]) => ({ name, value }));
+}
+
 export default function NCCListPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "ncc:create");
   const canDelete = hasPermission(role, "ncc:delete");
+  const summaryCards = useNCCsSummary();
 
   const [filters, setFilters] = useState<NCCFilter>({});
   const [page, setPage] = useState(1);
@@ -70,6 +99,10 @@ export default function NCCListPage() {
   } | null>(null);
 
   const allNccQuery = useNCCList({}, 1, 500);
+  const allNcc = useMemo(
+    () => allNccQuery.data?.items ?? [],
+    [allNccQuery.data],
+  );
 
   const filteredNccQuery = useNCCList(filters, 1, 500);
   const filteredNcc = useMemo(
@@ -212,6 +245,45 @@ export default function NCCListPage() {
           </Button>
         )}
       </PageHero>
+
+      <SummaryCardBar cards={summaryCards} />
+
+      <ChartGrid>
+        <PieChartCard
+          title="NCCs by Status"
+          data={countBy(allNcc, "status").map((d) => ({
+            name: statusLabel(d.name),
+            value: d.value,
+          }))}
+          nameKey="name"
+          valueKey="value"
+          loading={allNccQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+        <BarChartCard
+          title="By Severity"
+          data={countBy(allNcc, "severity").map((d) => ({
+            name: priorityLabel(d.name),
+            value: d.value,
+          }))}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Cases" }]}
+          loading={allNccQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+        <AreaChartCard
+          title="Over Time"
+          subtitle="Opened by month"
+          data={monthlyTrend(allNcc, "createdAt")}
+          xKey="name"
+          yKeys={[{ key: "value", name: "Opened" }]}
+          loading={allNccQuery.isPending}
+          height={240}
+          className="h-full"
+        />
+      </ChartGrid>
 
       <Card>
         <CardHeader>

@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
   Cell,
+  Legend,
 } from "recharts";
 import {
   DashboardLayout,
@@ -18,6 +19,7 @@ import {
   DashboardActivityFeed,
   DashboardApprovalQueue,
   DashboardAssignmentsCard,
+  DashboardUpcomingRegulations,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -29,27 +31,45 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { CHART_COLORS } from "@/components/charts/chart-theme";
 import {
   useDashboard,
-  useComplianceList,
+  useObligationList,
   useCAPList,
   useAssignmentList,
+  useRegulationList,
 } from "@/hooks/queries";
+import { DEMO_TODAY } from "@/mocks/db";
 
 function useApproverData() {
   const dashboard = useDashboard("approver");
-  const compliance = useComplianceList({ page: 1, pageSize: 500 }, 1, 500);
+  const compliance = useObligationList({}, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 }, 1, 500);
   const assignments = useAssignmentList({}, 1, 200);
+  const regulations = useRegulationList({}, 1, 200);
 
   const isLoading =
     dashboard.isPending || compliance.isPending || caps.isPending;
   const error = dashboard.error ?? compliance.error ?? caps.error;
 
-  return { dashboard, compliance, caps, assignments, isLoading, error };
+  return {
+    dashboard,
+    compliance,
+    caps,
+    assignments,
+    regulations,
+    isLoading,
+    error,
+  };
 }
 
 export default function ApproverDashboardPage() {
-  const { dashboard, compliance, caps, assignments, isLoading, error } =
-    useApproverData();
+  const {
+    dashboard,
+    compliance,
+    caps,
+    assignments,
+    regulations,
+    isLoading,
+    error,
+  } = useApproverData();
 
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
@@ -59,6 +79,18 @@ export default function ApproverDashboardPage() {
   const assignmentItems = useMemo(
     () => assignments.data?.items ?? [],
     [assignments.data],
+  );
+  const regulationItems = useMemo(
+    () => regulations.data?.items ?? [],
+    [regulations.data],
+  );
+
+  const pendingApprovalCount = useMemo(
+    () =>
+      complianceItems.filter((c) =>
+        ["review_required", "submitted"].includes(c.status),
+      ).length + capItems.filter((c) => c.status === "Pending Approval").length,
+    [complianceItems, capItems],
   );
 
   const approvalStatusData = useMemo(() => {
@@ -75,15 +107,26 @@ export default function ApproverDashboardPage() {
     }));
   }, [complianceItems, capItems]);
 
-  const turnaroundData = useMemo(
-    () => [
-      { name: "< 1 day", value: 12 },
-      { name: "1-3 days", value: 24 },
-      { name: "3-5 days", value: 9 },
-      { name: "> 5 days", value: 5 },
-    ],
-    [],
-  );
+  const turnaroundData = useMemo(() => {
+    const decided = complianceItems.filter((item) =>
+      ["approved", "rejected", "returned"].includes(item.status),
+    );
+    const buckets = [
+      { name: "< 1 day", min: 0, max: 1, value: 0 },
+      { name: "1-3 days", min: 1, max: 3, value: 0 },
+      { name: "3-5 days", min: 3, max: 5, value: 0 },
+      { name: "> 5 days", min: 5, max: Infinity, value: 0 },
+    ];
+    decided.forEach((item) => {
+      const days =
+        (new Date(item.updatedAt).getTime() -
+          new Date(item.createdAt).getTime()) /
+        (1000 * 60 * 60 * 24);
+      const bucket = buckets.find((b) => days >= b.min && days < b.max);
+      if (bucket) bucket.value += 1;
+    });
+    return buckets.map(({ name, value }) => ({ name, value }));
+  }, [complianceItems]);
 
   if (isLoading) {
     return (
@@ -118,7 +161,7 @@ export default function ApproverDashboardPage() {
   return (
     <DashboardLayout
       title="Compliance Approver Dashboard"
-      subtitle="Pending approvals, high-risk cases, and review queues."
+      subtitle={`${pendingApprovalCount} item${pendingApprovalCount === 1 ? "" : "s"} ${pendingApprovalCount === 1 ? "is" : "are"} waiting on your approval right now.`}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}
@@ -181,6 +224,15 @@ export default function ApproverDashboardPage() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    wrapperStyle={{
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -196,7 +248,7 @@ export default function ApproverDashboardPage() {
         />
       </div>
 
-      <div className="md:col-span-1">
+      <div className="md:col-span-2">
         <DashboardAssignmentsCard
           title="Assignments for Review"
           description="Waiting for acknowledgment or completion."
@@ -204,6 +256,14 @@ export default function ApproverDashboardPage() {
           breakdown="review"
           linkLabel="Go to assignments"
           delay={0.3}
+        />
+      </div>
+
+      <div className="md:col-span-1">
+        <DashboardUpcomingRegulations
+          regulations={regulationItems}
+          now={DEMO_TODAY}
+          delay={0.35}
         />
       </div>
     </DashboardLayout>

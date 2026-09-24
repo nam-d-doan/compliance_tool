@@ -12,6 +12,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Legend,
 } from "recharts";
 import {
   DashboardLayout,
@@ -22,6 +23,7 @@ import {
   DashboardRiskHeatmap,
   DashboardNeedsAttentionList,
   DashboardAssignmentsCard,
+  DashboardUpcomingRegulations,
 } from "@/components/dashboard";
 import {
   CardSkeleton,
@@ -31,9 +33,10 @@ import {
 import { ErrorState } from "@/components/common/ErrorState";
 import {
   useDashboard,
-  useComplianceList,
+  useObligationList,
   useCAPList,
   useAssignmentList,
+  useRegulationList,
 } from "@/hooks/queries";
 import { useExecutiveSummary } from "@/hooks/queries/useAIQueries";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -41,15 +44,14 @@ import {
   CHART_COLORS,
   RISK_CHART_COLORS,
 } from "@/components/charts/chart-theme";
-
-const TREND_MONTHS = ["Aug", "Sep", "Oct", "Nov", "Dec", "Jan"];
-const TREND_VALUES = [91, 92, 90, 93, 94, 95];
+import { DEMO_TODAY } from "@/mocks/db";
 
 function useExecutiveData() {
   const dashboard = useDashboard("executive");
-  const compliance = useComplianceList({ page: 1, pageSize: 500 });
+  const compliance = useObligationList({}, 1, 500);
   const caps = useCAPList({ page: 1, pageSize: 500 });
   const assignments = useAssignmentList({}, 1, 200);
+  const regulations = useRegulationList({}, 1, 200);
   const aiSummary = useExecutiveSummary();
 
   const isLoading =
@@ -62,6 +64,7 @@ function useExecutiveData() {
     compliance,
     caps,
     assignments,
+    regulations,
     aiSummary,
     isLoading,
     error,
@@ -74,6 +77,7 @@ export default function ExecutiveDashboardPage() {
     compliance,
     caps,
     assignments,
+    regulations,
     aiSummary,
     isLoading,
     error,
@@ -88,22 +92,15 @@ export default function ExecutiveDashboardPage() {
     () => assignments.data?.items ?? [],
     [assignments.data],
   );
-
-  const complianceByBU = useMemo(() => {
-    const counts = new Map<string, number>();
-    complianceItems.forEach((item) => {
-      counts.set(item.businessUnit, (counts.get(item.businessUnit) ?? 0) + 1);
-    });
-    return Array.from(counts.entries())
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
-  }, [complianceItems]);
+  const regulationItems = useMemo(
+    () => regulations.data?.items ?? [],
+    [regulations.data],
+  );
 
   const riskDistribution = useMemo(() => {
     const counts = new Map<string, number>();
     complianceItems.forEach((item) => {
-      counts.set(item.criticality, (counts.get(item.criticality) ?? 0) + 1);
+      counts.set(item.riskLevel, (counts.get(item.riskLevel) ?? 0) + 1);
     });
     return Array.from(counts.entries()).map(([name, value]) => ({
       name,
@@ -123,14 +120,42 @@ export default function ExecutiveDashboardPage() {
     }));
   }, [capItems]);
 
-  const trendData = useMemo(
-    () =>
-      TREND_MONTHS.map((month, index) => ({
-        month,
-        value: TREND_VALUES[index],
-      })),
-    [],
-  );
+  const trendData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(DEMO_TODAY);
+      d.setMonth(d.getMonth() - (5 - i));
+      return d;
+    });
+    // Monthly completion rate among obligations last updated in that month.
+    // Months with no activity carry forward the prior month's rate (and
+    // leading gaps back-fill from the first observed rate) so the line stays
+    // continuous instead of showing misleading gaps/zeros.
+    const raw = months.map((monthDate) => {
+      const inMonth = complianceItems.filter((item) => {
+        const updated = new Date(item.updatedAt);
+        return (
+          updated.getFullYear() === monthDate.getFullYear() &&
+          updated.getMonth() === monthDate.getMonth()
+        );
+      });
+      const completed = inMonth.filter((item) =>
+        ["completed", "approved"].includes(item.status),
+      ).length;
+      return inMonth.length
+        ? Math.round((completed / inMonth.length) * 1000) / 10
+        : null;
+    });
+    const firstKnown = raw.find((v) => v !== null) ?? 0;
+    let lastValue = firstKnown;
+    const filled = raw.map((v) => {
+      if (v !== null) lastValue = v;
+      return lastValue;
+    });
+    return months.map((monthDate, i) => ({
+      month: monthDate.toLocaleDateString("en-US", { month: "short" }),
+      value: filled[i],
+    }));
+  }, [complianceItems]);
 
   if (isLoading) {
     return (
@@ -170,7 +195,7 @@ export default function ExecutiveDashboardPage() {
   return (
     <DashboardLayout
       title="Executive Dashboard"
-      subtitle="Enterprise compliance health, risk overview, and AI-generated insights."
+      subtitle={aiSummary.data?.summary}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}
@@ -218,7 +243,11 @@ export default function ExecutiveDashboardPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis domain={[80, 100]} tick={{ fontSize: 12 }} />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(v) => `${v}%`}
+                />
                 <Tooltip />
                 <Area
                   type="monotone"
@@ -229,45 +258,6 @@ export default function ExecutiveDashboardPage() {
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-        </DashboardChartCard>
-      </div>
-
-      <div className="md:col-span-1">
-        <DashboardChartCard title="Compliance by Business Unit" delay={0.25}>
-          <div className="h-64">
-            {complianceByBU.length === 0 ? (
-              <EmptyState
-                title="No data"
-                className="h-full border-0 bg-transparent"
-              />
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={complianceByBU}
-                  margin={{ top: 8, right: 16, bottom: 24, left: -16 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-muted"
-                  />
-                  <XAxis
-                    dataKey="name"
-                    angle={-30}
-                    textAnchor="end"
-                    height={60}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar
-                    dataKey="value"
-                    fill={CHART_COLORS[0]}
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
           </div>
         </DashboardChartCard>
       </div>
@@ -296,6 +286,15 @@ export default function ExecutiveDashboardPage() {
                     ))}
                   </Pie>
                   <Tooltip />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    wrapperStyle={{
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -344,11 +343,19 @@ export default function ExecutiveDashboardPage() {
         />
       </div>
 
+      <div className="md:col-span-1">
+        <DashboardUpcomingRegulations
+          regulations={regulationItems}
+          now={DEMO_TODAY}
+          delay={0.45}
+        />
+      </div>
+
       <div className="md:col-span-2">
         <DashboardActivityFeed
           items={dashboard.data?.activity}
           title="Organization Activity"
-          delay={0.45}
+          delay={0.5}
         />
       </div>
 
@@ -358,7 +365,7 @@ export default function ExecutiveDashboardPage() {
           description="By department, with overdue and critical counts."
           assignments={assignmentItems}
           breakdown="department"
-          delay={0.5}
+          delay={0.55}
         />
       </div>
     </DashboardLayout>

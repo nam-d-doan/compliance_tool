@@ -1,9 +1,11 @@
 import { motion } from "motion/react";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { EmptyState } from "@/components/common/EmptyState";
+import { useAdminUsers } from "@/hooks/queries";
 import { CommentForm } from "./CommentForm";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,15 @@ export function CommentThread({
   emptyMessage = "Be the first to comment.",
   className,
 }: CommentThreadProps) {
+  // Resolve author roles so executive comments can be visually emphasized
+  // (exec views + comments only, never approves — its feedback carries weight).
+  const { data: usersData } = useAdminUsers(1, 500, { status: "Active" });
+  const executiveUserIds = new Set(
+    (usersData?.items ?? [])
+      .filter((u) => u.role === "executive")
+      .map((u) => u.id),
+  );
+
   if (loading) {
     return (
       <Card className={cn("overflow-hidden", className)}>
@@ -63,16 +74,27 @@ export function CommentThread({
           <div className="space-y-4">
             {comments.map((comment, index) => {
               const isCurrentUser = comment.userId === currentUserId;
+              const isExecutive = executiveUserIds.has(comment.userId);
               return (
                 <motion.div
                   key={comment.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="flex gap-3"
+                  className={cn(
+                    "flex gap-3",
+                    isExecutive &&
+                      "rounded-lg border border-warning/40 bg-warning/10 p-2 pr-3",
+                  )}
                 >
                   <Avatar size="sm">
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback
+                      className={cn(
+                        "text-xs",
+                        isExecutive &&
+                          "bg-warning/15 text-warning ring-1 ring-inset ring-warning/40",
+                      )}
+                    >
                       {comment.userName
                         .split(" ")
                         .map((n) => n[0])
@@ -82,8 +104,16 @@ export function CommentThread({
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                         {comment.userName}
+                        {isExecutive && (
+                          <Badge
+                            variant="outline"
+                            className="border-warning/50 text-warning text-[9px] px-1 py-0"
+                          >
+                            Executive
+                          </Badge>
+                        )}
                         {isCurrentUser && (
                           <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                             (You)

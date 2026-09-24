@@ -1,39 +1,30 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { format, differenceInDays } from "date-fns";
-import {
-  ClipboardCheck,
-  ClipboardList,
-  AlertTriangle,
-  Plus,
-  ArrowRight,
-} from "lucide-react";
 import { PageHero, ErrorState } from "@/components/common";
 import { CardSkeleton, ListSkeleton } from "@/components/common/Skeletons";
 import {
+  ComplianceChainSummary,
+  CHAIN_ICONS,
+  CHAIN_COLORS,
+  DeadlineCalendar,
+  AISummaryLine,
+  MyObligationsWidget,
   MyCAPsWidget,
-  ObligationOverviewCard,
-  ObligationProgressRing,
+  type ChainStage,
 } from "@/components/dashboard";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { PriorityBadge } from "@/components/common";
 import { useAuthStore } from "@/stores";
 import {
   useObligationList,
   useCAPList,
   useAssignmentList,
+  useRegulationList,
 } from "@/hooks/queries";
 import {
   buildCapObligationMap,
   getOrphanedAttentionObligations,
-  isOverdue,
+  getSummaryStats,
 } from "@/lib/obligation-helpers";
-import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
-import type { Obligation } from "@/types";
+import { getGreeting } from "@/lib/greeting";
 
 /** Assignment statuses that represent live work for a department. */
 const ACTIVE_ASSIGNMENT_STATUSES = ["published", "acknowledged", "in_progress"];
@@ -52,6 +43,7 @@ function useOwnerData() {
     500,
   );
   const caps = useCAPList({}, 1, 500);
+  const regulations = useRegulationList({}, 1, 500);
 
   // Department is not yet on AuthUser (separate admin work). Derive it from the
   // owner's obligations' denormalized department field — stable because every
@@ -71,15 +63,34 @@ function useOwnerData() {
   const isLoading =
     obligations.isPending ||
     caps.isPending ||
+    regulations.isPending ||
     (Boolean(deptId) && assignments.isPending);
-  const error = obligations.error ?? caps.error ?? assignments.error;
+  const error =
+    obligations.error ?? caps.error ?? assignments.error ?? regulations.error;
 
-  return { user, ownerId, obligations, caps, assignments, isLoading, error };
+  return {
+    user,
+    ownerId,
+    obligations,
+    caps,
+    assignments,
+    regulations,
+    isLoading,
+    error,
+  };
 }
 
 export default function OwnerDashboardPage() {
-  const { user, ownerId, obligations, caps, assignments, isLoading, error } =
-    useOwnerData();
+  const {
+    user,
+    ownerId,
+    obligations,
+    caps,
+    assignments,
+    regulations,
+    isLoading,
+    error,
+  } = useOwnerData();
 
   const obligationItems = useMemo(
     () => obligations.data?.items ?? [],
@@ -89,6 +100,10 @@ export default function OwnerDashboardPage() {
   const assignmentItems = useMemo(
     () => assignments.data?.items ?? [],
     [assignments.data],
+  );
+  const regulationItems = useMemo(
+    () => regulations.data?.items ?? [],
+    [regulations.data],
   );
 
   // Owner-scoped action plans for the "My CAPs" view + KPIs.
@@ -103,29 +118,161 @@ export default function OwnerDashboardPage() {
     () => getOrphanedAttentionObligations(obligationItems, capMap),
     [obligationItems, capMap],
   );
-
+  const obligationStats = useMemo(
+    () => getSummaryStats(obligationItems, capItems),
+    [obligationItems, capItems],
+  );
   const deptName = obligationItems.find(
     (o) => o.ownerDepartmentName,
   )?.ownerDepartmentName;
+
+  const relevantRegulationIds = useMemo(
+    () => new Set(assignmentItems.map((a) => a.regulationId)),
+    [assignmentItems],
+  );
+  const relevantRegulations = useMemo(
+    () => regulationItems.filter((r) => relevantRegulationIds.has(r.id)),
+    [regulationItems, relevantRegulationIds],
+  );
+
   const activeAssignments = assignmentItems.filter((a) =>
     ACTIVE_ASSIGNMENT_STATUSES.includes(a.status),
   );
-  const capOpen = myCaps.filter((c) => c.status !== "Closed").length;
+  const notStartedAssignments = assignmentItems.filter(
+    (a) => a.status === "draft",
+  );
+  const completedAssignments = assignmentItems.filter(
+    (a) => a.status === "completed",
+  );
+  const capOpen = myCaps.filter((c) => c.status === "Open").length;
+  const capPendingApproval = myCaps.filter(
+    (c) => c.status === "Pending Approval",
+  ).length;
   const capClosed = myCaps.filter((c) => c.status === "Closed").length;
-  const capPercent = myCaps.length
-    ? Math.round((capClosed / myCaps.length) * 100)
-    : 0;
+
+  const chainStages: ChainStage[] = [
+    {
+      key: "regulation",
+      label: "Regulations",
+      icon: CHAIN_ICONS.regulation,
+      color: CHAIN_COLORS.regulation,
+      value: relevantRegulations.length,
+      path: "/regulation",
+      breakdown: [
+        {
+          label: "Effective",
+          value: relevantRegulations.filter((r) => r.status === "Effective")
+            .length,
+          color: "var(--success)",
+        },
+        {
+          label: "Superseded",
+          value: relevantRegulations.filter((r) => r.status === "Superseded")
+            .length,
+          color: "var(--warning)",
+        },
+        {
+          label: "Expired",
+          value: relevantRegulations.filter((r) => r.status === "Expired")
+            .length,
+          color: "var(--neutral)",
+        },
+      ],
+    },
+    {
+      key: "assignment",
+      label: "Assignments",
+      icon: CHAIN_ICONS.assignment,
+      color: CHAIN_COLORS.assignment,
+      value: assignmentItems.length,
+      path: "/assignment",
+      breakdown: [
+        {
+          label: "active",
+          value: activeAssignments.length,
+          color: "var(--info)",
+        },
+        {
+          label: "not started",
+          value: notStartedAssignments.length,
+          color: "var(--neutral)",
+        },
+        {
+          label: "completed",
+          value: completedAssignments.length,
+          color: "var(--success)",
+        },
+      ],
+    },
+    {
+      key: "obligation",
+      label: "Obligations",
+      icon: CHAIN_ICONS.obligation,
+      color: CHAIN_COLORS.obligation,
+      value: obligationStats.total,
+      path: "/obligations",
+      breakdown: [
+        {
+          label: "need attention",
+          value: obligationStats.needAttention,
+          color: "var(--danger)",
+        },
+        {
+          label: "in progress",
+          value: obligationStats.inProgress,
+          color: "var(--warning)",
+        },
+        {
+          label: "upcoming",
+          value: obligationStats.upcoming,
+          color: "var(--info)",
+        },
+        {
+          label: "completed",
+          value: obligationStats.completed,
+          color: "var(--success)",
+        },
+      ],
+    },
+    {
+      key: "cap",
+      label: "Corrective Actions",
+      icon: CHAIN_ICONS.cap,
+      color: CHAIN_COLORS.cap,
+      value: myCaps.length,
+      path: "/cap",
+      breakdown: [
+        { label: "open", value: capOpen, color: "var(--info)" },
+        {
+          label: "pending approval",
+          value: capPendingApproval,
+          color: "var(--warning)",
+        },
+        { label: "closed", value: capClosed, color: "var(--success)" },
+      ],
+    },
+  ];
+
+  const aiSummary =
+    orphaned.length > 0
+      ? `${orphaned.length} obligation${orphaned.length === 1 ? "" : "s"} still ${orphaned.length === 1 ? "needs" : "need"} a corrective action plan. ${capOpen > 0 ? `You already have ${capOpen} plan${capOpen === 1 ? "" : "s"} in motion — prioritize the highest-risk gaps next.` : "Start with the highest-risk gaps first."}`
+      : capOpen > 0
+        ? `${capOpen} action plan${capOpen === 1 ? "" : "s"} in progress across your obligations. Keep them moving toward close.`
+        : activeAssignments.length > 0
+          ? `${activeAssignments.length} assignment${activeAssignments.length === 1 ? "" : "s"} routed to ${deptName ?? "your department"} is awaiting review before it can move to obligations.`
+          : "You're all caught up — nothing needs your attention right now.";
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="h-24 w-full animate-pulse rounded-2xl bg-muted" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
+        <div className="h-16 w-2/3 animate-pulse rounded-xl bg-muted" />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+          <ListSkeleton />
         </div>
-        <ListSkeleton />
       </div>
     );
   }
@@ -134,8 +281,8 @@ export default function OwnerDashboardPage() {
     return (
       <div className="space-y-6">
         <PageHero
-          title="My CAPs"
-          subtitle={`Compliance workspace for ${user?.name ?? "you"}.`}
+          title={getGreeting(user?.name ?? "there")}
+          subtitle="Compliance workspace"
         />
         <ErrorState
           title="Could not load your dashboard"
@@ -144,6 +291,7 @@ export default function OwnerDashboardPage() {
             obligations.refetch();
             caps.refetch();
             assignments.refetch();
+            regulations.refetch();
           }}
         />
       </div>
@@ -157,231 +305,31 @@ export default function OwnerDashboardPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <PageHero
-        title="My CAPs"
-        subtitle={`Compliance workspace for ${user?.name ?? "you"} · ${myCaps.length} action plans${deptName ? ` · ${deptName}` : ""}`}
-      />
-
-      {/* KPI row: action plans, review assignments, attention, CAP completion */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="My Action Plans"
-          value={myCaps.length}
-          icon={ClipboardCheck}
-          tint="bg-blue-500/10 text-blue-600 dark:text-blue-400"
-          subtitle={`${capOpen} open`}
-          delay={0.05}
-        />
-        <StatCard
-          label="Review Assignments"
-          value={activeAssignments.length}
-          icon={ClipboardList}
-          tint="bg-violet-500/10 text-violet-600 dark:text-violet-400"
-          subtitle={deptName ? `for ${deptName}` : "active for your department"}
-          delay={0.1}
-        />
-        <StatCard
-          label="Needs Attention"
-          value={orphaned.length}
-          icon={AlertTriangle}
-          tint="bg-red-500/10 text-red-600 dark:text-red-400"
-          subtitle="obligations need a CAP"
-          delay={0.15}
-        />
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Card className="flex h-full items-center justify-center py-6">
-            <CardContent className="p-0">
-              <ObligationProgressRing
-                ring={{
-                  completed: capClosed,
-                  total: myCaps.length,
-                  percent: capPercent,
-                }}
-                label="CAPs closed"
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div className="space-y-2">
+        <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">
+          {getGreeting(user?.name ?? "there")}
+        </h1>
+        <AISummaryLine text={aiSummary} />
       </div>
 
-      {/* Items requiring attention — orphaned obligations with no CAP */}
-      <AttentionSection obligations={orphaned} />
-
-      {/* My CAPs — the focus of the dashboard */}
-      <MyCAPsWidget caps={myCaps} />
-
-      {/* Obligation overview — demoted to priority + status stats */}
-      <ObligationOverviewCard obligations={obligationItems} capMap={capMap} />
-    </motion.div>
-  );
-}
-
-interface StatCardProps {
-  label: string;
-  value: number;
-  icon: LucideIcon;
-  tint: string;
-  subtitle?: string;
-  delay?: number;
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  tint,
-  subtitle,
-  delay = 0,
-}: StatCardProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay }}
-    >
-      <Card className="h-full">
-        <CardContent className="flex items-start justify-between p-5">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{label}</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight">{value}</p>
-            {subtitle && (
-              <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-            )}
-          </div>
-          <div
-            className={cn(
-              "flex size-10 items-center justify-center rounded-xl",
-              tint,
-            )}
-          >
-            <Icon className="size-5" aria-hidden="true" />
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
-
-/** Consolidated attention list: orphaned obligations that need a CAP created. */
-function AttentionSection({ obligations }: { obligations: Obligation[] }) {
-  const navigate = useNavigate();
-  if (obligations.length === 0) return null;
-
-  const visible = obligations.slice(0, 5);
-  const overflow = obligations.length - visible.length;
-
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="rounded-xl border border-red-500/20 bg-gradient-to-br from-red-500/[0.06] via-orange-500/[0.03] to-card shadow-sm"
-    >
-      <div className="flex items-center justify-between gap-3 border-b border-red-500/15 px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-red-500/15 text-red-600 dark:text-red-400">
-            <AlertTriangle className="size-4" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold tracking-tight text-foreground">
-              Items Requiring Attention
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {obligations.length} obligation
-              {obligations.length === 1 ? "" : "s"} need
-              {obligations.length === 1 ? "s" : ""} a corrective action plan
-            </p>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main: the compliance lifecycle as one visual story, each stage
+            expanded with its own status breakdown — not a grid of
+            disconnected KPI tiles. */}
+        <div className="lg:col-span-2">
+          <ComplianceChainSummary stages={chainStages} />
         </div>
-        <Button
-          variant="ghost"
-          size="xs"
-          className="text-muted-foreground"
-          onClick={() => navigate("/obligations")}
-        >
-          View all
-          <ArrowRight className="size-3.5" aria-hidden="true" />
-        </Button>
+
+        {/* Side rail: what's due, and when. Direct grid item so the
+            default align-items: stretch gives it the row height (= left
+            panel), then the Card's h-full fills it. */}
+        <DeadlineCalendar obligations={obligationItems} />
       </div>
 
-      <ul className="divide-y divide-border/60">
-        {visible.map((obg, idx) => {
-          const overdue = isOverdue(obg);
-          const dueDate = new Date(obg.dueDate);
-          const daysLeft = differenceInDays(dueDate, new Date());
-          return (
-            <motion.li
-              key={obg.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2, delay: Math.min(idx * 0.05, 0.3) }}
-              className="flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className="shrink-0 border-border bg-muted/50 font-mono text-[11px] font-medium text-muted-foreground"
-                  >
-                    {obg.articleRef}
-                  </Badge>
-                  <h3 className="truncate text-sm font-medium text-foreground">
-                    {obg.title}
-                  </h3>
-                  <PriorityBadge priority={obg.riskLevel} size="sm" />
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                  <span
-                    className={cn(
-                      "font-medium",
-                      overdue
-                        ? "text-red-600 dark:text-red-400"
-                        : daysLeft <= 7
-                          ? "text-orange-600 dark:text-orange-400"
-                          : "text-muted-foreground",
-                    )}
-                  >
-                    {overdue
-                      ? `Overdue ${Math.abs(daysLeft)}d`
-                      : daysLeft === 0
-                        ? "Due today"
-                        : `Due ${format(dueDate, "MMM d")}`}
-                  </span>
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => navigate(`/cap/create?obligations=${obg.id}`)}
-                >
-                  <Plus className="size-3.5" aria-hidden="true" />
-                  Create CAP
-                </Button>
-              </div>
-            </motion.li>
-          );
-        })}
-      </ul>
-
-      {overflow > 0 && (
-        <div className="px-4 py-2.5">
-          <Button
-            variant="ghost"
-            size="xs"
-            className="w-full justify-center text-muted-foreground"
-            onClick={() => navigate("/obligations")}
-          >
-            View {overflow} more in Obligations
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
-      )}
-    </motion.section>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <MyObligationsWidget obligations={obligationItems} caps={capItems} />
+        <MyCAPsWidget caps={myCaps} />
+      </div>
+    </motion.div>
   );
 }

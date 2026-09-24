@@ -25,7 +25,12 @@ function App() {
       <ThemeProvider>
         <TooltipProvider delay={0}>
           <RouterProvider router={router} />
-          <Toaster position="top-right" richColors closeButton />
+          <Toaster
+            position="bottom-right"
+            duration={3000}
+            richColors
+            closeButton
+          />
           <SpeedInsights />
         </TooltipProvider>
       </ThemeProvider>

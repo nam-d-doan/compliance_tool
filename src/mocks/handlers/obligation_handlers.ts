@@ -15,6 +15,7 @@ import type {
   BulkUpdateObligationsInput,
   BulkUpdateObligationsResult,
   Obligation,
+  ObligationComment,
   ObligationRiskLevel,
   ObligationStatus,
   Assignment,
@@ -32,8 +33,12 @@ const VALID_STATUSES: ObligationStatus[] = [
   "draft",
   "submitted",
   "review_required",
+  "approved",
+  "rejected",
+  "returned",
   "cap_in_progress",
   "completed",
+  "archived",
 ];
 
 function normalizeRisk(value: unknown): ObligationRiskLevel {
@@ -63,26 +68,62 @@ function buildObligationCapIndex(caps: CAP[]): Map<string, CAP> {
 function buildObligation(
   item: BulkCreateObligationsInput["obligations"][number],
   status: "draft" | "submitted",
+  db: ReturnType<typeof getDb>,
+  index: number,
   assignment?: Assignment,
 ): Obligation {
   const now = new Date().toISOString();
+  const regulation = item.regulationId
+    ? findById(db.regulations, item.regulationId)
+    : assignment
+      ? findById(db.regulations, assignment.regulationId)
+      : undefined;
+  const requester = item.ownerId ? findById(db.users, item.ownerId) : undefined;
+  const primaryRegId = regulation?.id ?? assignment?.regulationId ?? "";
+  // Expand primary with any dependency-related regulation IDs.
+  const related = new Map<string, string[]>();
+  for (const d of db.regulationDependencies) {
+    if (!related.has(d.fromRegulationId)) related.set(d.fromRegulationId, []);
+    if (!related.has(d.toRegulationId)) related.set(d.toRegulationId, []);
+    if (!related.get(d.fromRegulationId)!.includes(d.toRegulationId))
+      related.get(d.fromRegulationId)!.push(d.toRegulationId);
+    if (!related.get(d.toRegulationId)!.includes(d.fromRegulationId))
+      related.get(d.toRegulationId)!.push(d.fromRegulationId);
+  }
+  const regulationIds = primaryRegId
+    ? Array.from(new Set([primaryRegId, ...(related.get(primaryRegId) ?? [])]))
+    : [];
 
   return {
     id: `obg-${crypto.randomUUID()}`,
+    code: `OBG-${new Date().getFullYear()}-${String(db.obligations.length + index + 1).padStart(3, "0")}`,
     assignmentId: item.assignmentId ?? assignment?.id ?? "",
     assignmentTitle: assignment?.title,
     articleRef: item.articleRef,
     title: item.title,
     description: item.description ?? "",
+    regulationId: primaryRegId,
+    regulationName: regulation?.title ?? assignment?.regulationTitle ?? "",
+    regulationIds,
     ownerDepartmentId: item.ownerDepartmentId,
     ownerDepartmentName: item.ownerDepartmentName ?? item.ownerDepartmentId,
     ownerId: item.ownerId ?? "",
-    ownerName: item.ownerName ?? "",
+    ownerName: item.ownerName ?? requester?.name ?? "",
+    approverId: "",
+    approverName: "",
+    businessUnit: "",
+    department: item.ownerDepartmentName ?? item.ownerDepartmentId,
+    location: "",
+    frequency: "once",
     dueDate: item.dueDate,
     riskLevel: normalizeRisk(item.riskLevel),
     status,
-    createdDate: now,
-    updatedDate: now,
+    penalty: "",
+    aiRiskScore: 50,
+    tags: [],
+    progress: 0,
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -112,11 +153,11 @@ export async function handleBulkCreateObligations({
   }
 
   const db = getDb();
-  const items: Obligation[] = body.obligations.map((item) => {
+  const items: Obligation[] = body.obligations.map((item, index) => {
     const assignment = item.assignmentId
       ? findById(db.assignments, item.assignmentId)
       : undefined;
-    return buildObligation(item, body.status, assignment);
+    return buildObligation(item, body.status, db, index, assignment);
   });
 
   db.obligations.unshift(...items);
@@ -160,6 +201,20 @@ export async function handleGetObligationList({
   }
   if (q.assignmentId) {
     items = items.filter((item) => item.assignmentId === q.assignmentId);
+  }
+  if (q.regulationIds) {
+    const ids = (
+      Array.isArray(q.regulationIds)
+        ? q.regulationIds
+        : String(q.regulationIds).split(",")
+    )
+      .map((s) => String(s).trim())
+      .filter(Boolean);
+    if (ids.length > 0) {
+      items = items.filter((item) =>
+        ids.some((id) => (item.regulationIds ?? []).includes(id)),
+      );
+    }
   }
   if (q.status) {
     const statuses = normalizeArrayParam(q.status);
@@ -235,9 +290,70 @@ export async function handleUpdateObligation({
   db.obligations[index] = {
     ...db.obligations[index],
     ...body,
-    updatedDate: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   return jsonResponse(db.obligations[index]);
+}
+
+export async function handleDeleteObligation({ params }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const index = db.obligations.findIndex((i) => i.id === params.id);
+  if (index === -1) return notFound("Obligation not found");
+  db.obligations.splice(index, 1);
+  return jsonResponse({ success: true });
+}
+
+export async function handleGetObligationTimeline({
+  params,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.obligations, params.id as string);
+  if (!item) return notFound("Obligation not found");
+  return jsonResponse(
+    db.generateTimelineFor(item.id, "obligation") as unknown[],
+  );
+}
+
+export async function handleGetObligationComments({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const url = new URL(request.url);
+  const db = getDb();
+  const item = findById(db.obligations, params.id as string);
+  if (!item) return notFound("Obligation not found");
+  const comments = db.generateCommentsFor(item.id, "obligation");
+  const page = parseNumber(parseQuery(url).page, 1);
+  const pageSize = parseNumber(parseQuery(url).pageSize, 20);
+  return jsonResponse(paginate(comments, page, pageSize));
+}
+
+export async function handleCreateObligationComment({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.obligations, params.id as string);
+  if (!item) return notFound("Obligation not found");
+  const body = (await request.json()) as {
+    content?: string;
+    userId?: string;
+    userName?: string;
+  };
+  if (!body.content) return badRequest("Comment content is required");
+  const comment: ObligationComment = {
+    id: `cmt-${crypto.randomUUID()}`,
+    obligationId: item.id,
+    userId: body.userId ?? "demo-admin",
+    userName: body.userName ?? "Alexandra Chen",
+    content: body.content,
+    timestamp: new Date().toISOString(),
+  };
+  return jsonResponse(comment, 201);
 }
 
 export async function handleBulkUpdateObligations({
@@ -264,7 +380,7 @@ export async function handleBulkUpdateObligations({
     if (!idSet.has(item.id)) continue;
     if (body.status) item.status = body.status;
     if (body.dueDate) item.dueDate = body.dueDate;
-    item.updatedDate = now;
+    item.updatedAt = now;
     updated.push(item);
   }
 
@@ -280,9 +396,13 @@ export const obligationHandlers = [
   http.get("/api/obligations/list", handleGetObligationList),
   http.post("/api/obligations/bulk", handleBulkCreateObligations),
   http.patch("/api/obligations/bulk", handleBulkUpdateObligations),
+  http.get("/api/obligations/:id/timeline", handleGetObligationTimeline),
+  http.get("/api/obligations/:id/comments", handleGetObligationComments),
+  http.post("/api/obligations/:id/comments", handleCreateObligationComment),
   http.get("/api/obligations/:id", handleGetObligationDetail),
   http.put("/api/obligations/:id", handleUpdateObligation),
   http.patch("/api/obligations/:id", handleUpdateObligation),
+  http.delete("/api/obligations/:id", handleDeleteObligation),
 ];
 
 // Re-export the context type for the direct API bridge.

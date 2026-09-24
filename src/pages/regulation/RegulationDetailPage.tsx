@@ -48,7 +48,7 @@ import {
   useRegulationComments,
   useRegulationDependencies,
 } from "@/hooks/queries/useRegulationQueries";
-import { useComplianceList } from "@/hooks/queries/useComplianceQueries";
+import { useObligationList } from "@/hooks/queries/useObligationQueries";
 import { useRegulationImpact as useAIRegulationImpact } from "@/hooks/mutations/useAIMutations";
 import {
   useAddRegulationComment,
@@ -210,7 +210,7 @@ export default function RegulationDetailPage() {
   const timeline = useRegulationTimeline(id);
   const comments = useRegulationComments(id);
   const dependencies = useRegulationDependencies(id);
-  const obligations = useComplianceList({ regulation: id }, 1, 50);
+  const obligations = useObligationList({ regulationId: id }, 1, 50);
   const aiImpact = useAIRegulationImpact();
   const addComment = useAddRegulationComment(id);
 
@@ -291,17 +291,13 @@ export default function RegulationDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-white/90 hover:bg-white/10 hover:text-white"
             onClick={() => navigate("/regulation")}
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
             Back to library
           </Button>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Badge
-              variant="outline"
-              className="border-white/30 bg-white/10 text-white"
-            >
+            <Badge variant="outline">
               {item.source === "external" ? (
                 <Globe className="size-3" aria-hidden="true" />
               ) : (
@@ -315,7 +311,6 @@ export default function RegulationDetailPage() {
                 size="sm"
                 onClick={handleArchive}
                 disabled={archive.isPending}
-                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
               >
                 {archive.isPending ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -329,7 +324,6 @@ export default function RegulationDetailPage() {
               variant="outline"
               size="sm"
               onClick={() => navigate(`/regulation/${item.id}/edit`)}
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
               <Pencil className="size-4" aria-hidden="true" />
               Edit
@@ -338,6 +332,15 @@ export default function RegulationDetailPage() {
           <StatusBadge status={item.status} size="md" />
         </div>
       </PageHero>
+
+      {/* KPI cards row — full-width above the 2-column layout. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 lg:items-stretch">
+        <KPICard
+          label="Articles"
+          value={item.articles.length}
+          icon={CheckCircle}
+        />
+      </div>
 
       {item.expirationDate &&
         item.status !== "Expired" &&
@@ -773,11 +776,6 @@ export default function RegulationDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <KPICard
-            label="Articles"
-            value={item.articles.length}
-            icon={CheckCircle}
-          />
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium">
@@ -824,15 +822,15 @@ export default function RegulationDetailPage() {
                   No obligations linked.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
                   {obligations.data?.items.map((obligation) => (
                     <button
                       key={obligation.id}
                       onClick={() => navigate(`/obligations/${obligation.id}`)}
-                      className="flex w-full items-center justify-between rounded-md border border-border bg-card p-2 text-left text-sm transition-colors hover:bg-muted/50"
+                      className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-card p-2 text-left text-sm transition-colors hover:bg-muted/50"
                     >
-                      <span className="truncate font-medium">
-                        {obligation.complianceId}
+                      <span className="min-w-0 truncate font-medium">
+                        {obligation.code} — {obligation.title}
                       </span>
                       <StatusBadge status={obligation.status} size="sm" />
                     </button>

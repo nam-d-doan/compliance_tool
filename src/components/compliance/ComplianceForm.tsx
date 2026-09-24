@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useRegulationList } from "@/hooks/queries/useRegulationQueries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { AIService } from "@/services";
@@ -32,7 +31,6 @@ const schema = z.object({
   regulationId: z.string().min(1, "Select a regulation"),
   ownerId: z.string().min(1, "Select an owner"),
   approverId: z.string().min(1, "Select an approver"),
-  reviewerIds: z.array(z.string()).default([]),
   frequency: z.enum(FREQUENCIES),
   dueDate: z.string().min(1, "Due date is required"),
   criticality: z.enum(["low", "medium", "high", "critical"] as const),
@@ -92,7 +90,6 @@ export function ComplianceForm({
     defaultValues: {
       frequency: "annually",
       criticality: "medium",
-      reviewerIds: [],
       ...defaultValues,
     },
   });
@@ -108,11 +105,6 @@ export function ComplianceForm({
     200,
     { status: "Active" },
   );
-  const { data: reviewersData, isPending: reviewersLoading } = useAdminUsers(
-    1,
-    200,
-    { role: "reviewer", status: "Active" },
-  );
 
   const regulations = regulationsData?.items ?? [];
   const owners = ownersData?.items ?? [];
@@ -120,7 +112,6 @@ export function ComplianceForm({
     approversData?.items?.filter(
       (u) => u.role === "approver" || u.role === "admin",
     ) ?? [];
-  const reviewers = reviewersData?.items ?? [];
 
   const regulationId = watch("regulationId");
   const selectedRegulation = regulations.find((r) => r.id === regulationId);
@@ -159,7 +150,7 @@ export function ComplianceForm({
   };
 
   const isLoadingOptions =
-    regulationsLoading || ownersLoading || approversLoading || reviewersLoading;
+    regulationsLoading || ownersLoading || approversLoading;
 
   return (
     <form
@@ -331,43 +322,6 @@ export function ComplianceForm({
           {errors.approverId && (
             <p className="text-xs text-destructive">
               {errors.approverId.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label>Reviewers</Label>
-          <Controller
-            name="reviewerIds"
-            control={control}
-            render={({ field }) => (
-              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                {reviewers.map((u) => {
-                  const checked = field.value.includes(u.id);
-                  return (
-                    <label
-                      key={u.id}
-                      className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm"
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(checkedState) => {
-                          const next = checkedState
-                            ? [...field.value, u.id]
-                            : field.value.filter((id) => id !== u.id);
-                          field.onChange(next);
-                        }}
-                      />
-                      <span className="truncate">{u.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          />
-          {errors.reviewerIds && (
-            <p className="text-xs text-destructive">
-              {errors.reviewerIds.message}
             </p>
           )}
         </div>

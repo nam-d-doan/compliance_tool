@@ -39,22 +39,15 @@ const iconMap: Record<ActivityFeedItem["type"], LucideIcon> = {
 };
 
 const typeColor: Record<ActivityFeedItem["type"], string> = {
-  submission:
-    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  approval:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-  rejection: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  upload:
-    "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-  cap_created:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  license_updated:
-    "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
-  regulation_published:
-    "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
-  comment: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  ai_insight:
-    "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
+  submission: "bg-info-bg text-info",
+  approval: "bg-success-bg text-success",
+  rejection: "bg-danger-bg text-danger",
+  upload: "bg-info-bg text-info",
+  cap_created: "bg-warning-bg text-warning",
+  license_updated: "bg-neutral-bg text-neutral",
+  regulation_published: "bg-neutral-bg text-neutral",
+  comment: "bg-neutral-bg text-neutral",
+  ai_insight: "bg-primary/15 text-primary",
 };
 
 export function TimelineEvent({

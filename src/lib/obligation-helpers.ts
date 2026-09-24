@@ -303,13 +303,7 @@ export function getObligationPriorityStats(
   return stats;
 }
 
-export interface ObligationStatusStats {
-  draft: number;
-  submitted: number;
-  review_required: number;
-  cap_in_progress: number;
-  completed: number;
-}
+export type ObligationStatusStats = Record<Obligation["status"], number>;
 
 /** Count obligations by EFFECTIVE status (completed = all linked CAPs Closed). */
 export function getObligationStatusStats(
@@ -320,8 +314,12 @@ export function getObligationStatusStats(
     draft: 0,
     submitted: 0,
     review_required: 0,
+    approved: 0,
+    rejected: 0,
+    returned: 0,
     cap_in_progress: 0,
     completed: 0,
+    archived: 0,
   };
   for (const obg of obligations) {
     stats[getEffectiveObligationStatus(obg, capMap)]++;

@@ -30,6 +30,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
 import { PageHero } from "@/components/common";
+import { AdminSubNav } from "@/components/admin/AdminSubNav";
 import { useAdminRoles } from "@/hooks/queries/useAdminQueries";
 import { useCreateRole } from "@/hooks/mutations/useAdminMutations";
 import { cn } from "@/lib/utils";
@@ -172,7 +173,7 @@ function PermissionMatrix({ role }: { role: RoleEntity }) {
                       />
                     ) : (
                       <X
-                        className="inline size-4 text-muted-foreground/50"
+                        className="inline size-4 font-bold text-red-600 dark:text-red-400"
                         aria-hidden="true"
                       />
                     )}
@@ -241,13 +242,14 @@ export default function AdminRolesPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
+      <AdminSubNav />
       <PageHero
         title="Role Management"
         subtitle="Review default roles and create custom roles for the organization."
       >
         <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <SheetTrigger asChild>
-            <Button className="bg-white text-[#0c3767] hover:bg-white/90">
+            <Button>
               <Plus className="size-4" aria-hidden="true" />
               Create Role
             </Button>
