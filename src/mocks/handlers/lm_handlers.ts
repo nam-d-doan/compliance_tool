@@ -21,7 +21,7 @@ import {
   normalizeArrayParam,
   type MockResolverContext,
 } from "./utils";
-import { CASE_STAGES } from "@/constants/lm";
+import { CASE_STAGES, STAGE_STYLES } from "@/constants/lm";
 import type {
   LitigationCase,
   CaseEvent,
@@ -248,7 +248,7 @@ export async function handleUpdateLMCase({
       "stage_changed",
       actorId,
       actorName,
-      `Chuyển giai đoạn: ${prev.stage} → ${body.stage}`,
+      `Chuyển giai đoạn: ${STAGE_STYLES[prev.stage].label} → ${STAGE_STYLES[body.stage].label}`,
       prev.stage,
       body.stage,
     );

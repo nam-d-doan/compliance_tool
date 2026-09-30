@@ -33,6 +33,7 @@ import type {
 } from "@/types";
 import {
   CASE_STAGES,
+  STAGE_STYLES,
   CASE_CATEGORIES,
   CASE_CATEGORY_LABELS,
   DEADLINE_TYPES,
@@ -838,13 +839,19 @@ function generateLitigationCases(
     (id) => hoDepartments.find((d) => d.id === id) ?? hoDepartments[0],
   );
 
-  const owners =
-    users.filter((u) => u.role === "owner").length >= 5
-      ? users.filter((u) => u.role === "owner").slice(0, 5)
-      : Array.from({ length: 5 }, (_, k) => users[k % users.length]);
+  // BƯỚC (fix): phải lấy trong đúng pool role="owner" — nếu pool < 5 thì
+  // LẶP LẠI trong chính pool đó (không rơi về users bất kỳ role nào), vì
+  // LMForm chỉ tải danh sách chuyên viên qua useAdminUsers({role:"owner"}).
+  // demo-owner (Lê Thị Hoa) luôn có sẵn nên pool không bao giờ rỗng.
+  const ownerPool = users.filter((u) => u.role === "owner");
+  const owners = Array.from(
+    { length: 5 },
+    (_, k) => ownerPool[k % ownerPool.length],
+  );
+  // demo-executive (Nguyễn Văn Hùng) luôn có sẵn nên pool không rỗng —
+  // không fallback sang users bất kỳ role, cùng lý do như ownerPool ở trên.
   const managers = users.filter((u) => u.role === "executive");
-  const pickManager = () =>
-    managers.length > 0 ? pick(managers) : pick(users);
+  const pickManager = () => pick(managers);
 
   const ownerSlots = roundRobinSlots([10, 8, 6, 4, 2]);
   const priorityLabels: PriorityLevel[] = ["medium", "high", "low", "critical"];
@@ -951,7 +958,7 @@ function generateLitigationCases(
           type: "milestone_date_changed",
           userId: owner.id,
           userName: owner.name,
-          description: `Dời ngày kế hoạch mốc "${CASE_STAGES[si]}"`,
+          description: `Dời ngày kế hoạch mốc "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
           fromValue: iso(planned),
           toValue: iso(currentPlanned),
           createdAt: iso(subDays(today, faker.number.int({ min: 1, max: 20 }))),
@@ -965,7 +972,7 @@ function generateLitigationCases(
           type: "milestone_completed",
           userId: owner.id,
           userName: owner.name,
-          description: `Hoàn thành mốc "${CASE_STAGES[si]}"`,
+          description: `Hoàn thành mốc "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
           createdAt: iso(actualDate!),
           updatedAt: iso(actualDate!),
         });
