@@ -116,6 +116,8 @@ export const API_ENDPOINTS = {
   LM_DEADLINE_UPDATE: (id: string) => `/api/lm/deadlines/${id}`,
   LM_CASE_EVENTS: (id: string) => `/api/lm/cases/${id}/events`,
   LM_ALERT_RULES: "/api/lm/alert-rules",
+  LM_WORKLOAD: "/api/lm/workload",
+  LM_CASE_REMIND: (id: string) => `/api/lm/cases/${id}/remind`,
 
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",

@@ -58,3 +58,12 @@ export function useLMAlertRules() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/** GĐ2 — tải công việc từng chuyên viên, cho hộp thoại phân công. */
+export function useLMWorkload() {
+  return useQuery({
+    queryKey: lmKeys.workload(),
+    queryFn: () => LMService.workload(),
+    staleTime: 60 * 1000,
+  });
+}

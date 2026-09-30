@@ -143,7 +143,8 @@ export interface CaseEvent extends BaseEntity {
     | "deadline_acknowledged"
     | "deadline_resolved"
     | "file_attached"
-    | "reassigned";
+    | "reassigned"
+    | "reminded";
   userId: string;
   userName: string;
   /** Mô tả ngắn, hiển thị trực tiếp trong ActivityFeed. */
@@ -151,6 +152,24 @@ export interface CaseEvent extends BaseEntity {
   /** Giá trị trước/sau khi đổi — chỉ điền khi có ý nghĩa (vd đổi ngày, đổi người). */
   fromValue?: string;
   toValue?: string;
+}
+
+/** GĐ2 — tải công việc 1 chuyên viên, dùng cho hộp thoại phân công. */
+export interface LMWorkloadEntry {
+  userId: string;
+  userName: string;
+  /** Số hồ sơ đang mở (status Open) được giao cho người này. */
+  openCaseCount: number;
+  /** Tổng trọng số ưu tiên (PRIORITY_WORKLOAD_WEIGHT) của các hồ sơ đó. */
+  weightedLoad: number;
+}
+
+/** Payload cập nhật 1 mốc — GĐ2 (đổi ngày kế hoạch hoặc đánh dấu hoàn thành). */
+export interface UpdateLMMilestoneInput {
+  /** Dời ngày kế hoạch hiện tại (không đổi ngày gốc). */
+  currentPlannedDate?: string;
+  /** Đánh dấu mốc hoàn thành vào ngày này. */
+  actualDate?: string;
 }
 
 export interface LMCaseFilter {

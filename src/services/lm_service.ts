@@ -6,9 +6,11 @@ import type {
   CreateLMCaseInput,
   UpdateLMCaseInput,
   CaseMilestone,
+  UpdateLMMilestoneInput,
   LegalDeadline,
   CaseEvent,
   AlertRule,
+  LMWorkloadEntry,
   Paginated,
 } from "@/types";
 
@@ -56,5 +58,17 @@ export const LMService = {
   },
   alertRules() {
     return apiGet<AlertRule[]>(API_ENDPOINTS.LM_ALERT_RULES);
+  },
+  updateMilestone(id: string, data: UpdateLMMilestoneInput) {
+    return apiPut<CaseMilestone>(API_ENDPOINTS.LM_MILESTONE_UPDATE(id), data);
+  },
+  workload() {
+    return apiGet<LMWorkloadEntry[]>(API_ENDPOINTS.LM_WORKLOAD);
+  },
+  remind(id: string, fromUserId?: string, fromUserName?: string) {
+    return apiPost<{ success: boolean }>(API_ENDPOINTS.LM_CASE_REMIND(id), {
+      fromUserId,
+      fromUserName,
+    });
   },
 };

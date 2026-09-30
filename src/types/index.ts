@@ -75,6 +75,8 @@ export type {
   LMCaseFilter,
   CreateLMCaseInput,
   UpdateLMCaseInput,
+  LMWorkloadEntry,
+  UpdateLMMilestoneInput,
 } from "./lm";
 export type {
   Assignment,

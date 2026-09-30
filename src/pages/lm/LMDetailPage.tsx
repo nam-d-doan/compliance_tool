@@ -1,19 +1,27 @@
 /**
  * PSEUDO CODE (ngắn gọn)
  * 1. 5 tab: Tổng quan / Tiến trình / Hạn & cảnh báo / Tài liệu / Lịch sử.
- * 2. Tiến trình + Hạn & cảnh báo: CHỈ ĐỌC ở GĐ1 — sửa mốc/xử lý cảnh báo
- *    là việc của GĐ2/GĐ3, chưa làm ở đây.
- * 3. Lịch sử dùng list riêng (không tái dùng ActivityFeed) vì
+ * 2. Tiến trình (GĐ2): mốc chưa xong có input đổi ngày kế hoạch + nút đánh
+ *    dấu hoàn thành. Server tự chuyển stage / đóng hồ sơ khi hoàn thành
+ *    đúng mốc đang là giai đoạn hiện tại (xem lm_handlers.ts).
+ * 3. Hạn & cảnh báo: vẫn CHỈ ĐỌC — xử lý cảnh báo là việc GĐ3.
+ * 4. Lịch sử dùng list riêng (không tái dùng ActivityFeed) vì
  *    ActivityFeed/TimelineEvent gắn cứng bộ type khác (submission/approval/
  *    ...), không khớp CaseEvent.type — tái dùng sẽ phải sửa component dùng
  *    chung, rủi ro hơn tự viết list riêng cho LM.
+ * 5. Phân công (GĐ2): sheet riêng, đọc useLMWorkload() (server đã sort tăng
+ *    dần theo tải), gợi ý người ít việc nhất, chọn xong PUT case.ownerId
+ *    qua useUpdateLMCase co sẵn (không cần mutation riêng).
+ * 6. Đôn đốc (GĐ2): 1 nút gọi useRemindLMCase — server tự tạo Notification
+ *    + CaseEvent, FE chỉ cần invalidate + toast.
  */
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { motion } from "motion/react";
-import { Pencil } from "lucide-react";
+import { Pencil, Send, Users, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -33,14 +41,20 @@ import {
   useLMCaseMilestones,
   useLMCaseDeadlines,
   useLMCaseEvents,
+  useLMWorkload,
 } from "@/hooks/queries";
 import { useLmCaseFiles } from "@/hooks/queries/useFileQueries";
-import { useUpdateLMCase } from "@/hooks/mutations";
+import {
+  useUpdateLMCase,
+  useUpdateLMMilestone,
+  useRemindLMCase,
+} from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { STAGE_STYLES, CASE_CATEGORY_LABELS } from "@/constants/lm";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { UpdateLMCaseInput } from "@/types";
+import type { UpdateLMCaseInput, CaseMilestone } from "@/types";
 
 function formatVnd(amount: number): string {
   return new Intl.NumberFormat("vi-VN").format(amount) + " ₫";
@@ -48,6 +62,20 @@ function formatVnd(amount: number): string {
 
 function fmt(date?: string): string {
   return date ? format(parseISO(date), "MMM d, yyyy") : "—";
+}
+
+/**
+ * Chặn ngày vô lý trước khi gửi lên server — input type="date" của trình
+ * duyệt vẫn có thể ra giá trị hỏng (gõ nhanh/dán đè làm lệch từng đoạn
+ * ngày/tháng/năm), server không tự validate lại. Giới hạn 2000-2100 đủ
+ * rộng cho hồ sơ thật, chặn được giá trị rác kiểu "252026".
+ */
+function toValidDateIso(input: string): string | null {
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return null;
+  const year = d.getFullYear();
+  if (year < 2000 || year > 2100) return null;
+  return d.toISOString();
 }
 
 const DEADLINE_STATUS_LABEL: Record<string, string> = {
@@ -59,10 +87,12 @@ const DEADLINE_STATUS_LABEL: Record<string, string> = {
 
 export default function LMDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
-  const { role } = useAuthStore();
+  const { role, user } = useAuthStore();
   const canUpdate = hasPermission(role, "lm:update");
+  const canApprove = hasPermission(role, "lm:approve");
 
   const [editOpen, setEditOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const detail = useLMCaseDetail(id);
   const milestones = useLMCaseMilestones(id);
@@ -70,6 +100,8 @@ export default function LMDetailPage() {
   const events = useLMCaseEvents(id);
   const filesQuery = useLmCaseFiles(id);
   const update = useUpdateLMCase(id);
+  const updateMilestone = useUpdateLMMilestone(id);
+  const remind = useRemindLMCase(id);
 
   const item = detail.data;
 
@@ -107,6 +139,29 @@ export default function LMDetailPage() {
     });
   };
 
+  const handleRemind = () => {
+    remind.mutate(
+      { fromUserId: user?.id, fromUserName: user?.name },
+      {
+        onSuccess: () => toast.success("Đã gửi thông báo đôn đốc"),
+        onError: (err) => toast.error(err.message || "Gửi đôn đốc thất bại"),
+      },
+    );
+  };
+
+  const handleAssign = (ownerId: string, ownerName: string) => {
+    update.mutate(
+      { ownerId },
+      {
+        onSuccess: () => {
+          toast.success(`Đã phân công cho ${ownerName}`);
+          setAssignOpen(false);
+        },
+        onError: (err) => toast.error(err.message || "Phân công thất bại"),
+      },
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -115,12 +170,30 @@ export default function LMDetailPage() {
       className="space-y-6"
     >
       <PageHero title={item.code} subtitle={item.title}>
-        {canUpdate && (
-          <Button variant="outline" onClick={() => setEditOpen(true)}>
-            <Pencil className="size-4" aria-hidden="true" />
-            Sửa hồ sơ
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canApprove && (
+            <Button
+              variant="outline"
+              onClick={handleRemind}
+              disabled={remind.isPending}
+            >
+              <Send className="size-4" aria-hidden="true" />
+              Đôn đốc
+            </Button>
+          )}
+          {canApprove && (
+            <Button variant="outline" onClick={() => setAssignOpen(true)}>
+              <Users className="size-4" aria-hidden="true" />
+              Phân công
+            </Button>
+          )}
+          {canUpdate && (
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" aria-hidden="true" />
+              Sửa hồ sơ
+            </Button>
+          )}
+        </div>
       </PageHero>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -179,25 +252,38 @@ export default function LMDetailPage() {
               ) : (
                 <ol className="space-y-3">
                   {(milestones.data ?? []).map((m) => (
-                    <li
+                    <MilestoneRow
                       key={m.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
-                    >
-                      <span className="font-medium">
-                        {STAGE_STYLES[m.stage].label}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        Kế hoạch gốc: {fmt(m.originalPlannedDate)}
-                        {m.currentPlannedDate !== m.originalPlannedDate && (
-                          <> → Hiện tại: {fmt(m.currentPlannedDate)}</>
-                        )}
-                      </span>
-                      <span className="text-sm">
-                        {m.actualDate
-                          ? `Hoàn thành: ${fmt(m.actualDate)}`
-                          : "Chưa hoàn thành"}
-                      </span>
-                    </li>
+                      milestone={m}
+                      canEdit={canUpdate}
+                      isSaving={
+                        updateMilestone.isPending &&
+                        updateMilestone.variables?.id === m.id
+                      }
+                      onReschedule={(dateIso) =>
+                        updateMilestone.mutate(
+                          { id: m.id, data: { currentPlannedDate: dateIso } },
+                          {
+                            onSuccess: () => toast.success("Đã dời ngày kế hoạch"),
+                            onError: (err) =>
+                              toast.error(err.message || "Dời ngày thất bại"),
+                          },
+                        )
+                      }
+                      onComplete={(dateIso) =>
+                        updateMilestone.mutate(
+                          { id: m.id, data: { actualDate: dateIso } },
+                          {
+                            onSuccess: () =>
+                              toast.success(
+                                `Đã hoàn thành mốc "${STAGE_STYLES[m.stage].label}"`,
+                              ),
+                            onError: (err) =>
+                              toast.error(err.message || "Cập nhật thất bại"),
+                          },
+                        )
+                      }
+                    />
                   ))}
                 </ol>
               )}
@@ -313,6 +399,21 @@ export default function LMDetailPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Sheet open={assignOpen} onOpenChange={setAssignOpen}>
+        <SheetContent className="overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Phân công lại {item.code}</SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-4">
+            <AssignList
+              currentOwnerId={item.ownerId}
+              isSaving={update.isPending}
+              onPick={handleAssign}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </motion.div>
   );
 }
@@ -323,5 +424,177 @@ function Field({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="text-sm">{value}</p>
     </div>
+  );
+}
+
+/**
+ * 1 dòng mốc tiến trình. Mốc đã xong (actualDate có giá trị) chỉ hiển thị,
+ * không cho sửa nữa. Mốc chưa xong: ô ngày để dời kế hoạch + nút đánh dấu
+ * hoàn thành (mặc định hôm nay, sửa được trước khi bấm).
+ */
+function MilestoneRow({
+  milestone: m,
+  canEdit,
+  isSaving,
+  onReschedule,
+  onComplete,
+}: {
+  milestone: CaseMilestone;
+  canEdit: boolean;
+  isSaving: boolean;
+  onReschedule: (dateIso: string) => void;
+  onComplete: (dateIso: string) => void;
+}) {
+  const [plannedInput, setPlannedInput] = useState(
+    m.currentPlannedDate.slice(0, 10),
+  );
+  const [completeInput, setCompleteInput] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+
+  const deltaDays = differenceInCalendarDays(
+    parseISO(m.currentPlannedDate),
+    parseISO(m.originalPlannedDate),
+  );
+
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border border-border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium">{STAGE_STYLES[m.stage].label}</span>
+        <span className="text-sm text-muted-foreground">
+          Kế hoạch gốc: {fmt(m.originalPlannedDate)}
+          {deltaDays !== 0 && (
+            <>
+              {" → Hiện tại: "}
+              {fmt(m.currentPlannedDate)}{" "}
+              <span
+                className={cn(
+                  "font-medium",
+                  deltaDays > 0 ? "text-warning" : "text-success",
+                )}
+              >
+                ({deltaDays > 0 ? "+" : ""}
+                {deltaDays} ngày)
+              </span>
+            </>
+          )}
+        </span>
+        <span className="text-sm">
+          {m.actualDate ? (
+            <span className="text-success">
+              Hoàn thành: {fmt(m.actualDate)}
+            </span>
+          ) : (
+            "Chưa hoàn thành"
+          )}
+        </span>
+      </div>
+
+      {canEdit && !m.actualDate && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+          <Input
+            type="date"
+            value={plannedInput}
+            onChange={(e) => setPlannedInput(e.target.value)}
+            className="h-8 w-auto"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isSaving || !plannedInput}
+            onClick={() => {
+              const iso = toValidDateIso(plannedInput);
+              if (!iso) {
+                toast.error("Ngày kế hoạch không hợp lệ");
+                return;
+              }
+              onReschedule(iso);
+            }}
+          >
+            Dời ngày kế hoạch
+          </Button>
+          <span className="text-muted-foreground">·</span>
+          <Input
+            type="date"
+            value={completeInput}
+            onChange={(e) => setCompleteInput(e.target.value)}
+            className="h-8 w-auto"
+          />
+          <Button
+            size="sm"
+            disabled={isSaving || !completeInput}
+            onClick={() => {
+              const iso = toValidDateIso(completeInput);
+              if (!iso) {
+                toast.error("Ngày hoàn thành không hợp lệ");
+                return;
+              }
+              onComplete(iso);
+            }}
+          >
+            <Check className="size-4" aria-hidden="true" />
+            Đánh dấu hoàn thành
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+/** Danh sách chuyên viên theo tải công việc — người đầu tiên (tải thấp nhất) là gợi ý. */
+function AssignList({
+  currentOwnerId,
+  isSaving,
+  onPick,
+}: {
+  currentOwnerId: string;
+  isSaving: boolean;
+  onPick: (ownerId: string, ownerName: string) => void;
+}) {
+  const workload = useLMWorkload();
+
+  if (workload.isPending) return <DetailSkeleton />;
+  if (workload.isError || !workload.data) {
+    return <ErrorState onRetry={() => workload.refetch()} />;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {workload.data.map((w, i) => {
+        const isCurrent = w.userId === currentOwnerId;
+        return (
+          <li key={w.userId}>
+            <button
+              type="button"
+              disabled={isSaving || isCurrent}
+              onClick={() => onPick(w.userId, w.userName)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-lg border border-border p-3 text-left text-sm transition-colors",
+                isCurrent
+                  ? "cursor-default bg-muted"
+                  : "hover:border-primary hover:bg-muted/50",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <span className="font-medium">{w.userName}</span>
+                {i === 0 && !isCurrent && (
+                  <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs text-success">
+                    Gợi ý — ít việc nhất
+                  </span>
+                )}
+                {isCurrent && (
+                  <span className="rounded-full bg-muted-foreground/10 px-2 py-0.5 text-xs text-muted-foreground">
+                    Đang thụ lý
+                  </span>
+                )}
+              </span>
+              <span className="text-muted-foreground">
+                {w.openCaseCount} hồ sơ mở · tải {w.weightedLoad}
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
