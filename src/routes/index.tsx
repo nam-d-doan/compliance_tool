@@ -142,6 +142,12 @@ export const router = createBrowserRouter([
       {
         element: <MainLayout />,
         children: [
+          // App co route "/dashboard" nhung khong co route "/" rieng. Khi
+          // da dang nhap va vao thang "/" (vd go localhost:5173 tren thanh
+          // dia chi), khong child route nao khop "/" nen Outlet trong
+          // MainLayout render rong - man hinh den, khong loi console. Them
+          // route nay de "/" tu chuyen sang "/dashboard".
+          route("/", <Navigate to="/dashboard" replace />, "Dashboard"),
           route("/dashboard", <DashboardRedirect />, "Dashboard"),
           route(
             "/dashboard/executive",
