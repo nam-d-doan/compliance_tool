@@ -10,6 +10,7 @@ import {
   ClipboardList,
   ShieldAlert,
   BarChart3,
+  Gavel,
 } from "lucide-react";
 
 export interface NavPill {
@@ -69,6 +70,14 @@ export const NAV_PILLS: NavPill[] = [
     path: ROUTES.NCC.LIST,
     matchPrefixes: ["/ncc"],
     requiredPermission: "ncc:read",
+  },
+  {
+    key: "lm",
+    label: "Tố tụng",
+    icon: Gavel,
+    path: ROUTES.LM.LIST,
+    matchPrefixes: ["/lm"],
+    requiredPermission: "lm:read",
   },
   {
     key: "reports",

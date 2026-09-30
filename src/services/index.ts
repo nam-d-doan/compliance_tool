@@ -11,3 +11,4 @@ export { DashboardService } from "./dashboard_service";
 export { NotificationService } from "./notification_service";
 export { AIService } from "./ai_service";
 export { FileService } from "./file_service";
+export { LMService } from "./lm_service";

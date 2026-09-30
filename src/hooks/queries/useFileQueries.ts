@@ -29,6 +29,15 @@ export function useNccFiles(nccId: string | undefined) {
   });
 }
 
+export function useLmCaseFiles(caseId: string | undefined) {
+  return useQuery({
+    queryKey: caseId ? fileKeys.byCase(caseId) : ["files", "case", "none"],
+    queryFn: () => FileService.list({ caseId }),
+    enabled: Boolean(caseId),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 /**
  * Fetch files by explicit ID list. Used by the CAP detail page, which knows
  * the linked IDs from the CAP record regardless of whether each file's

@@ -102,6 +102,21 @@ export const API_ENDPOINTS = {
   FILE_GET: (id: string) => `/api/files/${id}`,
   FILE_DELETE: (id: string) => `/api/files/${id}`,
 
+  // LM (Litigation Management) endpoints
+  LM_CASE_LIST: "/api/lm/cases",
+  LM_CASE_CREATE: "/api/lm/cases",
+  LM_CASE_GET: (id: string) => `/api/lm/cases/${id}`,
+  LM_CASE_UPDATE: (id: string) => `/api/lm/cases/${id}`,
+  LM_CASE_DELETE: (id: string) => `/api/lm/cases/${id}`,
+  LM_CASE_MILESTONES: (id: string) => `/api/lm/cases/${id}/milestones`,
+  LM_MILESTONE_UPDATE: (id: string) => `/api/lm/milestones/${id}`,
+  LM_CASE_DEADLINES: (id: string) => `/api/lm/cases/${id}/deadlines`,
+  LM_DEADLINE_CREATE: (caseId: string) =>
+    `/api/lm/cases/${caseId}/deadlines`,
+  LM_DEADLINE_UPDATE: (id: string) => `/api/lm/deadlines/${id}`,
+  LM_CASE_EVENTS: (id: string) => `/api/lm/cases/${id}/events`,
+  LM_ALERT_RULES: "/api/lm/alert-rules",
+
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",
   AI_CAP_GENERATE: "/api/ai/cap/generate",

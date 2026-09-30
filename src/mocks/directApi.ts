@@ -98,6 +98,17 @@ import {
   handleUploadFile,
   handleDeleteFile,
 } from "./handlers/file_handlers";
+import {
+  handleGetLMCaseList,
+  handleCreateLMCase,
+  handleGetLMCaseDetail,
+  handleUpdateLMCase,
+  handleDeleteLMCase,
+  handleGetLMCaseMilestones,
+  handleGetLMCaseDeadlines,
+  handleGetLMCaseEvents,
+  handleGetLMAlertRules,
+} from "./handlers/lm_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
 type Route = {
@@ -152,6 +163,45 @@ const routes: Route[] = [
   { methods: ["GET"], pattern: "/api/ncc/:id", handler: handleGetNCCDetail },
   { methods: ["PUT"], pattern: "/api/ncc/:id", handler: handleUpdateNCC },
   { methods: ["DELETE"], pattern: "/api/ncc/:id", handler: handleDeleteNCC },
+
+  // LM (Litigation Management)
+  { methods: ["GET"], pattern: "/api/lm/cases", handler: handleGetLMCaseList },
+  { methods: ["POST"], pattern: "/api/lm/cases", handler: handleCreateLMCase },
+  {
+    methods: ["GET"],
+    pattern: "/api/lm/cases/:id/milestones",
+    handler: handleGetLMCaseMilestones,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/lm/cases/:id/deadlines",
+    handler: handleGetLMCaseDeadlines,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/lm/cases/:id/events",
+    handler: handleGetLMCaseEvents,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/lm/cases/:id",
+    handler: handleGetLMCaseDetail,
+  },
+  {
+    methods: ["PUT"],
+    pattern: "/api/lm/cases/:id",
+    handler: handleUpdateLMCase,
+  },
+  {
+    methods: ["DELETE"],
+    pattern: "/api/lm/cases/:id",
+    handler: handleDeleteLMCase,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/lm/alert-rules",
+    handler: handleGetLMAlertRules,
+  },
 
   // Regulation
   {

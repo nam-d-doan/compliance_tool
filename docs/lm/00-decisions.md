@@ -57,6 +57,6 @@ Người có tải thấp nhất được gợi ý khi phân công.
 
 `LM-YYYY-NNN` (ví dụ `LM-2026-001`), giống mã `OBG-YYYY-NNN` của Obligation. Sinh tự động trong handler.
 
-## 7. Hạn nộp chào giá / ngày demo ⏳ CHỜ THANH
+## 7. Hạn nộp chào giá / ngày demo
 
-Chưa có. Nếu gấp, cắt theo thứ tự: AI giả lập → xuất KPI CSV → Core Banking giả lập (bỏ 3 cái này trước, giữ nguyên GĐ1-2 vì đó là lõi nghiệp vụ).
+**Chốt:** họp đầu tiên 05/10/2026. Nếu gấp, cắt theo thứ tự: AI giả lập → xuất KPI CSV → Core Banking giả lập (bỏ 3 cái này trước, giữ nguyên GĐ1-2 vì đó là lõi nghiệp vụ).

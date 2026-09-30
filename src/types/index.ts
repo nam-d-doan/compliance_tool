@@ -64,6 +64,19 @@ export type {
   UpdateNCCInput,
 } from "./ncc";
 export type {
+  LitigationCase,
+  CaseMilestone,
+  LegalDeadline,
+  AlertRule,
+  CaseEvent,
+  LMCaseStatus,
+  LegalDeadlineStatus,
+  NotificationChannel,
+  LMCaseFilter,
+  CreateLMCaseInput,
+  UpdateLMCaseInput,
+} from "./lm";
+export type {
   Assignment,
   CreateAssignmentInput,
   AssignmentFilter,

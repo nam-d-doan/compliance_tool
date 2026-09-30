@@ -31,6 +31,7 @@ export const FileService = {
     meta: {
       capId?: string;
       nccId?: string;
+      caseId?: string;
       uploadedBy?: string;
       uploadedById?: string;
     } = {},
@@ -39,6 +40,7 @@ export const FileService = {
     form.append("file", file);
     if (meta.capId) form.append("capId", meta.capId);
     if (meta.nccId) form.append("nccId", meta.nccId);
+    if (meta.caseId) form.append("caseId", meta.caseId);
     if (meta.uploadedBy) form.append("uploadedBy", meta.uploadedBy);
     if (meta.uploadedById) form.append("uploadedById", meta.uploadedById);
     return apiUpload<FileAttachment>(API_ENDPOINTS.FILE_UPLOAD, form);

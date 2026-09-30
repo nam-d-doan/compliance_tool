@@ -68,6 +68,13 @@ export const ROUTES = {
     CREATE: "/regulation/create",
   },
 
+  // LM (Litigation Management) routes
+  LM: {
+    LIST: "/lm",
+    DETAIL: "/lm/:id",
+    CREATE: "/lm/create",
+  },
+
   // Assignment routes
   ASSIGNMENTS: {
     LIST: "/assignment",
@@ -119,6 +126,9 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.NCC.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.REGULATION.CREATE]: ["admin", "approver"],
+
+  [ROUTES.LM.CREATE]: ["owner", "executive", "admin"],
+  [ROUTES.LM.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],
   [ROUTES.ASSIGNMENTS.LIST]: ["approver", "owner", "executive", "admin"],

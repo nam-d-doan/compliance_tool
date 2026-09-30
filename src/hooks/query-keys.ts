@@ -5,6 +5,7 @@ import type {
   ReportFilter,
   AssignmentFilter,
   ObligationFilter,
+  LMCaseFilter,
 } from "@/types";
 
 export const capKeys = {
@@ -65,10 +66,27 @@ export const obligationKeys = {
 export const fileKeys = {
   all: ["files"] as const,
   lists: () => [...fileKeys.all, "list"] as const,
-  list: (filters: { capId?: string; nccId?: string; search?: string }) =>
-    [...fileKeys.lists(), filters] as const,
+  list: (filters: {
+    capId?: string;
+    nccId?: string;
+    caseId?: string;
+    search?: string;
+  }) => [...fileKeys.lists(), filters] as const,
   byCap: (capId: string) => [...fileKeys.all, "cap", capId] as const,
   byNcc: (nccId: string) => [...fileKeys.all, "ncc", nccId] as const,
+  byCase: (caseId: string) => [...fileKeys.all, "case", caseId] as const,
+};
+
+export const lmKeys = {
+  all: ["lm"] as const,
+  lists: () => [...lmKeys.all, "list"] as const,
+  list: (filters: LMCaseFilter) => [...lmKeys.lists(), filters] as const,
+  details: () => [...lmKeys.all, "detail"] as const,
+  detail: (id: string) => [...lmKeys.details(), id] as const,
+  milestones: (id: string) => [...lmKeys.detail(id), "milestones"] as const,
+  deadlines: (id: string) => [...lmKeys.detail(id), "deadlines"] as const,
+  events: (id: string) => [...lmKeys.detail(id), "events"] as const,
+  alertRules: () => [...lmKeys.all, "alert-rules"] as const,
 };
 
 export const reportKeys = {

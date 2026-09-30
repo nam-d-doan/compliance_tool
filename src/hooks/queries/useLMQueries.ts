@@ -1,0 +1,60 @@
+import { useQuery } from "@tanstack/react-query";
+import { LMService } from "@/services";
+import { lmKeys } from "@/hooks/query-keys";
+import type { LMCaseFilter } from "@/types";
+
+export function useLMCaseList(
+  filters: LMCaseFilter = {},
+  page = 1,
+  pageSize = 20,
+) {
+  return useQuery({
+    queryKey: lmKeys.list({ ...filters, page, pageSize }),
+    queryFn: () => LMService.list({ ...filters, page, pageSize }),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useLMCaseDetail(id: string) {
+  return useQuery({
+    queryKey: lmKeys.detail(id),
+    queryFn: () => LMService.get(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useLMCaseMilestones(id: string) {
+  return useQuery({
+    queryKey: lmKeys.milestones(id),
+    queryFn: () => LMService.milestones(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useLMCaseDeadlines(id: string) {
+  return useQuery({
+    queryKey: lmKeys.deadlines(id),
+    queryFn: () => LMService.deadlines(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useLMCaseEvents(id: string) {
+  return useQuery({
+    queryKey: lmKeys.events(id),
+    queryFn: () => LMService.events(id),
+    enabled: Boolean(id),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useLMAlertRules() {
+  return useQuery({
+    queryKey: lmKeys.alertRules(),
+    queryFn: () => LMService.alertRules(),
+    staleTime: 5 * 60 * 1000,
+  });
+}

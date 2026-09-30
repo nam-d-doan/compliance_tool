@@ -36,6 +36,8 @@ export interface FileUploadComponentProps {
   capId?: string;
   /** Link uploads to this NCC when set. */
   nccId?: string;
+  /** Link uploads to this LM case when set. */
+  caseId?: string;
   /** Uploader attribution (from the auth store). */
   uploadedBy?: string;
   uploadedById?: string;
@@ -59,6 +61,7 @@ export function FileUploadComponent({
   onFilesChange,
   capId,
   nccId,
+  caseId,
   uploadedBy,
   uploadedById,
   maxFiles = DEFAULT_MAX_FILES,
@@ -148,7 +151,7 @@ export function FileUploadComponent({
         }, 180);
 
         upload.mutate(
-          { file, capId, nccId, uploadedBy, uploadedById },
+          { file, capId, nccId, caseId, uploadedBy, uploadedById },
           {
             onSuccess: (attachment) => {
               clearInterval(interval);
@@ -186,6 +189,7 @@ export function FileUploadComponent({
       upload,
       capId,
       nccId,
+      caseId,
       uploadedBy,
       uploadedById,
       commit,

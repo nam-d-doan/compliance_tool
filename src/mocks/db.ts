@@ -2,6 +2,7 @@ import { faker } from "@faker-js/faker";
 import { addDays, subDays, formatISO } from "date-fns";
 import { DEMO_USERS } from "@/constants/demo-users";
 import { CAP_STATUSES, USER_STATUSES } from "@/constants/status";
+import type { PriorityLevel } from "@/constants/status";
 import type {
   UserProfile,
   RoleEntity,
@@ -24,7 +25,19 @@ import type {
   Obligation,
   FileAttachment,
   NonComplianceCase,
+  LitigationCase,
+  CaseMilestone,
+  LegalDeadline,
+  CaseEvent,
+  AlertRule,
 } from "@/types";
+import {
+  CASE_STAGES,
+  CASE_CATEGORIES,
+  CASE_CATEGORY_LABELS,
+  DEADLINE_TYPES,
+  DEADLINE_TYPE_DEFAULT_DAYS_BEFORE,
+} from "@/constants/lm";
 import {
   CURATED_REGULATIONS,
   CURATED_DEPENDENCIES,
@@ -733,6 +746,335 @@ function generateNCCs(
   return items;
 }
 
+/**
+ * PSEUDO CODE (ngắn gọn)
+ * 1. roundRobinSlots(caps): chia N slot theo đúng số lượng caps, xen kẽ
+ *    thay vì dồn cục — dùng để rải owner/priority cho đều qua các stage.
+ * 2. generateLitigationCases: 30 hồ sơ, 6/stage. Owner theo roundRobin
+ *    [10,8,6,4,2], priority theo roundRobin [medium14,high8,low5,critical3].
+ *    Mốc: stage < hiện tại = đã xong (actualDate); = hiện tại = đang làm;
+ *    > hiện tại = tương lai. 3 hồ sơ cố ý thiếu 1 event mốc (test KPI b).
+ * 3. Hạn pháp lý: chỉ 15/30 hồ sơ có (5 quá hạn, 5 sắp hạn, 5 đã xử lý),
+ *    15 còn lại không có (baseline sạch).
+ * 4. File: 20/30 hồ sơ có đính kèm (i % 3 !== 2).
+ */
+function roundRobinSlots(caps: number[]): number[] {
+  const remaining = [...caps];
+  const total = remaining.reduce((a, b) => a + b, 0);
+  const out: number[] = [];
+  while (out.length < total) {
+    for (let k = 0; k < remaining.length; k++) {
+      if (remaining[k] > 0) {
+        out.push(k);
+        remaining[k]--;
+      }
+    }
+  }
+  return out;
+}
+
+const CUSTOMER_NAMES = [
+  "Nguyễn Văn An",
+  "Trần Thị Bích",
+  "Lê Hoàng Cường",
+  "Phạm Thị Duyên",
+  "Công ty TNHH Thương mại Phú Gia",
+  "Công ty CP Xây dựng Đại Thành",
+  "Hoàng Minh Đức",
+  "Vũ Thị Hằng",
+  "Công ty TNHH Xuất nhập khẩu Minh Long",
+  "Đặng Văn Khoa",
+  "Công ty CP Sản xuất Việt Tiến",
+  "Bùi Thị Ngọc",
+] as const;
+
+const COLLATERAL_DESCRIPTIONS = [
+  "Bất động sản tại Hà Nội (sổ đỏ thế chấp)",
+  "Ô tô Toyota Camry 2023",
+  "Sổ tiết kiệm kỳ hạn 12 tháng",
+  "Bất động sản tại TP.HCM (nhà + đất)",
+  "Máy móc thiết bị nhà xưởng",
+  "Hàng tồn kho thế chấp",
+  undefined,
+] as const;
+
+const COURTS = [
+  "Tòa án nhân dân Quận Hoàn Kiếm, Hà Nội",
+  "Tòa án nhân dân Quận 1, TP.HCM",
+  "Tòa án nhân dân TP. Đà Nẵng",
+  "Chi cục Thi hành án dân sự Quận Cầu Giấy",
+  "Chi cục Thi hành án dân sự Quận 3, TP.HCM",
+] as const;
+
+/** 3 hồ sơ cố ý thiếu 1 event cập nhật mốc — test KPI b (00-decisions.md). */
+const MISSING_MILESTONE_EVENT_INDICES = new Set([8, 14, 26]);
+/** Vị trí trong stage-group (j=0..5) bị coi là "trễ kế hoạch / đã dời ngày". */
+const DELAYED_J_BY_STAGE: Record<number, number[]> = {
+  0: [4], // khởi kiện: 1 trễ
+  1: [4, 5], // thụ lý: 2 trễ
+  2: [5], // hòa giải: 1 sắp quá hạn
+  3: [4, 5], // xét xử: 2 đã dời ngày
+  4: [], // thi hành án: không trễ
+};
+
+function generateLitigationCases(
+  organizationSettings: OrganizationSettings,
+  users: UserProfile[],
+): {
+  cases: LitigationCase[];
+  milestones: CaseMilestone[];
+  deadlines: LegalDeadline[];
+  events: CaseEvent[];
+} {
+  const { hoDepartments } = organizationSettings;
+  const OWNER_DEPT_IDS = [
+    "dept-legal",
+    "dept-retail",
+    "dept-corporate",
+    "dept-credit",
+    "dept-operations",
+  ];
+  const ownerDepts = OWNER_DEPT_IDS.map(
+    (id) => hoDepartments.find((d) => d.id === id) ?? hoDepartments[0],
+  );
+
+  const owners =
+    users.filter((u) => u.role === "owner").length >= 5
+      ? users.filter((u) => u.role === "owner").slice(0, 5)
+      : Array.from({ length: 5 }, (_, k) => users[k % users.length]);
+  const managers = users.filter((u) => u.role === "executive");
+  const pickManager = () =>
+    managers.length > 0 ? pick(managers) : pick(users);
+
+  const ownerSlots = roundRobinSlots([10, 8, 6, 4, 2]);
+  const priorityLabels: PriorityLevel[] = ["medium", "high", "low", "critical"];
+  const prioritySlots = roundRobinSlots([14, 8, 5, 3]);
+
+  const overdueIdx = new Set([0, 6, 12, 18, 24]);
+  const dueSoonIdx = new Set([1, 7, 13, 19, 25]);
+  const resolvedIdx = new Set([2, 8, 14, 20, 26]);
+
+  const cases: LitigationCase[] = [];
+  const milestones: CaseMilestone[] = [];
+  const deadlines: LegalDeadline[] = [];
+  const events: CaseEvent[] = [];
+
+  for (let i = 0; i < 30; i++) {
+    const stageIdxCurrent = Math.floor(i / 6); // 0..4, giai đoạn hiện tại
+    const j = i % 6; // vị trí trong nhóm 6 hồ sơ của stage này
+    const stage = CASE_STAGES[stageIdxCurrent];
+    const category = CASE_CATEGORIES[i % CASE_CATEGORIES.length];
+    const owner = owners[ownerSlots[i]];
+    const dept = ownerDepts[i % ownerDepts.length];
+    const priority = priorityLabels[prioritySlots[i]];
+    const customerName = CUSTOMER_NAMES[i % CUSTOMER_NAMES.length];
+    const isCorp = category === "no_xau_doanh_nghiep";
+    const outstandingDebt = isCorp
+      ? faker.number.int({ min: 3_000_000_000, max: 15_000_000_000 })
+      : faker.number.int({ min: 500_000_000, max: 5_000_000_000 });
+
+    const createdAt = randomDate(subDays(today, 300), subDays(today, 30));
+    const caseId = uid("lm");
+
+    cases.push({
+      id: caseId,
+      code: `LM-${today.getFullYear()}-${pad(i + 1)}`,
+      title: `${CASE_CATEGORY_LABELS[category]} — ${customerName}`,
+      category,
+      customerCif: `CIF${pad(i + 1, 6)}`,
+      customerName,
+      outstandingDebt,
+      collateralDescription:
+        COLLATERAL_DESCRIPTIONS[i % COLLATERAL_DESCRIPTIONS.length],
+      courtOrEnforcementAgency: COURTS[i % COURTS.length],
+      judgeName: stageIdxCurrent >= 1 ? faker.person.fullName() : undefined,
+      stage,
+      status: "Open",
+      priority,
+      ownerUnitId: dept.id,
+      ownerUnitName: dept.name,
+      ownerUnitType: "ho_department",
+      ownerId: owner.id,
+      ownerName: owner.name,
+      managerId: pickManager().id,
+      managerName: "", // điền lại ngay dưới sau khi biết managerId
+      fileIds: [],
+      tags: [],
+      createdAt: iso(createdAt),
+      updatedAt: iso(randomDate(createdAt, today)),
+    });
+    // managerName phải khớp managerId vừa gán — gán lại cho đúng.
+    const created = cases[cases.length - 1];
+    const manager = users.find((u) => u.id === created.managerId);
+    created.managerName = manager?.name ?? "";
+
+    events.push({
+      id: uid("ce"),
+      caseId,
+      type: "created",
+      userId: owner.id,
+      userName: owner.name,
+      description: `Tạo hồ sơ ${created.code}`,
+      createdAt: iso(createdAt),
+      updatedAt: iso(createdAt),
+    });
+
+    // 5 mốc, cách nhau ~45 ngày kể từ createdAt.
+    const isDelayed = DELAYED_J_BY_STAGE[stageIdxCurrent]?.includes(j) ?? false;
+    for (let si = 0; si < CASE_STAGES.length; si++) {
+      const planned = addDays(createdAt, (si + 1) * 45);
+      const isPast = si < stageIdxCurrent;
+      const isCurrent = si === stageIdxCurrent;
+      let currentPlanned = planned;
+      if (isCurrent && isDelayed) {
+        currentPlanned = addDays(planned, faker.number.int({ min: 15, max: 30 }));
+      }
+      const actualDate = isPast
+        ? addDays(planned, faker.number.int({ min: -5, max: 10 }))
+        : undefined;
+
+      milestones.push({
+        id: uid("ms"),
+        caseId,
+        stage: CASE_STAGES[si],
+        originalPlannedDate: iso(planned),
+        currentPlannedDate: iso(currentPlanned),
+        actualDate: actualDate ? iso(actualDate) : undefined,
+        createdAt: iso(createdAt),
+        updatedAt: iso(actualDate ?? currentPlanned),
+      });
+
+      if (isCurrent && isDelayed) {
+        events.push({
+          id: uid("ce"),
+          caseId,
+          type: "milestone_date_changed",
+          userId: owner.id,
+          userName: owner.name,
+          description: `Dời ngày kế hoạch mốc "${CASE_STAGES[si]}"`,
+          fromValue: iso(planned),
+          toValue: iso(currentPlanned),
+          createdAt: iso(subDays(today, faker.number.int({ min: 1, max: 20 }))),
+          updatedAt: iso(subDays(today, faker.number.int({ min: 1, max: 20 }))),
+        });
+      }
+      if (isPast && !MISSING_MILESTONE_EVENT_INDICES.has(i)) {
+        events.push({
+          id: uid("ce"),
+          caseId,
+          type: "milestone_completed",
+          userId: owner.id,
+          userName: owner.name,
+          description: `Hoàn thành mốc "${CASE_STAGES[si]}"`,
+          createdAt: iso(actualDate!),
+          updatedAt: iso(actualDate!),
+        });
+      }
+    }
+
+    // Hạn pháp lý — chỉ 15/30 hồ sơ (xem pseudo code đầu hàm).
+    const deadlineType = DEADLINE_TYPES[i % DEADLINE_TYPES.length];
+    const daysBefore = DEADLINE_TYPE_DEFAULT_DAYS_BEFORE[deadlineType];
+    if (overdueIdx.has(i)) {
+      const dueDate = subDays(today, faker.number.int({ min: 3, max: 20 }));
+      deadlines.push({
+        id: uid("ld"),
+        caseId,
+        type: deadlineType,
+        dueDate: iso(dueDate),
+        status: "flagged",
+        flaggedAt: iso(subDays(dueDate, daysBefore)),
+        createdAt: iso(subDays(dueDate, daysBefore)),
+        updatedAt: iso(subDays(dueDate, daysBefore)),
+      });
+    } else if (dueSoonIdx.has(i)) {
+      const dueDate = addDays(today, faker.number.int({ min: 1, max: 3 }));
+      deadlines.push({
+        id: uid("ld"),
+        caseId,
+        type: deadlineType,
+        dueDate: iso(dueDate),
+        status: "flagged",
+        flaggedAt: iso(subDays(dueDate, daysBefore)),
+        createdAt: iso(subDays(dueDate, daysBefore)),
+        updatedAt: iso(subDays(dueDate, daysBefore)),
+      });
+    } else if (resolvedIdx.has(i)) {
+      const dueDate = subDays(today, faker.number.int({ min: 10, max: 40 }));
+      const flaggedAt = subDays(dueDate, daysBefore);
+      const acknowledgedAt = randomDate(flaggedAt, today);
+      const resolvedAt = randomDate(acknowledgedAt, today);
+      deadlines.push({
+        id: uid("ld"),
+        caseId,
+        type: deadlineType,
+        dueDate: iso(dueDate),
+        status: "resolved",
+        flaggedAt: iso(flaggedAt),
+        acknowledgedAt: iso(acknowledgedAt),
+        acknowledgedById: owner.id,
+        resolvedAt: iso(resolvedAt),
+        resolvedById: owner.id,
+        createdAt: iso(flaggedAt),
+        updatedAt: iso(resolvedAt),
+      });
+      events.push({
+        id: uid("ce"),
+        caseId,
+        type: "deadline_resolved",
+        userId: owner.id,
+        userName: owner.name,
+        description: `Xử lý xong cảnh báo hạn "${deadlineType}"`,
+        createdAt: iso(resolvedAt),
+        updatedAt: iso(resolvedAt),
+      });
+    }
+  }
+
+  return { cases, milestones, deadlines, events };
+}
+
+/** File đính kèm cho 20/30 hồ sơ (i % 3 !== 2). Mượn preset của CAP. */
+function generateLitigationFiles(cases: LitigationCase[]): FileAttachment[] {
+  const files: FileAttachment[] = [];
+  cases.forEach((c, i) => {
+    if (i % 3 === 2) return; // 10 hồ sơ cố ý không có file
+    const count = faker.number.int({ min: 1, max: 2 });
+    const chosen = faker.helpers.arrayElements(MOCK_FILE_PRESETS, count);
+    const uploader = faker.helpers.arrayElement(DEMO_USERS);
+    const uploadedAt = randomDate(subDays(today, 30), today);
+    const ids: string[] = [];
+    for (const preset of chosen) {
+      const id = uid("file");
+      ids.push(id);
+      files.push({
+        id,
+        name: preset.name,
+        size: preset.size,
+        type: preset.type,
+        url: `https://mock-files.example.com/lm/${c.id}/${preset.name}`,
+        uploadedAt: iso(uploadedAt),
+        uploadedBy: uploader.name,
+        uploadedById: uploader.id,
+        caseId: c.id,
+        createdAt: iso(uploadedAt),
+        updatedAt: iso(uploadedAt),
+      });
+    }
+    c.fileIds = ids;
+  });
+  return files;
+}
+
+/** Cấu hình cảnh báo mặc định — PLACEHOLDER, xem docs/lm/00-decisions.md mục 3. */
+function generateDefaultAlertRules(): AlertRule[] {
+  return DEADLINE_TYPES.map((type) => ({
+    type,
+    daysBefore: DEADLINE_TYPE_DEFAULT_DAYS_BEFORE[type],
+    channels: ["app", "email"],
+  }));
+}
+
 function generateNotifications(
   users: UserProfile[],
   count = 30,
@@ -1112,6 +1454,11 @@ export interface MockDb {
   files: FileAttachment[];
   notifications: Notification[];
   auditLogs: AuditLog[];
+  litigationCases: LitigationCase[];
+  caseMilestones: CaseMilestone[];
+  legalDeadlines: LegalDeadline[];
+  caseEvents: CaseEvent[];
+  alertRules: AlertRule[];
   roles: RoleEntity[];
   organizations: Organization[];
   aiConfig: AIConfig;
@@ -1131,6 +1478,9 @@ export function getDb(): MockDb {
   const relatedRegs = buildRegulationRelatedIndex(regulationDependencies);
   const organizationSettings = generateOrganizationSettings();
   const nccs = generateNCCs(organizationSettings, users);
+  const lm = generateLitigationCases(organizationSettings, users);
+  const lmFiles = generateLitigationFiles(lm.cases);
+  const alertRules = generateDefaultAlertRules();
   const assignments = generateAssignments(
     regulations,
     users,
@@ -1143,7 +1493,7 @@ export function getDb(): MockDb {
     relatedRegs,
   );
   const caps = generateCAPs(obligations, users, relatedRegs);
-  const files = generateFiles(caps);
+  const files = [...generateFiles(caps), ...lmFiles];
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
@@ -1165,6 +1515,11 @@ export function getDb(): MockDb {
     organizations,
     aiConfig,
     organizationSettings,
+    litigationCases: lm.cases,
+    caseMilestones: lm.milestones,
+    legalDeadlines: lm.deadlines,
+    caseEvents: lm.events,
+    alertRules,
     generateTimelineFor,
     generateCommentsFor,
   };
@@ -1183,6 +1538,10 @@ export function getDb(): MockDb {
       auditLogs: auditLogs.length,
       roles: roles.length,
       organizations: organizations.length,
+      litigationCases: lm.cases.length,
+      caseMilestones: lm.milestones.length,
+      legalDeadlines: lm.deadlines.length,
+      caseEvents: lm.events.length,
     });
   }
 

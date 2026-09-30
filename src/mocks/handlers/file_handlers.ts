@@ -9,7 +9,12 @@ import {
   parseNumber,
   type MockResolverContext,
 } from "./utils";
-import type { FileAttachment, CAP, NonComplianceCase } from "@/types";
+import type {
+  FileAttachment,
+  CAP,
+  NonComplianceCase,
+  LitigationCase,
+} from "@/types";
 
 /** Max upload size enforced by the mock API (matches UI: 10 MB). */
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -26,6 +31,9 @@ export async function handleGetFileList({ request }: { request: Request }) {
   }
   if (q.nccId) {
     items = items.filter((f) => f.nccId === q.nccId);
+  }
+  if (q.caseId) {
+    items = items.filter((f) => f.caseId === q.caseId);
   }
   if (q.ids) {
     const ids = q.ids.split(",").map((s) => s.trim());
@@ -61,6 +69,7 @@ export async function handleUploadFile({ request }: { request: Request }) {
   const file = form.get("file");
   const capId = (form.get("capId") as string | null) ?? undefined;
   const nccId = (form.get("nccId") as string | null) ?? undefined;
+  const caseId = (form.get("caseId") as string | null) ?? undefined;
 
   if (!(file instanceof File)) {
     return badRequest("No file attached (field must be named 'file')");
@@ -94,6 +103,7 @@ export async function handleUploadFile({ request }: { request: Request }) {
     uploadedById,
     capId,
     nccId,
+    caseId,
     createdAt: now,
     updatedAt: now,
   };
@@ -111,6 +121,14 @@ export async function handleUploadFile({ request }: { request: Request }) {
     const ncc = findById(db.nccs, nccId);
     if (ncc && !ncc.fileIds.includes(attachment.id)) {
       ncc.fileIds = [...ncc.fileIds, attachment.id];
+    }
+  }
+
+  // Link to the LM case when one is referenced and exists.
+  if (caseId) {
+    const lmCase = findById(db.litigationCases, caseId);
+    if (lmCase && !lmCase.fileIds.includes(attachment.id)) {
+      lmCase.fileIds = [...lmCase.fileIds, attachment.id];
     }
   }
 
@@ -142,6 +160,13 @@ export async function handleDeleteFile({ params }: MockResolverContext) {
   for (const ncc of db.nccs as NonComplianceCase[]) {
     if (ncc.fileIds.includes(removed.id)) {
       ncc.fileIds = ncc.fileIds.filter((id) => id !== removed.id);
+    }
+  }
+
+  // Unlink from any LM case that referenced it.
+  for (const lmCase of db.litigationCases as LitigationCase[]) {
+    if (lmCase.fileIds.includes(removed.id)) {
+      lmCase.fileIds = lmCase.fileIds.filter((id) => id !== removed.id);
     }
   }
 

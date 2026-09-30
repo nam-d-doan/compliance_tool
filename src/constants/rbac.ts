@@ -46,6 +46,11 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "report:update",
     "report:delete",
     "report:approve",
+    "lm:create",
+    "lm:read",
+    "lm:update",
+    "lm:delete",
+    "lm:approve",
   ],
   executive: [
     "compliance:read",
@@ -60,6 +65,11 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "report:create",
     "report:read",
     "report:approve",
+    // lm:update (không lm:create) — "Cấp Quản lý" ở Phụ lục 2 chỉ phê
+    // duyệt/phân công hồ sơ có sẵn, không tự tạo hồ sơ mới.
+    "lm:read",
+    "lm:update",
+    "lm:approve",
   ],
   owner: [
     "compliance:create",
@@ -77,6 +87,9 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "ncc:update",
     "report:create",
     "report:read",
+    "lm:create",
+    "lm:read",
+    "lm:update",
   ],
   approver: [
     "compliance:read",
@@ -88,6 +101,8 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "assignment:read",
     "ncc:read",
     "report:read",
+    "lm:read",
+    "lm:approve",
   ],
 };
 

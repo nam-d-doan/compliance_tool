@@ -24,11 +24,14 @@ export interface FileAttachment extends BaseEntity {
   capId?: string;
   /** Linked Non-Compliance Case ID, when the file belongs to an NCC. */
   nccId?: string;
+  /** Linked LM litigation case ID, when the file belongs to an LM case. */
+  caseId?: string;
 }
 
 export interface FileFilter {
   capId?: string;
   nccId?: string;
+  caseId?: string;
   /** Fetch a specific set of files by ID (joined comma-separated on the wire). */
   ids?: string[];
   search?: string;
