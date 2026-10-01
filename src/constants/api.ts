@@ -137,6 +137,7 @@ export const API_ENDPOINTS = {
   LAW_ALERT_UPDATE: (id: string) => `/api/law/requests/${id}/alert`,
   LAW_KB_LIST: "/api/law/knowledge-base",
   LAW_KB_CREATE: "/api/law/knowledge-base",
+  LAW_DASHBOARD: "/api/law/dashboard",
 
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",

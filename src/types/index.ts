@@ -98,6 +98,7 @@ export type {
   UpdateLawAlertInput,
   KnowledgeBaseEntry,
   CreateKnowledgeBaseEntryInput,
+  LawDashboardSummary,
 } from "./law";
 export type {
   Assignment,

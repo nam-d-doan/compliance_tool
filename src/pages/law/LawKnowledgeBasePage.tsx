@@ -95,7 +95,7 @@ export default function LawKnowledgeBasePage() {
         subtitle="Sample advisory opinions and internal precedents — search before writing a new opinion to avoid duplication."
       >
         <Button variant="outline" asChild>
-          <Link to="/law">
+          <Link to="/law/list">
             <ArrowLeft className="size-4" aria-hidden="true" />
             Back to Requests
           </Link>

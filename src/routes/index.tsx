@@ -56,6 +56,7 @@ const LMDashboardPage = lazy(() => import("@/pages/lm/LMDashboardPage"));
 const LMListPage = lazy(() => import("@/pages/lm/LMListPage"));
 const LMDetailPage = lazy(() => import("@/pages/lm/LMDetailPage"));
 const LMCreatePage = lazy(() => import("@/pages/lm/LMCreatePage"));
+const LawDashboardPage = lazy(() => import("@/pages/law/LawDashboardPage"));
 const LawListPage = lazy(() => import("@/pages/law/LawListPage"));
 const LawKnowledgeBasePage = lazy(
   () => import("@/pages/law/LawKnowledgeBasePage"),
@@ -183,7 +184,8 @@ export const router = createBrowserRouter([
           route("/lm/create", <LMCreatePage />, "Create Case"),
           route("/lm/:id", <LMDetailPage />, "Case Detail"),
 
-          route("/law", <LawListPage />, "Legal Advisory"),
+          route("/law", <LawDashboardPage />, "Legal Advisory"),
+          route("/law/list", <LawListPage />, "Request List"),
           route("/law/create", <LawCreatePage />, "Create Request"),
           route(
             "/law/knowledge-base",

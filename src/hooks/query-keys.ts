@@ -105,6 +105,7 @@ export const lawKeys = {
   slaRules: () => [...lawKeys.all, "sla-rules"] as const,
   knowledgeBase: (search?: string) =>
     [...lawKeys.all, "knowledge-base", search ?? ""] as const,
+  dashboard: () => [...lawKeys.all, "dashboard"] as const,
 };
 
 export const reportKeys = {

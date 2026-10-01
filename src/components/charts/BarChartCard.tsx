@@ -117,6 +117,7 @@ export function BarChartCard({
                   name={y.name}
                   fill={y.color ?? CHART_COLORS[index % CHART_COLORS.length]}
                   radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
                 />
               ))}
             </BarChart>

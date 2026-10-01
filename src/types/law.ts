@@ -163,6 +163,34 @@ export interface CreateKnowledgeBaseEntryInput {
   authorName?: string;
 }
 
+/**
+ * GĐ4 — tổng hợp cho trang Dashboard & KPI. Công thức theo Phụ lục 3 mục
+ * 3.2 (xem docs/law/00-decisions.md mục 4):
+ * a. onTimeCompletionRate: hoàn thành trong SLA ÷ tổng hoàn thành.
+ * b. qualityRate: hoàn thành không bị trả lại sửa (revisedCount=0) ÷ tổng
+ *    hoàn thành — proxy demo, không có nghiệp vụ "review" thật.
+ * c. alertResolutionRate: cảnh báo đã xử lý xong ÷ tổng cảnh báo từng bật
+ *    cờ — y hệt KPI c của LM.
+ */
+export interface LawDashboardSummary {
+  totalOpen: number;
+  totalCompleted: number;
+  totalRedFlagRequests: number;
+  onTimeCompletionRate: number;
+  qualityRate: number;
+  alertResolutionRate: number;
+  statusDistribution: { status: LawRequestStatus; count: number }[];
+  priorityDistribution: { priorityTier: LawPriorityTier; count: number }[];
+  unitDistribution: { unitName: string; count: number }[];
+  ownerWorkload: LawWorkloadEntry[];
+  topRedFlagRequests: {
+    id: string;
+    code: string;
+    title: string;
+    ownerName: string;
+  }[];
+}
+
 export type UpdateAdviceRequestInput = Partial<
   Omit<
     AdviceRequest,

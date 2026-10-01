@@ -84,7 +84,7 @@ export const NAV_PILLS: NavPill[] = [
     key: "law",
     label: "Legal Advisory",
     icon: Scale,
-    path: ROUTES.LAW.LIST,
+    path: ROUTES.LAW.DASHBOARD,
     matchPrefixes: ["/law"],
     requiredPermission: "law:read",
   },

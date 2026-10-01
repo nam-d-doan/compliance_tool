@@ -50,3 +50,12 @@ export function useKnowledgeBaseList(search?: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/** GĐ4 — tổng hợp KPI/biểu đồ cho trang Dashboard. */
+export function useLawDashboard() {
+  return useQuery({
+    queryKey: lawKeys.dashboard(),
+    queryFn: () => LawService.dashboard(),
+    staleTime: 60 * 1000,
+  });
+}

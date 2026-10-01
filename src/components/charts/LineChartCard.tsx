@@ -120,6 +120,7 @@ export function LineChartCard({
                   strokeWidth={2}
                   dot={{ r: 3, strokeWidth: 2, fill: "var(--background)" }}
                   activeDot={{ r: 5 }}
+                  isAnimationActive={false}
                 />
               ))}
             </LineChart>

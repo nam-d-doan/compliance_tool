@@ -11,6 +11,7 @@ import type {
   SlaRule,
   KnowledgeBaseEntry,
   CreateKnowledgeBaseEntryInput,
+  LawDashboardSummary,
   Paginated,
 } from "@/types";
 
@@ -71,5 +72,8 @@ export const LawService = {
   },
   kbCreate(data: CreateKnowledgeBaseEntryInput) {
     return apiPost<KnowledgeBaseEntry>(API_ENDPOINTS.LAW_KB_CREATE, data);
+  },
+  dashboard() {
+    return apiGet<LawDashboardSummary>(API_ENDPOINTS.LAW_DASHBOARD);
   },
 };

@@ -146,6 +146,7 @@ export function AreaChartCard({
                       strokeWidth: 2,
                       fill: "var(--background)",
                     }}
+                    isAnimationActive={false}
                   />
                 );
               })}

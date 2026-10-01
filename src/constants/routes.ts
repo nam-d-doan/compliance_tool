@@ -77,10 +77,11 @@ export const ROUTES = {
     CREATE: "/lm/create",
   },
 
-  // LAW (Legal Advisory Workflow) routes — GĐ1: "/law" là list, giống LM
-  // ở GĐ1 (dashboard sẽ thêm sau ở GĐ4, lúc đó mới tách như LM đã làm).
+  // LAW (Legal Advisory Workflow) routes — GĐ4: tách Dashboard/List giống
+  // LM đã làm (DASHBOARD ở gốc, LIST ở /list).
   LAW: {
-    LIST: "/law",
+    DASHBOARD: "/law",
+    LIST: "/law/list",
     DETAIL: "/law/:id",
     CREATE: "/law/create",
     KNOWLEDGE_BASE: "/law/knowledge-base",
@@ -143,6 +144,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.LM.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.LAW.CREATE]: ["owner", "executive", "admin"],
+  [ROUTES.LAW.DASHBOARD]: ["approver", "owner", "executive", "admin"],
   [ROUTES.LAW.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],

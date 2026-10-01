@@ -132,6 +132,7 @@ import {
   handleUpdateLawAlert,
   handleGetKnowledgeBaseList,
   handleCreateKnowledgeBaseEntry,
+  handleGetLawDashboard,
 } from "./handlers/law_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
@@ -320,6 +321,11 @@ const routes: Route[] = [
     methods: ["POST"],
     pattern: "/api/law/knowledge-base",
     handler: handleCreateKnowledgeBaseEntry,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/law/dashboard",
+    handler: handleGetLawDashboard,
   },
 
   // Regulation

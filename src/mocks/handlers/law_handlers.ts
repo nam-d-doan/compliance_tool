@@ -12,6 +12,8 @@
  *    AdviceRequest (1 request = 1 dueDate, không tách bảng con như LM),
  *    dùng chung lib/deadline-alerts.ts với lm_handlers.ts. Khai thác Tri
  *    thức: CRUD đơn giản + tìm theo từ khóa (filterByText), không sub/tab.
+ * 5. GĐ4 — handleGetLawDashboard gộp sẵn mọi KPI/biểu đồ trong 1 API, tính
+ *    ở server 1 lần — khuôn y hệt handleGetLMDashboard.
  */
 import { http } from "msw";
 import { getDb, findById, paginate, filterByText } from "@/mocks/db";
@@ -28,7 +30,9 @@ import {
 import {
   LAW_PRIORITY_SLA_DAYS,
   LAW_PRIORITY_WORKLOAD_WEIGHT,
+  LAW_PRIORITY_TIERS,
 } from "@/constants/law";
+import { LAW_REQUEST_STATUSES } from "@/constants/law";
 import { nextAlertStatus, alertSeverity } from "@/lib/deadline-alerts";
 import { DEMO_TODAY } from "@/mocks/db";
 import type {
@@ -38,6 +42,7 @@ import type {
   UpdateAdviceRequestInput,
   UpdateLawAlertInput,
   LawWorkloadEntry,
+  LawDashboardSummary,
   KnowledgeBaseEntry,
   CreateKnowledgeBaseEntryInput,
 } from "@/types";
@@ -577,6 +582,91 @@ export async function handleCreateKnowledgeBaseEntry({
   return jsonResponse(entry, 201);
 }
 
+/**
+ * PSEUDO CODE (GĐ4 — tổng hợp dashboard)
+ * 1. Chạy evaluateLawAlerts trước để KPI cảnh báo dùng trạng thái mới nhất.
+ * 2. onTimeCompletionRate (KPI a): completedAt <= dueDate ÷ tổng hoàn thành.
+ * 3. qualityRate (KPI b): revisedCount===0 ÷ tổng hoàn thành — proxy demo.
+ * 4. alertResolutionRate (KPI c): resolved ÷ (đã từng flagged) — y hệt LM.
+ */
+export async function handleGetLawDashboard() {
+  await getDelay();
+  const db = getDb();
+  evaluateLawAlerts(db);
+
+  const openRequests = db.adviceRequests.filter((r) => r.status !== "completed");
+  const completedRequests = db.adviceRequests.filter((r) => r.status === "completed");
+  const redFlagIds = new Set(
+    db.adviceRequests.filter((r) => r.alertStatus === "flagged").map((r) => r.id),
+  );
+
+  const onTime = completedRequests.filter(
+    (r) => r.completedAt && new Date(r.completedAt) <= new Date(r.dueDate),
+  );
+  const onTimeCompletionRate =
+    completedRequests.length > 0
+      ? Math.round((onTime.length / completedRequests.length) * 100)
+      : 0;
+
+  const noRevision = completedRequests.filter((r) => r.revisedCount === 0);
+  const qualityRate =
+    completedRequests.length > 0
+      ? Math.round((noRevision.length / completedRequests.length) * 100)
+      : 0;
+
+  const everFlagged = db.adviceRequests.filter((r) => r.alertStatus !== "pending");
+  const resolved = db.adviceRequests.filter((r) => r.alertStatus === "resolved");
+  const alertResolutionRate =
+    everFlagged.length > 0
+      ? Math.round((resolved.length / everFlagged.length) * 100)
+      : 0;
+
+  const statusDistribution = LAW_REQUEST_STATUSES.map((status) => ({
+    status,
+    count: db.adviceRequests.filter((r) => r.status === status).length,
+  }));
+  const priorityDistribution = LAW_PRIORITY_TIERS.map((priorityTier) => ({
+    priorityTier,
+    count: db.adviceRequests.filter((r) => r.priorityTier === priorityTier).length,
+  }));
+
+  const unitCounts = new Map<string, number>();
+  db.adviceRequests.forEach((r) => {
+    unitCounts.set(
+      r.requestingUnitName,
+      (unitCounts.get(r.requestingUnitName) ?? 0) + 1,
+    );
+  });
+  const unitDistribution = Array.from(unitCounts.entries())
+    .map(([unitName, count]) => ({ unitName, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const topRedFlagRequests = db.adviceRequests
+    .filter((r) => redFlagIds.has(r.id))
+    .slice(0, 5)
+    .map((r) => ({
+      id: r.id,
+      code: r.code,
+      title: r.title,
+      ownerName: r.ownerName,
+    }));
+
+  const summary: LawDashboardSummary = {
+    totalOpen: openRequests.length,
+    totalCompleted: completedRequests.length,
+    totalRedFlagRequests: redFlagIds.size,
+    onTimeCompletionRate,
+    qualityRate,
+    alertResolutionRate,
+    statusDistribution,
+    priorityDistribution,
+    unitDistribution,
+    ownerWorkload: computeOwnerWorkloadForLaw(db),
+    topRedFlagRequests,
+  };
+  return jsonResponse(summary);
+}
+
 export const lawHandlers = [
   http.get("/api/law/requests", handleGetLawRequestList),
   http.post("/api/law/requests", handleCreateLawRequest),
@@ -590,4 +680,5 @@ export const lawHandlers = [
   http.get("/api/law/sla-rules", handleGetLawSlaRules),
   http.get("/api/law/knowledge-base", handleGetKnowledgeBaseList),
   http.post("/api/law/knowledge-base", handleCreateKnowledgeBaseEntry),
+  http.get("/api/law/dashboard", handleGetLawDashboard),
 ];
