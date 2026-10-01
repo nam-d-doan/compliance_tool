@@ -6,6 +6,7 @@ import type {
   AssignmentFilter,
   ObligationFilter,
   LMCaseFilter,
+  LawRequestFilter,
 } from "@/types";
 
 export const capKeys = {
@@ -91,6 +92,15 @@ export const lmKeys = {
   workload: () => [...lmKeys.all, "workload"] as const,
   dashboard: (ownerId?: string) =>
     [...lmKeys.all, "dashboard", ownerId ?? "all"] as const,
+};
+
+export const lawKeys = {
+  all: ["law"] as const,
+  lists: () => [...lawKeys.all, "list"] as const,
+  list: (filters: LawRequestFilter) => [...lawKeys.lists(), filters] as const,
+  details: () => [...lawKeys.all, "detail"] as const,
+  detail: (id: string) => [...lawKeys.details(), id] as const,
+  events: (id: string) => [...lawKeys.detail(id), "events"] as const,
 };
 
 export const reportKeys = {

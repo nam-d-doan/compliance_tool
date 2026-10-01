@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   BarChart3,
   Gavel,
+  Scale,
 } from "lucide-react";
 
 export interface NavPill {
@@ -78,6 +79,14 @@ export const NAV_PILLS: NavPill[] = [
     path: ROUTES.LM.DASHBOARD,
     matchPrefixes: ["/lm"],
     requiredPermission: "lm:read",
+  },
+  {
+    key: "law",
+    label: "Legal Advisory",
+    icon: Scale,
+    path: ROUTES.LAW.LIST,
+    matchPrefixes: ["/law"],
+    requiredPermission: "law:read",
   },
   {
     key: "reports",

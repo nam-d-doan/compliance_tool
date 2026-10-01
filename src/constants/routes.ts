@@ -77,6 +77,14 @@ export const ROUTES = {
     CREATE: "/lm/create",
   },
 
+  // LAW (Legal Advisory Workflow) routes — GĐ1: "/law" là list, giống LM
+  // ở GĐ1 (dashboard sẽ thêm sau ở GĐ4, lúc đó mới tách như LM đã làm).
+  LAW: {
+    LIST: "/law",
+    DETAIL: "/law/:id",
+    CREATE: "/law/create",
+  },
+
   // Assignment routes
   ASSIGNMENTS: {
     LIST: "/assignment",
@@ -132,6 +140,9 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.LM.CREATE]: ["owner", "executive", "admin"],
   [ROUTES.LM.DASHBOARD]: ["approver", "owner", "executive", "admin"],
   [ROUTES.LM.LIST]: ["approver", "owner", "executive", "admin"],
+
+  [ROUTES.LAW.CREATE]: ["owner", "executive", "admin"],
+  [ROUTES.LAW.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],
   [ROUTES.ASSIGNMENTS.LIST]: ["approver", "owner", "executive", "admin"],

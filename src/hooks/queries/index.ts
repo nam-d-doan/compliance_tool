@@ -11,5 +11,6 @@ export * from "./useAIQueries";
 export * from "./useFileQueries";
 export * from "./useObligationQueries";
 export * from "./useLMQueries";
+export * from "./useLawQueries";
 export { useTabActionCounts } from "@/hooks/useTabActionCounts";
 export type { TabActionCounts } from "@/hooks/useTabActionCounts";

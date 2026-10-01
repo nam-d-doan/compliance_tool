@@ -12,3 +12,4 @@ export { NotificationService } from "./notification_service";
 export { AIService } from "./ai_service";
 export { FileService } from "./file_service";
 export { LMService } from "./lm_service";
+export { LawService } from "./law_service";

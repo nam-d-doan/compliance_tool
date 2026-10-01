@@ -62,11 +62,11 @@ export function LMForm({
   const lang = useLanguageStore((s) => s.lang);
   submitLabel ??= L("Create Case", "Tạo hồ sơ");
   const orgUnitsQuery = useOrgUnits();
-  const ownersQuery = useAdminUsers(1, 200, { status: "Active", role: "owner" });
-  const managersQuery = useAdminUsers(1, 200, {
-    status: "Active",
-    role: "executive",
-  });
+  // Không lọc status: "Active" — demo có vài chuyên viên seed sẵn với
+  // status khác Active (Deactivated/Invited); lọc theo status sẽ làm select
+  // không hiện được lựa chọn hiện tại khi sửa hồ sơ của những người đó.
+  const ownersQuery = useAdminUsers(1, 200, { role: "owner" });
+  const managersQuery = useAdminUsers(1, 200, { role: "executive" });
 
   const hoDepartments = orgUnitsQuery.data?.hoDepartments ?? [];
   const owners = ownersQuery.data?.items ?? [];

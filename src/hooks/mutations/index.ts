@@ -8,3 +8,4 @@ export * from "./useNotificationMutations";
 export * from "./useAIMutations";
 export * from "./useFileMutations";
 export * from "./useLMMutations";
+export * from "./useLawMutations";

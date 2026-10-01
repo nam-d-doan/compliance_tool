@@ -87,6 +87,14 @@ export type {
   UpdateLMTaskInput,
 } from "./lm";
 export type {
+  AdviceRequest,
+  AdvisoryOpinion,
+  LawEvent,
+  LawRequestFilter,
+  CreateAdviceRequestInput,
+  UpdateAdviceRequestInput,
+} from "./law";
+export type {
   Assignment,
   CreateAssignmentInput,
   AssignmentFilter,

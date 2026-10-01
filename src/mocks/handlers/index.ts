@@ -14,6 +14,7 @@ import { assignmentHandlers } from "./assignment_handlers";
 import { obligationHandlers } from "./obligation_handlers";
 import { fileHandlers } from "./file_handlers";
 import { lmHandlers } from "./lm_handlers";
+import { lawHandlers } from "./law_handlers";
 
 export const handlers = [
   ...authHandlers,
@@ -32,4 +33,5 @@ export const handlers = [
   ...obligationHandlers,
   ...fileHandlers,
   ...lmHandlers,
+  ...lawHandlers,
 ];

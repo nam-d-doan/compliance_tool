@@ -124,6 +124,14 @@ export const API_ENDPOINTS = {
   LM_CASE_REMIND: (id: string) => `/api/lm/cases/${id}/remind`,
   LM_DASHBOARD: "/api/lm/dashboard",
 
+  // LAW (Legal Advisory Workflow) endpoints
+  LAW_REQUEST_LIST: "/api/law/requests",
+  LAW_REQUEST_CREATE: "/api/law/requests",
+  LAW_REQUEST_GET: (id: string) => `/api/law/requests/${id}`,
+  LAW_REQUEST_UPDATE: (id: string) => `/api/law/requests/${id}`,
+  LAW_REQUEST_DELETE: (id: string) => `/api/law/requests/${id}`,
+  LAW_REQUEST_EVENTS: (id: string) => `/api/law/requests/${id}/events`,
+
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",
   AI_CAP_GENERATE: "/api/ai/cap/generate",

@@ -119,6 +119,14 @@ import {
   handleRemindLMCase,
   handleGetLMDashboard,
 } from "./handlers/lm_handlers";
+import {
+  handleGetLawRequestList,
+  handleCreateLawRequest,
+  handleGetLawRequestDetail,
+  handleUpdateLawRequest,
+  handleDeleteLawRequest,
+  handleGetLawRequestEvents,
+} from "./handlers/law_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
 type Route = {
@@ -248,6 +256,38 @@ const routes: Route[] = [
     methods: ["POST"],
     pattern: "/api/lm/cases/:id/remind",
     handler: handleRemindLMCase,
+  },
+
+  // LAW (Legal Advisory Workflow)
+  {
+    methods: ["GET"],
+    pattern: "/api/law/requests",
+    handler: handleGetLawRequestList,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/law/requests",
+    handler: handleCreateLawRequest,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/law/requests/:id/events",
+    handler: handleGetLawRequestEvents,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/law/requests/:id",
+    handler: handleGetLawRequestDetail,
+  },
+  {
+    methods: ["PUT"],
+    pattern: "/api/law/requests/:id",
+    handler: handleUpdateLawRequest,
+  },
+  {
+    methods: ["DELETE"],
+    pattern: "/api/law/requests/:id",
+    handler: handleDeleteLawRequest,
   },
 
   // Regulation

@@ -32,6 +32,8 @@ import type {
   LMTask,
   LMTaskStatus,
   AlertRule,
+  AdviceRequest,
+  LawEvent,
 } from "@/types";
 import {
   CASE_STAGES,
@@ -44,6 +46,7 @@ import {
   LM_DEFAULT_FOLDERS,
   type CaseStage,
 } from "@/constants/lm";
+import { LAW_PRIORITY_TIERS, LAW_REQUEST_STATUSES } from "@/constants/law";
 import {
   CURATED_REGULATIONS,
   CURATED_DEPENDENCIES,
@@ -1196,6 +1199,126 @@ function generateDefaultAlertRules(): AlertRule[] {
   }));
 }
 
+const LAW_REQUEST_TOPICS = [
+  "Review standard credit contract template for corporate clients",
+  "Advise on AML regulations applicable to a new product",
+  "Clarify issues on real estate collateral liquidation",
+  "Advise on bank guarantee contract terms",
+  "Review KYC policy against amended SBV regulations",
+  "Advise on handling procedure for group-3+ bad debt",
+  "Clarify overdue interest rate issues in standard contract",
+  "Advise on corporate bond issuance conditions",
+  "Review customer data confidentiality clauses",
+  "Advise on notarization procedure for mortgage contract",
+  "Clarify rights and obligations of the guarantor",
+  "Advise on new consumer lending regulations",
+  "Review cooperation agreement with a fintech partner",
+  "Advise on consumer credit contract dispute resolution",
+  "Clarify issues on debt assignment/transfer",
+] as const;
+
+/**
+ * PSEUDO CODE (ngắn gọn) — GĐ1 LAW: ~24 yêu cầu tư vấn, trải đều 3 mức ưu
+ * tiên và 3 trạng thái. Đơn vị gửi yêu cầu lấy từ hoDepartments sẵn có
+ * (không phải 5 đơn vị đã dùng cho LM — rải rộng hơn cho khác biệt demo).
+ * Chuyên viên/quản lý tái dùng đúng pool role owner/executive như LM.
+ */
+function generateAdviceRequests(
+  organizationSettings: OrganizationSettings,
+  users: UserProfile[],
+): { requests: AdviceRequest[]; events: LawEvent[] } {
+  const REQUESTING_DEPT_IDS = [
+    "dept-retail",
+    "dept-corporate",
+    "dept-credit",
+    "dept-treasury",
+    "dept-finance",
+    "dept-it",
+    "dept-operations",
+    "dept-aml",
+  ];
+  const requestingDepts = REQUESTING_DEPT_IDS.map(
+    (id) =>
+      organizationSettings.hoDepartments.find((d) => d.id === id) ??
+      organizationSettings.hoDepartments[0],
+  );
+
+  const ownerPool = users.filter((u) => u.role === "owner");
+  const managers = users.filter((u) => u.role === "executive");
+  const pickManager = () => pick(managers);
+
+  const requests: AdviceRequest[] = [];
+  const events: LawEvent[] = [];
+
+  const COUNT = 24;
+  for (let i = 0; i < COUNT; i++) {
+    const priorityTier = LAW_PRIORITY_TIERS[i % LAW_PRIORITY_TIERS.length];
+    const status = LAW_REQUEST_STATUSES[i % LAW_REQUEST_STATUSES.length];
+    const dept = requestingDepts[i % requestingDepts.length];
+    const owner = ownerPool[i % ownerPool.length];
+    const topic = LAW_REQUEST_TOPICS[i % LAW_REQUEST_TOPICS.length];
+    const submittedAt = randomDate(subDays(today, 60), subDays(today, 2));
+    const requestId = uid("law");
+
+    const manager = pickManager();
+    const completedAt =
+      status === "completed"
+        ? randomDate(submittedAt, today)
+        : undefined;
+
+    requests.push({
+      id: requestId,
+      code: `LAW-${today.getFullYear()}-${pad(i + 1)}`,
+      title: topic,
+      description: undefined,
+      priorityTier,
+      status,
+      requestingUnitId: dept.id,
+      requestingUnitName: dept.name,
+      requestingUnitType: "ho_department",
+      ownerId: owner.id,
+      ownerName: owner.name,
+      managerId: manager.id,
+      managerName: manager.name,
+      submittedAt: iso(submittedAt),
+      completedAt: completedAt ? iso(completedAt) : undefined,
+      revisedCount: i % 5 === 0 ? 1 : 0,
+      fileIds: [],
+      tags: [],
+      createdAt: iso(submittedAt),
+      updatedAt: iso(completedAt ?? submittedAt),
+    });
+
+    events.push({
+      id: uid("le"),
+      requestId,
+      type: "created",
+      userId: owner.id,
+      userName: owner.name,
+      description: `Created request ${`LAW-${today.getFullYear()}-${pad(i + 1)}`}`,
+      createdAt: iso(submittedAt),
+      updatedAt: iso(submittedAt),
+    });
+
+    if (status === "completed") {
+      events.push({
+        id: uid("le"),
+        requestId,
+        type: "status_changed",
+        userId: owner.id,
+        userName: owner.name,
+        description: "Status changed: In Progress → Completed",
+        fromValue: "in_progress",
+        toValue: "completed",
+        createdAt: iso(completedAt!),
+        updatedAt: iso(completedAt!),
+      });
+    }
+  }
+
+  return { requests, events };
+}
+
 function generateNotifications(
   users: UserProfile[],
   count = 30,
@@ -1581,6 +1704,8 @@ export interface MockDb {
   caseEvents: CaseEvent[];
   lmTasks: LMTask[];
   alertRules: AlertRule[];
+  adviceRequests: AdviceRequest[];
+  lawEvents: LawEvent[];
   roles: RoleEntity[];
   organizations: Organization[];
   aiConfig: AIConfig;
@@ -1604,6 +1729,7 @@ export function getDb(): MockDb {
   const lmTasks = generateLMTasks(lm.cases);
   const lmFiles = generateLitigationFiles(lm.cases, lm.milestones);
   const alertRules = generateDefaultAlertRules();
+  const law = generateAdviceRequests(organizationSettings, users);
   const assignments = generateAssignments(
     regulations,
     users,
@@ -1644,6 +1770,8 @@ export function getDb(): MockDb {
     caseEvents: lm.events,
     lmTasks,
     alertRules,
+    adviceRequests: law.requests,
+    lawEvents: law.events,
     generateTimelineFor,
     generateCommentsFor,
   };
