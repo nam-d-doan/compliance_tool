@@ -38,6 +38,7 @@ import {
   CASE_CATEGORY_LABELS,
   DEADLINE_TYPES,
   DEADLINE_TYPE_DEFAULT_DAYS_BEFORE,
+  DEADLINE_TYPE_LABELS,
 } from "@/constants/lm";
 import {
   CURATED_REGULATIONS,
@@ -1036,7 +1037,7 @@ function generateLitigationCases(
         type: "deadline_resolved",
         userId: owner.id,
         userName: owner.name,
-        description: `Xử lý xong cảnh báo hạn "${deadlineType}"`,
+        description: `Xử lý xong cảnh báo hạn "${DEADLINE_TYPE_LABELS[deadlineType]}"`,
         createdAt: iso(resolvedAt),
         updatedAt: iso(resolvedAt),
       });
