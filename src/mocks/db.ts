@@ -860,6 +860,11 @@ function generateLitigationCases(
   const overdueIdx = new Set([0, 6, 12, 18, 24]);
   const dueSoonIdx = new Set([1, 7, 13, 19, 25]);
   const resolvedIdx = new Set([2, 8, 14, 20, 26]);
+  // GĐ3 — "pending" chưa tới ngưỡng cảnh báo. idx 27 cố ý đặt dueDate đã
+  // qua ngưỡng (daysBefore) nhưng status vẫn để "pending", mô phỏng hạn
+  // "chưa được đánh giá lần nào" — engine evaluateDeadlines tự bật cờ đỏ
+  // ngay lần load đầu tiên, demo được việc tự động hoá.
+  const pendingIdx = new Set([3, 9, 15, 21, 27]);
 
   const cases: LitigationCase[] = [];
   const milestones: CaseMilestone[] = [];
@@ -1034,6 +1039,20 @@ function generateLitigationCases(
         description: `Xử lý xong cảnh báo hạn "${deadlineType}"`,
         createdAt: iso(resolvedAt),
         updatedAt: iso(resolvedAt),
+      });
+    } else if (pendingIdx.has(i)) {
+      const alreadyOverThreshold = i === 27;
+      const dueDate = alreadyOverThreshold
+        ? addDays(today, daysBefore - 3)
+        : addDays(today, daysBefore + 20);
+      deadlines.push({
+        id: uid("ld"),
+        caseId,
+        type: deadlineType,
+        dueDate: iso(dueDate),
+        status: "pending",
+        createdAt: iso(subDays(today, 5)),
+        updatedAt: iso(subDays(today, 5)),
       });
     }
   }

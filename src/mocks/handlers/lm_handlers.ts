@@ -25,16 +25,21 @@ import {
   CASE_STAGES,
   STAGE_STYLES,
   PRIORITY_WORKLOAD_WEIGHT,
+  DEADLINE_TYPE_LABELS,
+  DEADLINE_TYPE_DEFAULT_DAYS_BEFORE,
 } from "@/constants/lm";
+import { nextDeadlineStatus, deadlineSeverity } from "@/lib/lm-alerts";
 import type {
   LitigationCase,
   CaseEvent,
   CreateLMCaseInput,
   UpdateLMCaseInput,
   UpdateLMMilestoneInput,
+  UpdateLMDeadlineInput,
   LMWorkloadEntry,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
+import { DEMO_TODAY } from "@/mocks/db";
 
 function recordEvent(
   db: MockDb,
@@ -75,6 +80,58 @@ function recordEvent(
   });
 }
 
+/**
+ * GĐ3 — chạy ở đầu các API đọc hồ sơ/hạn pháp lý: quét hạn "pending", bật
+ * cờ đỏ (flagged) nếu đã qua ngưỡng AlertRule.daysBefore, ghi CaseEvent +
+ * Notification. Idempotent (hạn đã flagged/resolved/acknowledged bỏ qua) —
+ * gọi nhiều lần không sao, không cần cron thật cho demo.
+ */
+function evaluateDeadlines(db: MockDb): void {
+  db.legalDeadlines.forEach((d) => {
+    if (d.status !== "pending") return;
+    const rule = db.alertRules.find((r) => r.type === d.type);
+    const daysBefore = rule?.daysBefore ?? DEADLINE_TYPE_DEFAULT_DAYS_BEFORE[d.type];
+    const next = nextDeadlineStatus(d, daysBefore, DEMO_TODAY);
+    if (next === "flagged") {
+      d.status = "flagged";
+      d.flaggedAt = DEMO_TODAY.toISOString();
+      d.updatedAt = DEMO_TODAY.toISOString();
+
+      const lmCase = findById(db.litigationCases, d.caseId);
+      if (!lmCase) return;
+      const label = DEADLINE_TYPE_LABELS[d.type];
+      recordEvent(
+        db,
+        d.caseId,
+        "deadline_flagged",
+        lmCase.ownerId,
+        lmCase.ownerName,
+        `Hệ thống bật cảnh báo hạn "${label}"`,
+      );
+      db.notifications.unshift({
+        id: `ntf-${crypto.randomUUID()}`,
+        userId: lmCase.ownerId,
+        title: `Cảnh báo hạn: ${lmCase.code}`,
+        description: `Hạn "${label}" của hồ sơ "${lmCase.title}" sắp/đã tới ngưỡng xử lý`,
+        type: "compliance",
+        read: false,
+        entityType: "lm",
+        entityId: lmCase.id,
+        actionUrl: `/lm/${lmCase.id}`,
+        createdAt: DEMO_TODAY.toISOString(),
+        updatedAt: DEMO_TODAY.toISOString(),
+      });
+    }
+  });
+}
+
+/** GĐ3 — đếm hạn đang "flagged" (đỏ/vàng) của 1 hồ sơ, cho badge list/detail. */
+function countRedFlags(db: MockDb, caseId: string): number {
+  return db.legalDeadlines.filter(
+    (d) => d.caseId === caseId && d.status === "flagged",
+  ).length;
+}
+
 function seedMilestones(db: MockDb, caseId: string, createdAt: string): void {
   const base = new Date(createdAt);
   CASE_STAGES.forEach((stage, si) => {
@@ -102,6 +159,7 @@ export async function handleGetLMCaseList({
   const url = new URL(request.url);
   const q = parseQuery(url);
   const db = getDb();
+  evaluateDeadlines(db);
   let items = [...db.litigationCases];
 
   if (q.stage) {
@@ -151,15 +209,23 @@ export async function handleGetLMCaseList({
 
   const page = parseNumber(q.page, 1);
   const pageSize = parseNumber(q.pageSize, 20);
-  return jsonResponse(paginate(items, page, pageSize));
+  const result = paginate(items, page, pageSize);
+  return jsonResponse({
+    ...result,
+    items: result.items.map((c) => ({
+      ...c,
+      redFlagCount: countRedFlags(db, c.id),
+    })),
+  });
 }
 
 export async function handleGetLMCaseDetail({ params }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  evaluateDeadlines(db);
   const item = findById(db.litigationCases, params.id as string);
   if (!item) return notFound("Case not found");
-  return jsonResponse(item);
+  return jsonResponse({ ...item, redFlagCount: countRedFlags(db, item.id) });
 }
 
 export async function handleCreateLMCase({
@@ -329,8 +395,73 @@ export async function handleGetLMCaseDeadlines({
 }: MockResolverContext) {
   await getDelay();
   const db = getDb();
-  const items = db.legalDeadlines.filter((d) => d.caseId === params.id);
+  evaluateDeadlines(db);
+  const items = db.legalDeadlines
+    .filter((d) => d.caseId === params.id)
+    .map((d) => ({ ...d, severity: deadlineSeverity(d, DEMO_TODAY) }));
   return jsonResponse(items);
+}
+
+/**
+ * PSEUDO CODE (GĐ3 — xử lý 1 hạn cảnh báo)
+ * 1. action="acknowledge": flagged -> acknowledged, ghi nhận ai tiếp nhận.
+ * 2. action="resolve": flagged|acknowledged -> resolved, ghi nhận ai xử lý.
+ * 3. Không cho resolve/acknowledge hạn đang "pending" (chưa có gì để xử lý)
+ *    hoặc đã "resolved" (tránh ghi đè lịch sử xử lý cũ).
+ */
+export async function handleUpdateLMDeadline({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const deadline = findById(db.legalDeadlines, params.id as string);
+  if (!deadline) return notFound("Deadline not found");
+  const lmCase = findById(db.litigationCases, deadline.caseId);
+  if (!lmCase) return notFound("Case not found");
+
+  const body = (await request.json()) as UpdateLMDeadlineInput;
+  const actorId = body.actorId || lmCase.ownerId;
+  const actorName = body.actorName || lmCase.ownerName;
+  const now = new Date().toISOString();
+  const label = DEADLINE_TYPE_LABELS[deadline.type];
+
+  if (body.action === "acknowledge") {
+    if (deadline.status !== "flagged") {
+      return badRequest("Chỉ tiếp nhận được hạn đang ở trạng thái cảnh báo");
+    }
+    deadline.status = "acknowledged";
+    deadline.acknowledgedAt = now;
+    deadline.acknowledgedById = actorId;
+    recordEvent(
+      db,
+      lmCase.id,
+      "deadline_acknowledged",
+      actorId,
+      actorName,
+      `Đã tiếp nhận cảnh báo hạn "${label}"`,
+    );
+  } else if (body.action === "resolve") {
+    if (deadline.status !== "flagged" && deadline.status !== "acknowledged") {
+      return badRequest("Hạn chưa được cảnh báo hoặc đã xử lý xong rồi");
+    }
+    deadline.status = "resolved";
+    deadline.resolvedAt = now;
+    deadline.resolvedById = actorId;
+    recordEvent(
+      db,
+      lmCase.id,
+      "deadline_resolved",
+      actorId,
+      actorName,
+      `Đã xử lý xong cảnh báo hạn "${label}"`,
+    );
+  } else {
+    return badRequest("action phải là acknowledge hoặc resolve");
+  }
+
+  deadline.updatedAt = now;
+  return jsonResponse(deadline);
 }
 
 export async function handleGetLMCaseEvents({
@@ -528,6 +659,7 @@ export const lmHandlers = [
   http.post("/api/lm/cases", handleCreateLMCase),
   http.get("/api/lm/cases/:id/milestones", handleGetLMCaseMilestones),
   http.get("/api/lm/cases/:id/deadlines", handleGetLMCaseDeadlines),
+  http.put("/api/lm/deadlines/:id", handleUpdateLMDeadline),
   http.get("/api/lm/cases/:id/events", handleGetLMCaseEvents),
   http.get("/api/lm/cases/:id", handleGetLMCaseDetail),
   http.put("/api/lm/cases/:id", handleUpdateLMCase),

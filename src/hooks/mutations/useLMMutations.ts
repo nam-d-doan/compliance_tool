@@ -6,6 +6,7 @@ import type {
   CreateLMCaseInput,
   UpdateLMCaseInput,
   UpdateLMMilestoneInput,
+  UpdateLMDeadlineInput,
 } from "@/types";
 
 export function useCreateLMCase(filters: LMCaseFilter = {}) {
@@ -58,6 +59,26 @@ export function useUpdateLMMilestone(caseId: string) {
       // Hoàn thành mốc có thể đổi cả stage/status của hồ sơ, nên invalidate
       // luôn detail + events, không chỉ riêng danh sách mốc.
       queryClient.invalidateQueries({ queryKey: lmKeys.milestones(caseId) });
+      queryClient.invalidateQueries({ queryKey: lmKeys.detail(caseId) });
+      queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
+      queryClient.invalidateQueries({ queryKey: lmKeys.lists() });
+    },
+  });
+}
+
+/** GĐ3 — tiếp nhận ("acknowledge") hoặc xử lý xong ("resolve") 1 hạn cảnh báo. */
+export function useUpdateLMDeadline(caseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateLMDeadlineInput;
+    }) => LMService.updateDeadline(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lmKeys.deadlines(caseId) });
       queryClient.invalidateQueries({ queryKey: lmKeys.detail(caseId) });
       queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
       queryClient.invalidateQueries({ queryKey: lmKeys.lists() });

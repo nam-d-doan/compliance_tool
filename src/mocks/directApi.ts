@@ -109,6 +109,7 @@ import {
   handleGetLMCaseEvents,
   handleGetLMAlertRules,
   handleUpdateLMMilestone,
+  handleUpdateLMDeadline,
   handleGetLMWorkload,
   handleRemindLMCase,
 } from "./handlers/lm_handlers";
@@ -179,6 +180,11 @@ const routes: Route[] = [
     methods: ["GET"],
     pattern: "/api/lm/cases/:id/deadlines",
     handler: handleGetLMCaseDeadlines,
+  },
+  {
+    methods: ["PUT"],
+    pattern: "/api/lm/deadlines/:id",
+    handler: handleUpdateLMDeadline,
   },
   {
     methods: ["GET"],

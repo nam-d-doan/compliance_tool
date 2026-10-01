@@ -8,6 +8,7 @@ import type {
   CaseMilestone,
   UpdateLMMilestoneInput,
   LegalDeadline,
+  UpdateLMDeadlineInput,
   CaseEvent,
   AlertRule,
   LMWorkloadEntry,
@@ -61,6 +62,9 @@ export const LMService = {
   },
   updateMilestone(id: string, data: UpdateLMMilestoneInput) {
     return apiPut<CaseMilestone>(API_ENDPOINTS.LM_MILESTONE_UPDATE(id), data);
+  },
+  updateDeadline(id: string, data: UpdateLMDeadlineInput) {
+    return apiPut<LegalDeadline>(API_ENDPOINTS.LM_DEADLINE_UPDATE(id), data);
   },
   workload() {
     return apiGet<LMWorkloadEntry[]>(API_ENDPOINTS.LM_WORKLOAD);

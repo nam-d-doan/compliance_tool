@@ -89,6 +89,11 @@ export interface LitigationCase extends BaseEntity {
   /** IDs của FileAttachment gắn với hồ sơ (dùng chung hệ thống file của CAP/NCC). */
   fileIds: string[];
   tags: string[];
+
+  /** GĐ3 — server tự tính khi trả response (list/detail), KHÔNG lưu trong
+   * entity thật và client KHÔNG được gửi field này qua PUT. Số hạn pháp lý
+   * đang ở trạng thái "flagged" (đỏ hoặc vàng) của hồ sơ. */
+  redFlagCount?: number;
 }
 
 /** Một mốc trong 5 mốc tiến trình của hồ sơ (Phụ lục 2 mục 1, hàng "Theo dõi Tiến trình"). */
@@ -120,6 +125,12 @@ export interface LegalDeadline extends BaseEntity {
   resolvedAt?: string;
   resolvedById?: string;
   notes?: string;
+
+  /** GĐ3 — server tự tính khi trả response (không lưu): "red" đã quá
+   * dueDate, "amber" đã flagged nhưng chưa tới dueDate, "none" còn lại.
+   * Tính theo "hôm nay" của hệ thống (DEMO_TODAY) để nhất quán với dữ liệu
+   * mẫu — client không tự tính lại bằng ngày thực của máy. */
+  severity?: "red" | "amber" | "none";
 }
 
 /** Cấu hình số ngày báo trước theo từng loại hạn (Admin chỉnh ở GĐ3). */
@@ -205,5 +216,15 @@ export interface CreateLMCaseInput {
 }
 
 export type UpdateLMCaseInput = Partial<
-  Omit<LitigationCase, "id" | "code" | "createdAt" | "updatedAt" | "fileIds">
+  Omit<
+    LitigationCase,
+    "id" | "code" | "createdAt" | "updatedAt" | "fileIds" | "redFlagCount"
+  >
 >;
+
+/** GĐ3 — tiếp nhận hoặc xử lý xong 1 hạn pháp lý đang cảnh báo. */
+export interface UpdateLMDeadlineInput {
+  action: "acknowledge" | "resolve";
+  actorId?: string;
+  actorName?: string;
+}

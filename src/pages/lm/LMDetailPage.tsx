@@ -4,7 +4,9 @@
  * 2. Tiến trình (GĐ2): mốc chưa xong có input đổi ngày kế hoạch + nút đánh
  *    dấu hoàn thành. Server tự chuyển stage / đóng hồ sơ khi hoàn thành
  *    đúng mốc đang là giai đoạn hiện tại (xem lm_handlers.ts).
- * 3. Hạn & cảnh báo: vẫn CHỈ ĐỌC — xử lý cảnh báo là việc GĐ3.
+ * 3. Hạn & cảnh báo (GĐ3): severity (đỏ/vàng/xám) do server tính sẵn
+ *    (DEMO_TODAY, không dùng ngày thực của máy — xem lib/lm-alerts.ts).
+ *    Nút "Đã tiếp nhận"/"Đã xử lý" gọi PUT /api/lm/deadlines/:id.
  * 4. Lịch sử dùng list riêng (không tái dùng ActivityFeed) vì
  *    ActivityFeed/TimelineEvent gắn cứng bộ type khác (submission/approval/
  *    ...), không khớp CaseEvent.type — tái dùng sẽ phải sửa component dùng
@@ -47,14 +49,19 @@ import { useLmCaseFiles } from "@/hooks/queries/useFileQueries";
 import {
   useUpdateLMCase,
   useUpdateLMMilestone,
+  useUpdateLMDeadline,
   useRemindLMCase,
 } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
-import { STAGE_STYLES, CASE_CATEGORY_LABELS } from "@/constants/lm";
+import {
+  STAGE_STYLES,
+  CASE_CATEGORY_LABELS,
+  DEADLINE_TYPE_LABELS,
+} from "@/constants/lm";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { UpdateLMCaseInput, CaseMilestone } from "@/types";
+import type { UpdateLMCaseInput, CaseMilestone, LegalDeadline } from "@/types";
 
 function formatVnd(amount: number): string {
   return new Intl.NumberFormat("vi-VN").format(amount) + " ₫";
@@ -80,7 +87,7 @@ function toValidDateIso(input: string): string | null {
 
 const DEADLINE_STATUS_LABEL: Record<string, string> = {
   pending: "Chưa tới hạn",
-  flagged: "🔴 Đã bật cảnh báo",
+  flagged: "Đã bật cảnh báo",
   acknowledged: "Đã tiếp nhận",
   resolved: "Đã xử lý",
 };
@@ -101,6 +108,7 @@ export default function LMDetailPage() {
   const filesQuery = useLmCaseFiles(id);
   const update = useUpdateLMCase(id);
   const updateMilestone = useUpdateLMMilestone(id);
+  const updateDeadline = useUpdateLMDeadline(id);
   const remind = useRemindLMCase(id);
 
   const item = detail.data;
@@ -145,6 +153,25 @@ export default function LMDetailPage() {
       {
         onSuccess: () => toast.success("Đã gửi thông báo đôn đốc"),
         onError: (err) => toast.error(err.message || "Gửi đôn đốc thất bại"),
+      },
+    );
+  };
+
+  const handleDeadlineAction = (
+    deadlineId: string,
+    action: "acknowledge" | "resolve",
+  ) => {
+    updateDeadline.mutate(
+      {
+        id: deadlineId,
+        data: { action, actorId: user?.id, actorName: user?.name },
+      },
+      {
+        onSuccess: () =>
+          toast.success(
+            action === "acknowledge" ? "Đã tiếp nhận cảnh báo" : "Đã xử lý xong",
+          ),
+        onError: (err) => toast.error(err.message || "Thao tác thất bại"),
       },
     );
   };
@@ -300,26 +327,17 @@ export default function LMDetailPage() {
               {deadlines.isPending ? (
                 <DetailSkeleton />
               ) : (deadlines.data ?? []).length === 0 ? (
-                <EmptyState
-                  title="Không có hạn pháp lý nào đang mở"
-                  description="Thêm hạn mới sẽ có ở GĐ3."
-                />
+                <EmptyState title="Không có hạn pháp lý nào đang mở" />
               ) : (
                 <ul className="space-y-3">
                   {(deadlines.data ?? []).map((d) => (
-                    <li
+                    <DeadlineRow
                       key={d.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3"
-                    >
-                      <span className="font-medium">{d.type}</span>
-                      <DueDateCell
-                        dueDate={d.dueDate}
-                        completed={d.status === "resolved"}
-                      />
-                      <span className="text-sm">
-                        {DEADLINE_STATUS_LABEL[d.status] ?? d.status}
-                      </span>
-                    </li>
+                      deadline={d}
+                      canEdit={canUpdate}
+                      isSaving={updateDeadline.isPending}
+                      onAction={handleDeadlineAction}
+                    />
                   ))}
                 </ul>
               )}
@@ -535,6 +553,69 @@ function MilestoneRow({
             <Check className="size-4" aria-hidden="true" />
             Đánh dấu hoàn thành
           </Button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+const SEVERITY_DOT: Record<string, string> = {
+  red: "bg-destructive",
+  amber: "bg-warning",
+  none: "bg-muted-foreground/30",
+};
+
+/**
+ * 1 dòng hạn pháp lý. `severity` do server tính sẵn (GĐ3) — đỏ/vàng/xám.
+ * Nút hành động chỉ hiện khi còn việc để làm: "Đã tiếp nhận" lúc đang
+ * flagged, "Đã xử lý" lúc flagged hoặc đã tiếp nhận.
+ */
+function DeadlineRow({
+  deadline: d,
+  canEdit,
+  isSaving,
+  onAction,
+}: {
+  deadline: LegalDeadline;
+  canEdit: boolean;
+  isSaving: boolean;
+  onAction: (id: string, action: "acknowledge" | "resolve") => void;
+}) {
+  const canAcknowledge = canEdit && d.status === "flagged";
+  const canResolve = canEdit && (d.status === "flagged" || d.status === "acknowledged");
+
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
+      <span className="flex items-center gap-2 font-medium">
+        <span
+          className={cn("size-2 shrink-0 rounded-full", SEVERITY_DOT[d.severity ?? "none"])}
+          aria-hidden="true"
+        />
+        {DEADLINE_TYPE_LABELS[d.type]}
+      </span>
+      <DueDateCell dueDate={d.dueDate} completed={d.status === "resolved"} />
+      <span className="text-sm">{DEADLINE_STATUS_LABEL[d.status] ?? d.status}</span>
+      {(canAcknowledge || canResolve) && (
+        <div className="flex gap-2">
+          {canAcknowledge && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isSaving}
+              onClick={() => onAction(d.id, "acknowledge")}
+            >
+              Đã tiếp nhận
+            </Button>
+          )}
+          {canResolve && (
+            <Button
+              size="sm"
+              disabled={isSaving}
+              onClick={() => onAction(d.id, "resolve")}
+            >
+              Đã xử lý
+            </Button>
+          )}
         </div>
       )}
     </li>

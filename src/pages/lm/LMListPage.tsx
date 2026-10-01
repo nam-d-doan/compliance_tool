@@ -3,11 +3,13 @@
  * 1. GĐ1: chỉ list + filter + xóa, chưa có KPI/chart (đó là GĐ4).
  * 2. Filter state → useLMCaseList (server filter qua query string).
  * 3. canCreate/canDelete theo lm:create / lm:delete.
+ * 4. GĐ3: cột "Cảnh báo" đọc redFlagCount server tính sẵn (đếm hạn đang
+ *    flagged) — không tự tính lại ở FE, tránh lệch với lib/lm-alerts.ts.
  */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -158,7 +160,7 @@ export default function LMListPage() {
       </form>
 
       {isPending ? (
-        <TableSkeleton rows={8} columns={7} />
+        <TableSkeleton rows={8} columns={8} />
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : items.length === 0 ? (
@@ -175,6 +177,7 @@ export default function LMListPage() {
                 <th className="px-3 py-2">Tiêu đề</th>
                 <th className="px-3 py-2">Nhóm</th>
                 <th className="px-3 py-2">Giai đoạn</th>
+                <th className="px-3 py-2">Cảnh báo</th>
                 <th className="px-3 py-2">Ưu tiên</th>
                 <th className="px-3 py-2">Trạng thái</th>
                 <th className="px-3 py-2">Chuyên viên</th>
@@ -195,6 +198,16 @@ export default function LMListPage() {
                     {CASE_CATEGORY_LABELS[c.category]}
                   </td>
                   <td className="px-3 py-2">{STAGE_STYLES[c.stage].label}</td>
+                  <td className="px-3 py-2">
+                    {c.redFlagCount ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                        <TriangleAlert className="size-3" aria-hidden="true" />
+                        {c.redFlagCount}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <PriorityBadge priority={c.priority} />
                   </td>

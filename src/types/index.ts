@@ -77,6 +77,7 @@ export type {
   UpdateLMCaseInput,
   LMWorkloadEntry,
   UpdateLMMilestoneInput,
+  UpdateLMDeadlineInput,
 } from "./lm";
 export type {
   Assignment,
