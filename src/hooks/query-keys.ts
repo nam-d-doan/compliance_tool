@@ -88,6 +88,7 @@ export const lmKeys = {
   events: (id: string) => [...lmKeys.detail(id), "events"] as const,
   alertRules: () => [...lmKeys.all, "alert-rules"] as const,
   workload: () => [...lmKeys.all, "workload"] as const,
+  dashboard: () => [...lmKeys.all, "dashboard"] as const,
 };
 
 export const reportKeys = {

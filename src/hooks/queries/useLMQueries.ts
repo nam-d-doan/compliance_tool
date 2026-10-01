@@ -67,3 +67,12 @@ export function useLMWorkload() {
     staleTime: 60 * 1000,
   });
 }
+
+/** GĐ4 — tổng hợp KPI/biểu đồ cho trang Dashboard. */
+export function useLMDashboard() {
+  return useQuery({
+    queryKey: lmKeys.dashboard(),
+    queryFn: () => LMService.dashboard(),
+    staleTime: 60 * 1000,
+  });
+}

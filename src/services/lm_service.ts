@@ -12,6 +12,7 @@ import type {
   CaseEvent,
   AlertRule,
   LMWorkloadEntry,
+  LMDashboardSummary,
   Paginated,
 } from "@/types";
 
@@ -68,6 +69,9 @@ export const LMService = {
   },
   workload() {
     return apiGet<LMWorkloadEntry[]>(API_ENDPOINTS.LM_WORKLOAD);
+  },
+  dashboard() {
+    return apiGet<LMDashboardSummary>(API_ENDPOINTS.LM_DASHBOARD);
   },
   remind(id: string, fromUserId?: string, fromUserName?: string) {
     return apiPost<{ success: boolean }>(API_ENDPOINTS.LM_CASE_REMIND(id), {

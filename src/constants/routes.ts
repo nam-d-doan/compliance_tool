@@ -68,9 +68,11 @@ export const ROUTES = {
     CREATE: "/regulation/create",
   },
 
-  // LM (Litigation Management) routes
+  // LM (Litigation Management) routes — "/lm" là Dashboard (GĐ4), giống
+  // convention CAP (DASHBOARD ở gốc, LIST ở /list).
   LM: {
-    LIST: "/lm",
+    DASHBOARD: "/lm",
+    LIST: "/lm/list",
     DETAIL: "/lm/:id",
     CREATE: "/lm/create",
   },
@@ -128,6 +130,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.REGULATION.CREATE]: ["admin", "approver"],
 
   [ROUTES.LM.CREATE]: ["owner", "executive", "admin"],
+  [ROUTES.LM.DASHBOARD]: ["approver", "owner", "executive", "admin"],
   [ROUTES.LM.LIST]: ["approver", "owner", "executive", "admin"],
 
   [ROUTES.ASSIGNMENTS.CREATE]: ["owner", "executive", "admin"],

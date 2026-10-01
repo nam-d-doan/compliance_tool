@@ -52,6 +52,7 @@ const CAPCreatePage = lazy(() => import("@/pages/cap/CAPCreatePage"));
 const NCCListPage = lazy(() => import("@/pages/ncc/NCCListPage"));
 const NCCDetailPage = lazy(() => import("@/pages/ncc/NCCDetailPage"));
 const NCCCreatePage = lazy(() => import("@/pages/ncc/NCCCreatePage"));
+const LMDashboardPage = lazy(() => import("@/pages/lm/LMDashboardPage"));
 const LMListPage = lazy(() => import("@/pages/lm/LMListPage"));
 const LMDetailPage = lazy(() => import("@/pages/lm/LMDetailPage"));
 const LMCreatePage = lazy(() => import("@/pages/lm/LMCreatePage"));
@@ -171,7 +172,8 @@ export const router = createBrowserRouter([
           route("/ncc/create", <NCCCreatePage />, "Create NCC"),
           route("/ncc/:id", <NCCDetailPage />, "NCC Detail"),
 
-          route("/lm", <LMListPage />, "Tố tụng"),
+          route("/lm", <LMDashboardPage />, "Tố tụng"),
+          route("/lm/list", <LMListPage />, "Danh sách hồ sơ"),
           route("/lm/create", <LMCreatePage />, "Tạo hồ sơ"),
           route("/lm/:id", <LMDetailPage />, "Chi tiết hồ sơ"),
 

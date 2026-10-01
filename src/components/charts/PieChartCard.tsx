@@ -87,6 +87,7 @@ export function PieChartCard({
                 outerRadius={Math.min(height, 240) / 2.5}
                 innerRadius={height > 240 ? 60 : 0}
                 paddingAngle={2}
+                isAnimationActive={false}
               >
                 {data.map((entry, index) => (
                   <Cell

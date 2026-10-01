@@ -183,6 +183,37 @@ export interface UpdateLMMilestoneInput {
   actualDate?: string;
 }
 
+/**
+ * GĐ4 — tổng hợp cho trang Dashboard & KPI. Tất cả rate tính sẵn 0-100.
+ * documentCompletionRate là PROXY theo SỐ LƯỢNG file >= số tài liệu bắt
+ * buộc của giai đoạn (REQUIRED_DOCS_BY_STAGE) — dữ liệu mẫu chưa gắn loại
+ * tài liệu cụ thể vào từng file nên không check được đúng LOẠI, chỉ đếm đủ
+ * số lượng. Ghi rõ ở đây để không ai hiểu nhầm đây là số liệu pháp lý thật.
+ */
+export interface LMDashboardSummary {
+  totalOpen: number;
+  totalClosed: number;
+  /** Số hồ sơ đang có ít nhất 1 hạn ở trạng thái "flagged". */
+  totalRedFlagCases: number;
+  /** % mốc đã hoàn thành có ghi CaseEvent "milestone_completed" tương ứng. */
+  milestoneUpdateRate: number;
+  /** % hạn đã từng bật cờ (flagged/acknowledged/resolved) mà đã xử lý xong. */
+  alertResolutionRate: number;
+  /** % hồ sơ có đủ SỐ LƯỢNG tài liệu theo yêu cầu giai đoạn hiện tại. */
+  documentCompletionRate: number;
+  stageDistribution: { stage: CaseStage; count: number }[];
+  categoryDistribution: { category: CaseCategory; count: number }[];
+  unitDistribution: { unitName: string; count: number }[];
+  ownerWorkload: LMWorkloadEntry[];
+  topRedFlagCases: {
+    id: string;
+    code: string;
+    title: string;
+    ownerName: string;
+    redFlagCount: number;
+  }[];
+}
+
 export interface LMCaseFilter {
   stage?: CaseStage | CaseStage[];
   status?: LMCaseStatus | LMCaseStatus[];

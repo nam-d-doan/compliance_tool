@@ -75,7 +75,7 @@ export const NAV_PILLS: NavPill[] = [
     key: "lm",
     label: "Tố tụng",
     icon: Gavel,
-    path: ROUTES.LM.LIST,
+    path: ROUTES.LM.DASHBOARD,
     matchPrefixes: ["/lm"],
     requiredPermission: "lm:read",
   },

@@ -112,6 +112,7 @@ import {
   handleUpdateLMDeadline,
   handleGetLMWorkload,
   handleRemindLMCase,
+  handleGetLMDashboard,
 } from "./handlers/lm_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
@@ -217,6 +218,11 @@ const routes: Route[] = [
     handler: handleUpdateLMMilestone,
   },
   { methods: ["GET"], pattern: "/api/lm/workload", handler: handleGetLMWorkload },
+  {
+    methods: ["GET"],
+    pattern: "/api/lm/dashboard",
+    handler: handleGetLMDashboard,
+  },
   {
     methods: ["POST"],
     pattern: "/api/lm/cases/:id/remind",

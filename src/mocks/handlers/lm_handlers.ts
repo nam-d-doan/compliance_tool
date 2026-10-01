@@ -23,10 +23,12 @@ import {
 } from "./utils";
 import {
   CASE_STAGES,
+  CASE_CATEGORIES,
   STAGE_STYLES,
   PRIORITY_WORKLOAD_WEIGHT,
   DEADLINE_TYPE_LABELS,
   DEADLINE_TYPE_DEFAULT_DAYS_BEFORE,
+  REQUIRED_DOCS_BY_STAGE,
 } from "@/constants/lm";
 import { nextDeadlineStatus, deadlineSeverity } from "@/lib/lm-alerts";
 import type {
@@ -37,6 +39,7 @@ import type {
   UpdateLMMilestoneInput,
   UpdateLMDeadlineInput,
   LMWorkloadEntry,
+  LMDashboardSummary,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 import { DEMO_TODAY } from "@/mocks/db";
@@ -577,10 +580,9 @@ export async function handleUpdateLMMilestone({
   return jsonResponse(milestone);
 }
 
-/** GĐ2 — tải công việc từng chuyên viên, cho hộp thoại phân công. */
-export async function handleGetLMWorkload() {
-  await getDelay();
-  const db = getDb();
+/** GĐ2 — tải công việc từng chuyên viên. Dùng chung cho hộp thoại phân công
+ * (GĐ2) và dashboard (GĐ4) — tránh tính 2 công thức khác nhau 2 chỗ. */
+function computeOwnerWorkload(db: MockDb): LMWorkloadEntry[] {
   const owners = db.users.filter((u) => u.role === "owner");
   const openCases = db.litigationCases.filter((c) => c.status === "Open");
 
@@ -598,7 +600,13 @@ export async function handleGetLMWorkload() {
     };
   });
   entries.sort((a, b) => a.weightedLoad - b.weightedLoad);
-  return jsonResponse(entries);
+  return entries;
+}
+
+export async function handleGetLMWorkload() {
+  await getDelay();
+  const db = getDb();
+  return jsonResponse(computeOwnerWorkload(db));
 }
 
 /** GĐ2 — "Đôn đốc": tạo Notification cho chuyên viên + ghi CaseEvent. */
@@ -654,6 +662,104 @@ export async function handleGetLMAlertRules() {
   return jsonResponse(db.alertRules);
 }
 
+/**
+ * PSEUDO CODE (GĐ4 — tổng hợp dashboard)
+ * 1. Chạy evaluateDeadlines trước để KPI cảnh báo dùng trạng thái mới nhất.
+ * 2. milestoneUpdateRate: so khớp CHÍNH XÁC description event với mốc đã
+ *    hoàn thành (template cố định ở recordEvent/seed, không trùng giữa các
+ *    giai đoạn) — tránh đếm nhầm mốc nào có/thiếu event.
+ * 3. documentCompletionRate: proxy đếm SỐ LƯỢNG file, không check loại tài
+ *    liệu (xem comment ở type LMDashboardSummary).
+ * 4. Gộp sẵn 1 API duy nhất thay vì bắt FE gọi nhiều endpoint rồi tự tính —
+ *    toàn bộ dữ liệu đã có sẵn trong getDb(), tính 1 lần ở server rẻ hơn.
+ */
+export async function handleGetLMDashboard() {
+  await getDelay();
+  const db = getDb();
+  evaluateDeadlines(db);
+
+  const openCases = db.litigationCases.filter((c) => c.status === "Open");
+  const closedCases = db.litigationCases.filter((c) => c.status === "Closed");
+  const redFlagCaseIds = new Set(
+    db.legalDeadlines
+      .filter((d) => d.status === "flagged")
+      .map((d) => d.caseId),
+  );
+
+  const completedMilestones = db.caseMilestones.filter((m) => m.actualDate);
+  const completedWithEvent = completedMilestones.filter((m) => {
+    const label = STAGE_STYLES[m.stage].label;
+    return db.caseEvents.some(
+      (e) =>
+        e.caseId === m.caseId &&
+        e.type === "milestone_completed" &&
+        e.description === `Hoàn thành mốc "${label}"`,
+    );
+  });
+  const milestoneUpdateRate =
+    completedMilestones.length > 0
+      ? Math.round((completedWithEvent.length / completedMilestones.length) * 100)
+      : 0;
+
+  const everFlagged = db.legalDeadlines.filter((d) => d.status !== "pending");
+  const resolved = db.legalDeadlines.filter((d) => d.status === "resolved");
+  const alertResolutionRate =
+    everFlagged.length > 0
+      ? Math.round((resolved.length / everFlagged.length) * 100)
+      : 0;
+
+  const sufficientDocCases = db.litigationCases.filter(
+    (c) => c.fileIds.length >= REQUIRED_DOCS_BY_STAGE[c.stage].length,
+  );
+  const documentCompletionRate = Math.round(
+    (sufficientDocCases.length / db.litigationCases.length) * 100,
+  );
+
+  const stageDistribution = CASE_STAGES.map((stage) => ({
+    stage,
+    count: db.litigationCases.filter((c) => c.stage === stage).length,
+  }));
+  const categoryDistribution = CASE_CATEGORIES.map((category) => ({
+    category,
+    count: db.litigationCases.filter((c) => c.category === category).length,
+  }));
+
+  const unitCounts = new Map<string, number>();
+  db.litigationCases.forEach((c) => {
+    unitCounts.set(c.ownerUnitName, (unitCounts.get(c.ownerUnitName) ?? 0) + 1);
+  });
+  const unitDistribution = Array.from(unitCounts.entries())
+    .map(([unitName, count]) => ({ unitName, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const topRedFlagCases = db.litigationCases
+    .filter((c) => redFlagCaseIds.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      code: c.code,
+      title: c.title,
+      ownerName: c.ownerName,
+      redFlagCount: countRedFlags(db, c.id),
+    }))
+    .sort((a, b) => b.redFlagCount - a.redFlagCount)
+    .slice(0, 5);
+
+  const summary: LMDashboardSummary = {
+    totalOpen: openCases.length,
+    totalClosed: closedCases.length,
+    totalRedFlagCases: redFlagCaseIds.size,
+    milestoneUpdateRate,
+    alertResolutionRate,
+    documentCompletionRate,
+    stageDistribution,
+    categoryDistribution,
+    unitDistribution,
+    ownerWorkload: computeOwnerWorkload(db),
+    topRedFlagCases,
+  };
+  return jsonResponse(summary);
+}
+
 export const lmHandlers = [
   http.get("/api/lm/cases", handleGetLMCaseList),
   http.post("/api/lm/cases", handleCreateLMCase),
@@ -667,5 +773,6 @@ export const lmHandlers = [
   http.get("/api/lm/alert-rules", handleGetLMAlertRules),
   http.put("/api/lm/milestones/:id", handleUpdateLMMilestone),
   http.get("/api/lm/workload", handleGetLMWorkload),
+  http.get("/api/lm/dashboard", handleGetLMDashboard),
   http.post("/api/lm/cases/:id/remind", handleRemindLMCase),
 ];
