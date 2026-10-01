@@ -90,6 +90,8 @@ export type {
   AdviceRequest,
   AdvisoryOpinion,
   LawEvent,
+  SlaRule,
+  LawWorkloadEntry,
   LawRequestFilter,
   CreateAdviceRequestInput,
   UpdateAdviceRequestInput,

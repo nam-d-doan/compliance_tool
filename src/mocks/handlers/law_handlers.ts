@@ -4,8 +4,12 @@
  *    lm_handlers.ts, chỉ đổi tên thực thể.
  * 2. Mọi thao tác ghi thay đổi đều gọi recordEvent() → push LawEvent (tab
  *    Lịch sử) + AuditLog chung (Phụ lục 3 mục 2.b).
- * 3. GĐ1 chưa có: tính dueDate/SLA (GĐ2), cảnh báo đỏ (GĐ3), ý kiến tư vấn
- *    (AdvisoryOpinion — thêm khi làm tab "Ý kiến tư vấn" sau).
+ * 3. GĐ2: dueDate tính 1 lần lúc tạo theo SlaRule (db.slaRules, không
+ *    hardcode hằng số ở handler — sửa 1 chỗ trong db áp dụng mọi nơi).
+ *    Phân công theo tải (computeOwnerWorkloadForLaw) và "Đôn đốc" dùng
+ *    đúng khuôn lm_handlers.ts.
+ * 4. GĐ1 chưa có: cảnh báo đỏ (GĐ3), ý kiến tư vấn (AdvisoryOpinion — thêm
+ *    khi làm tab "Ý kiến tư vấn" sau).
  */
 import { http } from "msw";
 import { getDb, findById, paginate, filterByText } from "@/mocks/db";
@@ -19,11 +23,16 @@ import {
   normalizeArrayParam,
   type MockResolverContext,
 } from "./utils";
+import {
+  LAW_PRIORITY_SLA_DAYS,
+  LAW_PRIORITY_WORKLOAD_WEIGHT,
+} from "@/constants/law";
 import type {
   AdviceRequest,
   LawEvent,
   CreateAdviceRequestInput,
   UpdateAdviceRequestInput,
+  LawWorkloadEntry,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 
@@ -146,6 +155,13 @@ export async function handleCreateLawRequest({
   const owner = findById(db.users, body.ownerId);
   const manager = body.managerId ? findById(db.users, body.managerId) : undefined;
 
+  const priorityTier = body.priorityTier ?? "internal";
+  const slaRule = db.slaRules.find((r) => r.priorityTier === priorityTier);
+  const slaDays = slaRule?.slaDays ?? LAW_PRIORITY_SLA_DAYS[priorityTier];
+  const dueDate = new Date(
+    Date.now() + slaDays * 86_400_000,
+  ).toISOString();
+
   const newRequest: AdviceRequest = {
     id: `law-${crypto.randomUUID()}`,
     code: `LAW-${new Date().getFullYear()}-${String(
@@ -153,7 +169,7 @@ export async function handleCreateLawRequest({
     ).padStart(3, "0")}`,
     title: body.title,
     description: body.description,
-    priorityTier: body.priorityTier ?? "internal",
+    priorityTier,
     status: "new",
     requestingUnitId: body.requestingUnitId,
     requestingUnitName: hoDept?.name ?? branch?.name ?? "",
@@ -164,6 +180,7 @@ export async function handleCreateLawRequest({
     managerId: body.managerId ?? "",
     managerName: manager?.name ?? "",
     submittedAt: now,
+    dueDate,
     revisedCount: 0,
     fileIds: [],
     tags: body.tags ?? [],
@@ -280,6 +297,89 @@ export async function handleGetLawRequestEvents({
   return jsonResponse(items);
 }
 
+/** GĐ2 — tải công việc từng chuyên viên, cho hộp thoại phân công. Khuôn y
+ * hệt computeOwnerWorkload của LM, đổi nguồn case sang adviceRequest và
+ * trọng số theo mức ưu tiên LAW. */
+function computeOwnerWorkloadForLaw(db: MockDb): LawWorkloadEntry[] {
+  const owners = db.users.filter((u) => u.role === "owner");
+  const openRequests = db.adviceRequests.filter((r) => r.status !== "completed");
+
+  const entries: LawWorkloadEntry[] = owners.map((u) => {
+    const mine = openRequests.filter((r) => r.ownerId === u.id);
+    const weightedLoad = mine.reduce(
+      (sum, r) => sum + LAW_PRIORITY_WORKLOAD_WEIGHT[r.priorityTier],
+      0,
+    );
+    return {
+      userId: u.id,
+      userName: u.name,
+      openRequestCount: mine.length,
+      weightedLoad,
+    };
+  });
+  entries.sort((a, b) => a.weightedLoad - b.weightedLoad);
+  return entries;
+}
+
+export async function handleGetLawWorkload() {
+  await getDelay();
+  const db = getDb();
+  return jsonResponse(computeOwnerWorkloadForLaw(db));
+}
+
+/** GĐ2 — "Đôn đốc": tạo Notification cho chuyên viên + ghi LawEvent. Khuôn
+ * y hệt handleRemindLMCase. */
+export async function handleRemindLawRequest({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const req = findById(db.adviceRequests, params.id as string);
+  if (!req) return notFound("Request not found");
+
+  const body = (await request
+    .json()
+    .catch(() => ({}) as { fromUserId?: string; fromUserName?: string })) as {
+    fromUserId?: string;
+    fromUserName?: string;
+  };
+  const fromUserId = body.fromUserId || req.managerId || req.ownerId;
+  const fromUserName = body.fromUserName || req.managerName || req.ownerName;
+
+  const now = new Date().toISOString();
+  db.notifications.unshift({
+    id: `ntf-${crypto.randomUUID()}`,
+    userId: req.ownerId,
+    title: `Reminder: ${req.code}`,
+    description: `${fromUserName} is asking for a progress update on request "${req.title}"`,
+    type: "compliance",
+    read: false,
+    entityType: "law",
+    entityId: req.id,
+    actionUrl: `/law/${req.id}`,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  recordEvent(
+    db,
+    req.id,
+    "reminded",
+    fromUserId,
+    fromUserName,
+    `Reminder sent to ${req.ownerName}`,
+  );
+
+  return jsonResponse({ success: true });
+}
+
+export async function handleGetLawSlaRules() {
+  await getDelay();
+  const db = getDb();
+  return jsonResponse(db.slaRules);
+}
+
 export const lawHandlers = [
   http.get("/api/law/requests", handleGetLawRequestList),
   http.post("/api/law/requests", handleCreateLawRequest),
@@ -287,4 +387,7 @@ export const lawHandlers = [
   http.get("/api/law/requests/:id", handleGetLawRequestDetail),
   http.put("/api/law/requests/:id", handleUpdateLawRequest),
   http.delete("/api/law/requests/:id", handleDeleteLawRequest),
+  http.get("/api/law/workload", handleGetLawWorkload),
+  http.post("/api/law/requests/:id/remind", handleRemindLawRequest),
+  http.get("/api/law/sla-rules", handleGetLawSlaRules),
 ];

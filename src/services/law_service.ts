@@ -6,6 +6,8 @@ import type {
   CreateAdviceRequestInput,
   UpdateAdviceRequestInput,
   LawEvent,
+  LawWorkloadEntry,
+  SlaRule,
   Paginated,
 } from "@/types";
 
@@ -44,5 +46,17 @@ export const LawService = {
   },
   events(id: string) {
     return apiGet<LawEvent[]>(API_ENDPOINTS.LAW_REQUEST_EVENTS(id));
+  },
+  workload() {
+    return apiGet<LawWorkloadEntry[]>(API_ENDPOINTS.LAW_WORKLOAD);
+  },
+  remind(id: string, fromUserId?: string, fromUserName?: string) {
+    return apiPost<{ success: boolean }>(API_ENDPOINTS.LAW_REQUEST_REMIND(id), {
+      fromUserId,
+      fromUserName,
+    });
+  },
+  slaRules() {
+    return apiGet<SlaRule[]>(API_ENDPOINTS.LAW_SLA_RULES);
   },
 };

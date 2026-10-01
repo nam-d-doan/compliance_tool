@@ -3,6 +3,7 @@
  * 1. GĐ1: chỉ list + filter + xóa, chưa có KPI/chart/cảnh báo (GĐ3-4).
  * 2. Filter state → useLawRequestList (server filter qua query string).
  * 3. canCreate/canDelete theo law:create / law:delete.
+ * 4. GĐ2: cột "Due Date" đọc dueDate server tính sẵn lúc tạo (theo SLA).
  */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   PageHero,
+  DueDateCell,
   EmptyState,
   ErrorState,
   TableSkeleton,
@@ -140,7 +142,7 @@ export default function LawListPage() {
       </form>
 
       {isPending ? (
-        <TableSkeleton rows={8} columns={7} />
+        <TableSkeleton rows={8} columns={8} />
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : items.length === 0 ? (
@@ -160,6 +162,7 @@ export default function LawListPage() {
                 <th className="px-3 py-2">Requesting Unit</th>
                 <th className="px-3 py-2">Specialist</th>
                 <th className="px-3 py-2">Submitted</th>
+                <th className="px-3 py-2">Due Date</th>
                 {canDelete && <th className="px-3 py-2" />}
               </tr>
             </thead>
@@ -182,6 +185,12 @@ export default function LawListPage() {
                   <td className="px-3 py-2">{r.ownerName}</td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {format(parseISO(r.submittedAt), "MMM d, yyyy")}
+                  </td>
+                  <td className="px-3 py-2">
+                    <DueDateCell
+                      dueDate={r.dueDate}
+                      completed={r.status === "completed"}
+                    />
                   </td>
                   {canDelete && (
                     <td className="px-3 py-2">

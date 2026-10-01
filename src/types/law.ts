@@ -7,8 +7,9 @@
  *    là "bằng chứng đã đưa ra ý kiến tư vấn" (Phụ lục 3 mục 2.b) — 1 yêu
  *    cầu có thể có nhiều lần ra ý kiến (sửa đi sửa lại).
  * 3. LawEvent bất biến, giống CaseEvent của LM — audit trail mục 2.b.
- * 4. GĐ1 CHƯA có dueDate/SLA (việc của GĐ2) và CHƯA có cảnh báo đỏ (GĐ3) —
- *    thêm field đó ở các GĐ sau, giữ GĐ1 gọn theo đúng kế hoạch.
+ * 4. GĐ2 thêm dueDate (tính 1 lần lúc tạo theo SlaRule, không đổi sau đó —
+ *    giữ mốc cam kết gốc cho KPI a). Cảnh báo đỏ (severity đỏ/vàng) vẫn
+ *    để GĐ3, giống thứ tự đã làm với LM.
  */
 import type { BaseEntity } from "./base";
 import type { LawPriorityTier, LawRequestStatus } from "@/constants/law";
@@ -35,6 +36,9 @@ export interface AdviceRequest extends BaseEntity {
   managerName: string;
 
   submittedAt: string;
+  /** Hạn SLA — tính 1 lần lúc tạo (submittedAt + SlaRule.slaDays), không
+   * đổi lại kể cả khi đổi mức ưu tiên sau đó. */
+  dueDate: string;
   completedAt?: string;
   /** Số lần bị trả lại yêu cầu sửa — proxy cho KPI b "chất lượng hồ sơ". */
   revisedCount: number;
@@ -52,6 +56,21 @@ export interface AdvisoryOpinion extends BaseEntity {
   issuedById: string;
   issuedByName: string;
   issuedAt: string;
+}
+
+/** GĐ2 — cấu hình SLA theo mức ưu tiên (giống AlertRule của LM). */
+export interface SlaRule {
+  priorityTier: LawPriorityTier;
+  slaDays: number;
+  alertDaysBefore: number;
+}
+
+/** GĐ2 — tải công việc 1 chuyên viên, cho hộp thoại phân công. */
+export interface LawWorkloadEntry {
+  userId: string;
+  userName: string;
+  openRequestCount: number;
+  weightedLoad: number;
 }
 
 /** Lịch sử thao tác — audit trail bất biến (Phụ lục 3 mục 2.b). */
@@ -98,6 +117,12 @@ export interface CreateAdviceRequestInput {
 export type UpdateAdviceRequestInput = Partial<
   Omit<
     AdviceRequest,
-    "id" | "code" | "createdAt" | "updatedAt" | "fileIds" | "submittedAt"
+    | "id"
+    | "code"
+    | "createdAt"
+    | "updatedAt"
+    | "fileIds"
+    | "submittedAt"
+    | "dueDate"
   >
 >;

@@ -126,6 +126,9 @@ import {
   handleUpdateLawRequest,
   handleDeleteLawRequest,
   handleGetLawRequestEvents,
+  handleGetLawWorkload,
+  handleRemindLawRequest,
+  handleGetLawSlaRules,
 } from "./handlers/law_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
@@ -288,6 +291,17 @@ const routes: Route[] = [
     methods: ["DELETE"],
     pattern: "/api/law/requests/:id",
     handler: handleDeleteLawRequest,
+  },
+  { methods: ["GET"], pattern: "/api/law/workload", handler: handleGetLawWorkload },
+  {
+    methods: ["POST"],
+    pattern: "/api/law/requests/:id/remind",
+    handler: handleRemindLawRequest,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/law/sla-rules",
+    handler: handleGetLawSlaRules,
   },
 
   // Regulation

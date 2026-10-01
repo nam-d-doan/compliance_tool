@@ -101,6 +101,8 @@ export const lawKeys = {
   details: () => [...lawKeys.all, "detail"] as const,
   detail: (id: string) => [...lawKeys.details(), id] as const,
   events: (id: string) => [...lawKeys.detail(id), "events"] as const,
+  workload: () => [...lawKeys.all, "workload"] as const,
+  slaRules: () => [...lawKeys.all, "sla-rules"] as const,
 };
 
 export const reportKeys = {

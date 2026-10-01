@@ -34,6 +34,7 @@ import type {
   AlertRule,
   AdviceRequest,
   LawEvent,
+  SlaRule,
 } from "@/types";
 import {
   CASE_STAGES,
@@ -46,7 +47,12 @@ import {
   LM_DEFAULT_FOLDERS,
   type CaseStage,
 } from "@/constants/lm";
-import { LAW_PRIORITY_TIERS, LAW_REQUEST_STATUSES } from "@/constants/law";
+import {
+  LAW_PRIORITY_TIERS,
+  LAW_REQUEST_STATUSES,
+  LAW_PRIORITY_SLA_DAYS,
+  LAW_PRIORITY_ALERT_DAYS_BEFORE,
+} from "@/constants/law";
 import {
   CURATED_REGULATIONS,
   CURATED_DEPENDENCIES,
@@ -1259,6 +1265,7 @@ function generateAdviceRequests(
     const topic = LAW_REQUEST_TOPICS[i % LAW_REQUEST_TOPICS.length];
     const submittedAt = randomDate(subDays(today, 60), subDays(today, 2));
     const requestId = uid("law");
+    const dueDate = addDays(submittedAt, LAW_PRIORITY_SLA_DAYS[priorityTier]);
 
     const manager = pickManager();
     const completedAt =
@@ -1281,6 +1288,7 @@ function generateAdviceRequests(
       managerId: manager.id,
       managerName: manager.name,
       submittedAt: iso(submittedAt),
+      dueDate: iso(dueDate),
       completedAt: completedAt ? iso(completedAt) : undefined,
       revisedCount: i % 5 === 0 ? 1 : 0,
       fileIds: [],
@@ -1317,6 +1325,16 @@ function generateAdviceRequests(
   }
 
   return { requests, events };
+}
+
+/** GĐ2 — cấu hình SLA mặc định, đọc được từ db (không hardcode ở handler),
+ * giống generateDefaultAlertRules của LM. */
+function generateDefaultSlaRules(): SlaRule[] {
+  return LAW_PRIORITY_TIERS.map((priorityTier) => ({
+    priorityTier,
+    slaDays: LAW_PRIORITY_SLA_DAYS[priorityTier],
+    alertDaysBefore: LAW_PRIORITY_ALERT_DAYS_BEFORE[priorityTier],
+  }));
 }
 
 function generateNotifications(
@@ -1706,6 +1724,7 @@ export interface MockDb {
   alertRules: AlertRule[];
   adviceRequests: AdviceRequest[];
   lawEvents: LawEvent[];
+  slaRules: SlaRule[];
   roles: RoleEntity[];
   organizations: Organization[];
   aiConfig: AIConfig;
@@ -1730,6 +1749,7 @@ export function getDb(): MockDb {
   const lmFiles = generateLitigationFiles(lm.cases, lm.milestones);
   const alertRules = generateDefaultAlertRules();
   const law = generateAdviceRequests(organizationSettings, users);
+  const slaRules = generateDefaultSlaRules();
   const assignments = generateAssignments(
     regulations,
     users,
@@ -1772,6 +1792,7 @@ export function getDb(): MockDb {
     alertRules,
     adviceRequests: law.requests,
     lawEvents: law.events,
+    slaRules,
     generateTimelineFor,
     generateCommentsFor,
   };

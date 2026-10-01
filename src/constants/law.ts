@@ -39,6 +39,21 @@ export const LAW_PRIORITY_SLA_DAYS: Record<LawPriorityTier, number> = {
   internal: 15,
 };
 
+/** ⏳ CHỜ XÁC NHẬN — placeholder cùng lý do với LAW_PRIORITY_SLA_DAYS. */
+export const LAW_PRIORITY_ALERT_DAYS_BEFORE: Record<LawPriorityTier, number> = {
+  law_mandatory: 2,
+  sbv_regulation: 3,
+  internal: 3,
+};
+
+/** GĐ2 — trọng số tải công việc theo mức ưu tiên, dùng cho hộp thoại phân
+ * công (giống PRIORITY_WORKLOAD_WEIGHT của LM nhưng theo 3 mức riêng). */
+export const LAW_PRIORITY_WORKLOAD_WEIGHT: Record<LawPriorityTier, number> = {
+  law_mandatory: 5,
+  sbv_regulation: 3,
+  internal: 1,
+};
+
 export const LAW_REQUEST_STATUSES = ["new", "in_progress", "completed"] as const;
 
 export type LawRequestStatus = (typeof LAW_REQUEST_STATUSES)[number];

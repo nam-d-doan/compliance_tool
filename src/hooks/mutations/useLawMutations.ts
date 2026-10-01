@@ -41,3 +41,15 @@ export function useDeleteLawRequest(filters: LawRequestFilter = {}) {
     },
   });
 }
+
+/** GĐ2 — "Đôn đốc": tạo thông báo + ghi lịch sử. */
+export function useRemindLawRequest(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (actor: { fromUserId?: string; fromUserName?: string }) =>
+      LawService.remind(requestId, actor.fromUserId, actor.fromUserName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lawKeys.events(requestId) });
+    },
+  });
+}

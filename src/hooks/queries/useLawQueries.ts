@@ -32,3 +32,12 @@ export function useLawRequestEvents(id: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/** GĐ2 — tải công việc từng chuyên viên, cho hộp thoại phân công. */
+export function useLawWorkload() {
+  return useQuery({
+    queryKey: lawKeys.workload(),
+    queryFn: () => LawService.workload(),
+    staleTime: 60 * 1000,
+  });
+}
