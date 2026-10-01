@@ -8,8 +8,10 @@
  *    hardcode hằng số ở handler — sửa 1 chỗ trong db áp dụng mọi nơi).
  *    Phân công theo tải (computeOwnerWorkloadForLaw) và "Đôn đốc" dùng
  *    đúng khuôn lm_handlers.ts.
- * 4. GĐ1 chưa có: cảnh báo đỏ (GĐ3), ý kiến tư vấn (AdvisoryOpinion — thêm
- *    khi làm tab "Ý kiến tư vấn" sau).
+ * 4. GĐ3 — cảnh báo đỏ: evaluateLawAlerts quét alertStatus "pending" của
+ *    AdviceRequest (1 request = 1 dueDate, không tách bảng con như LM),
+ *    dùng chung lib/deadline-alerts.ts với lm_handlers.ts. Khai thác Tri
+ *    thức: CRUD đơn giản + tìm theo từ khóa (filterByText), không sub/tab.
  */
 import { http } from "msw";
 import { getDb, findById, paginate, filterByText } from "@/mocks/db";
@@ -27,12 +29,17 @@ import {
   LAW_PRIORITY_SLA_DAYS,
   LAW_PRIORITY_WORKLOAD_WEIGHT,
 } from "@/constants/law";
+import { nextAlertStatus, alertSeverity } from "@/lib/deadline-alerts";
+import { DEMO_TODAY } from "@/mocks/db";
 import type {
   AdviceRequest,
   LawEvent,
   CreateAdviceRequestInput,
   UpdateAdviceRequestInput,
+  UpdateLawAlertInput,
   LawWorkloadEntry,
+  KnowledgeBaseEntry,
+  CreateKnowledgeBaseEntryInput,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 
@@ -75,6 +82,51 @@ function recordEvent(
   });
 }
 
+/**
+ * GĐ3 — chạy đầu API đọc yêu cầu: quét alertStatus "pending", bật cờ nếu
+ * đã qua ngưỡng SlaRule.alertDaysBefore, ghi LawEvent + Notification.
+ * Idempotent, giống evaluateDeadlines của LM (dùng chung lib).
+ */
+function evaluateLawAlerts(db: MockDb): void {
+  db.adviceRequests.forEach((r) => {
+    if (r.alertStatus !== "pending") return;
+    const rule = db.slaRules.find((sr) => sr.priorityTier === r.priorityTier);
+    const daysBefore = rule?.alertDaysBefore ?? 3;
+    const next = nextAlertStatus(
+      { status: r.alertStatus, dueDate: r.dueDate },
+      daysBefore,
+      DEMO_TODAY,
+    );
+    if (next === "flagged") {
+      r.alertStatus = "flagged";
+      r.flaggedAt = DEMO_TODAY.toISOString();
+      r.updatedAt = DEMO_TODAY.toISOString();
+
+      recordEvent(
+        db,
+        r.id,
+        "alert_flagged",
+        r.ownerId,
+        r.ownerName,
+        "System flagged this request's SLA deadline",
+      );
+      db.notifications.unshift({
+        id: `ntf-${crypto.randomUUID()}`,
+        userId: r.ownerId,
+        title: `SLA alert: ${r.code}`,
+        description: `Request "${r.title}" is approaching or past its SLA due date`,
+        type: "compliance",
+        read: false,
+        entityType: "law",
+        entityId: r.id,
+        actionUrl: `/law/${r.id}`,
+        createdAt: DEMO_TODAY.toISOString(),
+        updatedAt: DEMO_TODAY.toISOString(),
+      });
+    }
+  });
+}
+
 export async function handleGetLawRequestList({
   request,
 }: {
@@ -84,6 +136,7 @@ export async function handleGetLawRequestList({
   const url = new URL(request.url);
   const q = parseQuery(url);
   const db = getDb();
+  evaluateLawAlerts(db);
   let items = [...db.adviceRequests];
 
   if (q.status) {
@@ -120,7 +173,17 @@ export async function handleGetLawRequestList({
 
   const page = parseNumber(q.page, 1);
   const pageSize = parseNumber(q.pageSize, 20);
-  return jsonResponse(paginate(items, page, pageSize));
+  const result = paginate(items, page, pageSize);
+  return jsonResponse({
+    ...result,
+    items: result.items.map((r) => ({
+      ...r,
+      severity: alertSeverity(
+        { status: r.alertStatus, dueDate: r.dueDate },
+        DEMO_TODAY,
+      ),
+    })),
+  });
 }
 
 export async function handleGetLawRequestDetail({
@@ -128,9 +191,16 @@ export async function handleGetLawRequestDetail({
 }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  evaluateLawAlerts(db);
   const item = findById(db.adviceRequests, params.id as string);
   if (!item) return notFound("Request not found");
-  return jsonResponse(item);
+  return jsonResponse({
+    ...item,
+    severity: alertSeverity(
+      { status: item.alertStatus, dueDate: item.dueDate },
+      DEMO_TODAY,
+    ),
+  });
 }
 
 export async function handleCreateLawRequest({
@@ -182,6 +252,7 @@ export async function handleCreateLawRequest({
     submittedAt: now,
     dueDate,
     revisedCount: 0,
+    alertStatus: "pending",
     fileIds: [],
     tags: body.tags ?? [],
     createdAt: now,
@@ -228,6 +299,13 @@ export async function handleUpdateLawRequest({
   if (body.status && body.status !== prev.status) {
     if (body.status === "completed") {
       next.completedAt = next.completedAt ?? new Date().toISOString();
+      // Hoàn thành thì coi cảnh báo (nếu có) đã xử lý xong — không để
+      // treo 1 request đã xong việc nhưng vẫn hiện đỏ.
+      if (next.alertStatus !== "resolved") {
+        next.alertStatus = "resolved";
+        next.resolvedAt = next.completedAt;
+        next.resolvedById = actorId;
+      }
     }
     recordEvent(
       db,
@@ -380,14 +458,136 @@ export async function handleGetLawSlaRules() {
   return jsonResponse(db.slaRules);
 }
 
+/**
+ * PSEUDO CODE (GĐ3 — xử lý cảnh báo đỏ của 1 yêu cầu)
+ * 1. action="acknowledge": flagged -> acknowledged.
+ * 2. action="resolve": flagged|acknowledged -> resolved.
+ * 3. Khuôn y hệt handleUpdateLMDeadline của LM.
+ */
+export async function handleUpdateLawAlert({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const req = findById(db.adviceRequests, params.id as string);
+  if (!req) return notFound("Request not found");
+
+  const body = (await request.json()) as UpdateLawAlertInput;
+  const actorId = body.actorId || req.ownerId;
+  const actorName = body.actorName || req.ownerName;
+  const now = new Date().toISOString();
+
+  if (body.action === "acknowledge") {
+    if (req.alertStatus !== "flagged") {
+      return badRequest("Only a flagged request can be acknowledged");
+    }
+    req.alertStatus = "acknowledged";
+    req.acknowledgedAt = now;
+    req.acknowledgedById = actorId;
+    recordEvent(
+      db,
+      req.id,
+      "alert_acknowledged",
+      actorId,
+      actorName,
+      "Acknowledged SLA alert",
+    );
+  } else if (body.action === "resolve") {
+    if (req.alertStatus !== "flagged" && req.alertStatus !== "acknowledged") {
+      return badRequest("Request has not been flagged yet or is already resolved");
+    }
+    req.alertStatus = "resolved";
+    req.resolvedAt = now;
+    req.resolvedById = actorId;
+    recordEvent(
+      db,
+      req.id,
+      "alert_resolved",
+      actorId,
+      actorName,
+      "Resolved SLA alert",
+    );
+  } else {
+    return badRequest("action must be acknowledge or resolve");
+  }
+
+  req.updatedAt = now;
+  return jsonResponse(req);
+}
+
+/**
+ * PSEUDO CODE (GĐ3 — Khai thác Tri thức, Phụ lục 3 mục 1.c)
+ * 1. List hỗ trợ tìm theo từ khóa (title/summary/tags) — client gửi q.search,
+ *    dùng filterByText trên title+summary, lọc tags riêng vì là mảng.
+ * 2. Không có update/delete ở GĐ3 — kho tri thức chỉ thêm, không sửa (đủ
+ *    cho demo "tránh tư vấn trùng lặp").
+ */
+export async function handleGetKnowledgeBaseList({
+  request,
+}: {
+  request: Request;
+}) {
+  await getDelay();
+  const url = new URL(request.url);
+  const q = parseQuery(url);
+  const db = getDb();
+  let items = [...db.knowledgeBase];
+
+  if (q.search) {
+    const term = q.search.toLowerCase();
+    items = items.filter(
+      (e) =>
+        e.title.toLowerCase().includes(term) ||
+        e.summary.toLowerCase().includes(term) ||
+        e.tags.some((t) => t.toLowerCase().includes(term)),
+    );
+  }
+  items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return jsonResponse(items);
+}
+
+export async function handleCreateKnowledgeBaseEntry({
+  request,
+}: {
+  request: Request;
+}) {
+  await getDelay();
+  const body = (await request.json()) as Partial<CreateKnowledgeBaseEntryInput>;
+  if (!body.title || !body.summary || !body.content) {
+    return badRequest("title, summary and content are required");
+  }
+  const db = getDb();
+  const now = new Date().toISOString();
+  const author = body.authorId ? findById(db.users, body.authorId) : undefined;
+
+  const entry: KnowledgeBaseEntry = {
+    id: `kb-${crypto.randomUUID()}`,
+    title: body.title,
+    category: body.category ?? "Other",
+    tags: body.tags ?? [],
+    summary: body.summary,
+    content: body.content,
+    authorId: author?.id ?? body.authorId ?? "",
+    authorName: author?.name ?? body.authorName ?? "",
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.knowledgeBase.unshift(entry);
+  return jsonResponse(entry, 201);
+}
+
 export const lawHandlers = [
   http.get("/api/law/requests", handleGetLawRequestList),
   http.post("/api/law/requests", handleCreateLawRequest),
   http.get("/api/law/requests/:id/events", handleGetLawRequestEvents),
+  http.put("/api/law/requests/:id/alert", handleUpdateLawAlert),
   http.get("/api/law/requests/:id", handleGetLawRequestDetail),
   http.put("/api/law/requests/:id", handleUpdateLawRequest),
   http.delete("/api/law/requests/:id", handleDeleteLawRequest),
   http.get("/api/law/workload", handleGetLawWorkload),
   http.post("/api/law/requests/:id/remind", handleRemindLawRequest),
   http.get("/api/law/sla-rules", handleGetLawSlaRules),
+  http.get("/api/law/knowledge-base", handleGetKnowledgeBaseList),
+  http.post("/api/law/knowledge-base", handleCreateKnowledgeBaseEntry),
 ];

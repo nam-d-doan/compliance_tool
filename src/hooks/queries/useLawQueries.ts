@@ -41,3 +41,12 @@ export function useLawWorkload() {
     staleTime: 60 * 1000,
   });
 }
+
+/** GĐ3 — Khai thác Tri thức: danh sách + tìm theo từ khóa. */
+export function useKnowledgeBaseList(search?: string) {
+  return useQuery({
+    queryKey: lawKeys.knowledgeBase(search),
+    queryFn: () => LawService.kbList(search),
+    staleTime: 5 * 60 * 1000,
+  });
+}

@@ -129,6 +129,9 @@ import {
   handleGetLawWorkload,
   handleRemindLawRequest,
   handleGetLawSlaRules,
+  handleUpdateLawAlert,
+  handleGetKnowledgeBaseList,
+  handleCreateKnowledgeBaseEntry,
 } from "./handlers/law_handlers";
 import type { MockResolverContext } from "./handlers/utils";
 
@@ -302,6 +305,21 @@ const routes: Route[] = [
     methods: ["GET"],
     pattern: "/api/law/sla-rules",
     handler: handleGetLawSlaRules,
+  },
+  {
+    methods: ["PUT"],
+    pattern: "/api/law/requests/:id/alert",
+    handler: handleUpdateLawAlert,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/law/knowledge-base",
+    handler: handleGetKnowledgeBaseList,
+  },
+  {
+    methods: ["POST"],
+    pattern: "/api/law/knowledge-base",
+    handler: handleCreateKnowledgeBaseEntry,
   },
 
   // Regulation

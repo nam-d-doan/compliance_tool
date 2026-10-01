@@ -134,6 +134,9 @@ export const API_ENDPOINTS = {
   LAW_WORKLOAD: "/api/law/workload",
   LAW_REQUEST_REMIND: (id: string) => `/api/law/requests/${id}/remind`,
   LAW_SLA_RULES: "/api/law/sla-rules",
+  LAW_ALERT_UPDATE: (id: string) => `/api/law/requests/${id}/alert`,
+  LAW_KB_LIST: "/api/law/knowledge-base",
+  LAW_KB_CREATE: "/api/law/knowledge-base",
 
   // AI endpoints
   AI_COPILOT_MESSAGE: "/api/ai/copilot/message",

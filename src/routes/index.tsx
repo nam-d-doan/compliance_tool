@@ -57,6 +57,9 @@ const LMListPage = lazy(() => import("@/pages/lm/LMListPage"));
 const LMDetailPage = lazy(() => import("@/pages/lm/LMDetailPage"));
 const LMCreatePage = lazy(() => import("@/pages/lm/LMCreatePage"));
 const LawListPage = lazy(() => import("@/pages/law/LawListPage"));
+const LawKnowledgeBasePage = lazy(
+  () => import("@/pages/law/LawKnowledgeBasePage"),
+);
 const LawDetailPage = lazy(() => import("@/pages/law/LawDetailPage"));
 const LawCreatePage = lazy(() => import("@/pages/law/LawCreatePage"));
 const RegulationLibraryPage = lazy(
@@ -182,6 +185,11 @@ export const router = createBrowserRouter([
 
           route("/law", <LawListPage />, "Legal Advisory"),
           route("/law/create", <LawCreatePage />, "Create Request"),
+          route(
+            "/law/knowledge-base",
+            <LawKnowledgeBasePage />,
+            "Knowledge Base",
+          ),
           route("/law/:id", <LawDetailPage />, "Request Detail"),
 
           route("/regulation", <RegulationLibraryPage />, "Regulations"),

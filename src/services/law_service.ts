@@ -5,9 +5,12 @@ import type {
   LawRequestFilter,
   CreateAdviceRequestInput,
   UpdateAdviceRequestInput,
+  UpdateLawAlertInput,
   LawEvent,
   LawWorkloadEntry,
   SlaRule,
+  KnowledgeBaseEntry,
+  CreateKnowledgeBaseEntryInput,
   Paginated,
 } from "@/types";
 
@@ -58,5 +61,15 @@ export const LawService = {
   },
   slaRules() {
     return apiGet<SlaRule[]>(API_ENDPOINTS.LAW_SLA_RULES);
+  },
+  updateAlert(id: string, data: UpdateLawAlertInput) {
+    return apiPut<AdviceRequest>(API_ENDPOINTS.LAW_ALERT_UPDATE(id), data);
+  },
+  kbList(search?: string) {
+    const qs = search ? `?search=${encodeURIComponent(search)}` : "";
+    return apiGet<KnowledgeBaseEntry[]>(`${API_ENDPOINTS.LAW_KB_LIST}${qs}`);
+  },
+  kbCreate(data: CreateKnowledgeBaseEntryInput) {
+    return apiPost<KnowledgeBaseEntry>(API_ENDPOINTS.LAW_KB_CREATE, data);
   },
 };

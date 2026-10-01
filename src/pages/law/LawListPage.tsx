@@ -4,11 +4,14 @@
  * 2. Filter state → useLawRequestList (server filter qua query string).
  * 3. canCreate/canDelete theo law:create / law:delete.
  * 4. GĐ2: cột "Due Date" đọc dueDate server tính sẵn lúc tạo (theo SLA).
+ * 5. GĐ3: chấm màu "Alert" đọc severity server tính sẵn (không tự tính ở
+ *   FE, giống cột Cảnh báo của LM). Nút "Knowledge Base" sang trang tra
+ *   cứu tri thức riêng.
  */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,8 +32,15 @@ import {
   LAW_STATUS_LABELS,
   type LawRequestStatus,
 } from "@/constants/law";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { LawRequestFilter } from "@/types";
+
+const SEVERITY_DOT: Record<string, string> = {
+  red: "bg-destructive",
+  amber: "bg-warning",
+  none: "bg-muted-foreground/30",
+};
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
@@ -79,6 +89,12 @@ export default function LawListPage() {
         title="Legal Advisory Requests"
         subtitle="Manage legal advisory requests from business units."
       >
+        <Button variant="outline" asChild>
+          <Link to="/law/knowledge-base">
+            <BookOpen className="size-4" aria-hidden="true" />
+            Knowledge Base
+          </Link>
+        </Button>
         {canCreate && (
           <Button asChild>
             <Link to="/law/create">
@@ -142,7 +158,7 @@ export default function LawListPage() {
       </form>
 
       {isPending ? (
-        <TableSkeleton rows={8} columns={8} />
+        <TableSkeleton rows={8} columns={9} />
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : items.length === 0 ? (
@@ -157,6 +173,7 @@ export default function LawListPage() {
               <tr>
                 <th className="px-3 py-2">Request Code</th>
                 <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2">Alert</th>
                 <th className="px-3 py-2">Priority</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Requesting Unit</th>
@@ -175,6 +192,15 @@ export default function LawListPage() {
                 >
                   <td className="px-3 py-2 font-medium">{r.code}</td>
                   <td className="px-3 py-2">{r.title}</td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={cn(
+                        "inline-block size-2 rounded-full",
+                        SEVERITY_DOT[r.severity ?? "none"],
+                      )}
+                      aria-hidden="true"
+                    />
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {LAW_PRIORITY_STYLES[r.priorityTier].label}
                   </td>

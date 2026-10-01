@@ -35,6 +35,7 @@ import type {
   AdviceRequest,
   LawEvent,
   SlaRule,
+  KnowledgeBaseEntry,
 } from "@/types";
 import {
   CASE_STAGES,
@@ -1291,6 +1292,12 @@ function generateAdviceRequests(
       dueDate: iso(dueDate),
       completedAt: completedAt ? iso(completedAt) : undefined,
       revisedCount: i % 5 === 0 ? 1 : 0,
+      // GĐ3 — hoàn thành coi như cảnh báo (nếu có) đã xử lý xong; còn lại
+      // để "pending", engine evaluateLawAlerts tự bật cờ theo SlaRule khi
+      // load (đa số đã quá hạn vì submittedAt rải xa trong 60 ngày qua).
+      alertStatus: status === "completed" ? "resolved" : "pending",
+      resolvedAt: status === "completed" && completedAt ? iso(completedAt) : undefined,
+      resolvedById: status === "completed" ? owner.id : undefined,
       fileIds: [],
       tags: [],
       createdAt: iso(submittedAt),
@@ -1335,6 +1342,96 @@ function generateDefaultSlaRules(): SlaRule[] {
     slaDays: LAW_PRIORITY_SLA_DAYS[priorityTier],
     alertDaysBefore: LAW_PRIORITY_ALERT_DAYS_BEFORE[priorityTier],
   }));
+}
+
+const KNOWLEDGE_BASE_SEED: {
+  title: string;
+  category: string;
+  tags: string[];
+  summary: string;
+}[] = [
+  {
+    title: "Standard opinion: collateral valuation disputes",
+    category: "Collateral",
+    tags: ["collateral", "valuation", "dispute"],
+    summary: "Template opinion for handling customer disputes over collateral valuation at disbursement time.",
+  },
+  {
+    title: "Internal precedent: early loan termination fee waiver",
+    category: "Lending",
+    tags: ["lending", "fee waiver", "precedent"],
+    summary: "Prior case where an early-termination fee was waived due to a documented bank-side processing error.",
+  },
+  {
+    title: "Standard opinion: AML red-flag transaction reporting",
+    category: "AML",
+    tags: ["aml", "reporting", "compliance"],
+    summary: "Template opinion on when a transaction pattern requires a suspicious activity report under current AML rules.",
+  },
+  {
+    title: "Internal precedent: guarantor liability after debt restructuring",
+    category: "Guarantee",
+    tags: ["guarantee", "restructuring", "precedent"],
+    summary: "Prior case clarifying guarantor liability scope after the underlying credit contract was restructured.",
+  },
+  {
+    title: "Standard opinion: data retention period for closed accounts",
+    category: "Data Privacy",
+    tags: ["data privacy", "retention", "kyc"],
+    summary: "Template opinion on minimum retention periods for customer records after account closure.",
+  },
+  {
+    title: "Internal precedent: bond issuance disclosure gap",
+    category: "Capital Markets",
+    tags: ["bonds", "disclosure", "precedent"],
+    summary: "Prior case on remediation steps after an incomplete risk disclosure was found in a bond prospectus.",
+  },
+  {
+    title: "Standard opinion: third-party fintech data-sharing clauses",
+    category: "Partnerships",
+    tags: ["fintech", "data sharing", "contract"],
+    summary: "Template opinion on required clauses when sharing customer data with a fintech partner.",
+  },
+  {
+    title: "Internal precedent: mortgage notarization timing dispute",
+    category: "Collateral",
+    tags: ["mortgage", "notarization", "precedent"],
+    summary: "Prior case on collateral priority when notarization was delayed past the disbursement date.",
+  },
+  {
+    title: "Standard opinion: consumer lending cooling-off period",
+    category: "Lending",
+    tags: ["lending", "consumer protection", "cooling-off"],
+    summary: "Template opinion on the mandatory cooling-off period for new consumer lending regulations.",
+  },
+  {
+    title: "Internal precedent: debt assignment notice requirements",
+    category: "Debt Recovery",
+    tags: ["debt assignment", "notice", "precedent"],
+    summary: "Prior case on the minimum notice period required before assigning a non-performing debt to a third party.",
+  },
+];
+
+/** GĐ3 — kho tri thức mẫu (Phụ lục 3 mục 1.c), gắn tác giả xoay vòng qua
+ * các chuyên viên role owner cho đa dạng. */
+function generateKnowledgeBase(users: UserProfile[]): KnowledgeBaseEntry[] {
+  const owners = users.filter((u) => u.role === "owner");
+  return KNOWLEDGE_BASE_SEED.map((seed, i) => {
+    const author = owners[i % owners.length];
+    const createdAt = subDays(today, (KNOWLEDGE_BASE_SEED.length - i) * 5);
+    return {
+      id: uid("kb"),
+      title: seed.title,
+      category: seed.category,
+      tags: seed.tags,
+      summary: seed.summary,
+      content: `${seed.summary} (full guidance content — demo placeholder.)`,
+      authorId: author.id,
+      authorName: author.name,
+      createdAt: iso(createdAt),
+      updatedAt: iso(createdAt),
+    };
+  });
 }
 
 function generateNotifications(
@@ -1725,6 +1822,7 @@ export interface MockDb {
   adviceRequests: AdviceRequest[];
   lawEvents: LawEvent[];
   slaRules: SlaRule[];
+  knowledgeBase: KnowledgeBaseEntry[];
   roles: RoleEntity[];
   organizations: Organization[];
   aiConfig: AIConfig;
@@ -1750,6 +1848,7 @@ export function getDb(): MockDb {
   const alertRules = generateDefaultAlertRules();
   const law = generateAdviceRequests(organizationSettings, users);
   const slaRules = generateDefaultSlaRules();
+  const knowledgeBase = generateKnowledgeBase(users);
   const assignments = generateAssignments(
     regulations,
     users,
@@ -1793,6 +1892,7 @@ export function getDb(): MockDb {
     adviceRequests: law.requests,
     lawEvents: law.events,
     slaRules,
+    knowledgeBase,
     generateTimelineFor,
     generateCommentsFor,
   };

@@ -33,7 +33,7 @@ import {
   REQUIRED_DOCS_BY_STAGE,
   LM_DEFAULT_FOLDERS,
 } from "@/constants/lm";
-import { nextDeadlineStatus, deadlineSeverity } from "@/lib/lm-alerts";
+import { nextAlertStatus, alertSeverity } from "@/lib/deadline-alerts";
 import type {
   LitigationCase,
   CaseEvent,
@@ -182,7 +182,7 @@ function evaluateDeadlines(db: MockDb): void {
     if (d.status !== "pending") return;
     const rule = db.alertRules.find((r) => r.type === d.type);
     const daysBefore = rule?.daysBefore ?? DEADLINE_TYPE_DEFAULT_DAYS_BEFORE[d.type];
-    const next = nextDeadlineStatus(d, daysBefore, DEMO_TODAY);
+    const next = nextAlertStatus(d, daysBefore, DEMO_TODAY);
     if (next === "flagged") {
       d.status = "flagged";
       d.flaggedAt = DEMO_TODAY.toISOString();
@@ -516,7 +516,7 @@ export async function handleGetLMCaseDeadlines({ params, request }: MockResolver
   evaluateDeadlines(db);
   const items = db.legalDeadlines
     .filter((d) => d.caseId === params.id)
-    .map((d) => ({ ...d, severity: deadlineSeverity(d, DEMO_TODAY) }));
+    .map((d) => ({ ...d, severity: alertSeverity(d, DEMO_TODAY) }));
   return jsonResponse(items);
 }
 

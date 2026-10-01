@@ -8,6 +8,9 @@
  * 3. Phân công (GĐ2): sheet riêng, đọc useLawWorkload() (server đã sort
  *    tăng dần theo tải), chọn xong PUT request.ownerId qua
  *    useUpdateLawRequest. Đôn đốc: 1 nút gọi useRemindLawRequest.
+ * 4. GĐ3 — cảnh báo đỏ: severity do server tính sẵn (DEMO_TODAY, xem
+ *    lib/deadline-alerts.ts). Nút "Acknowledge"/"Resolve" gọi
+ *    PUT /api/law/requests/:id/alert qua useUpdateLawAlert.
  */
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -34,6 +37,7 @@ import {
 import {
   useUpdateLawRequest,
   useRemindLawRequest,
+  useUpdateLawAlert,
 } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
@@ -45,6 +49,19 @@ import type { UpdateAdviceRequestInput } from "@/types";
 function fmt(date?: string): string {
   return date ? format(parseISO(date), "MMM d, yyyy") : "—";
 }
+
+const ALERT_STATUS_LABEL: Record<string, string> = {
+  pending: "Not flagged",
+  flagged: "Flagged",
+  acknowledged: "Acknowledged",
+  resolved: "Resolved",
+};
+
+const SEVERITY_DOT: Record<string, string> = {
+  red: "bg-destructive",
+  amber: "bg-warning",
+  none: "bg-muted-foreground/30",
+};
 
 export default function LawDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
@@ -59,6 +76,7 @@ export default function LawDetailPage() {
   const events = useLawRequestEvents(id);
   const update = useUpdateLawRequest(id);
   const remind = useRemindLawRequest(id);
+  const updateAlert = useUpdateLawAlert(id);
 
   const item = detail.data;
 
@@ -108,6 +126,19 @@ export default function LawDetailPage() {
       {
         onSuccess: () => toast.success("Reminder sent"),
         onError: (err) => toast.error(err.message || "Failed to send reminder"),
+      },
+    );
+  };
+
+  const handleAlertAction = (action: "acknowledge" | "resolve") => {
+    updateAlert.mutate(
+      { action, actorId: user?.id, actorName: user?.name },
+      {
+        onSuccess: () =>
+          toast.success(
+            action === "acknowledge" ? "Alert acknowledged" : "Alert resolved",
+          ),
+        onError: (err) => toast.error(err.message || "Action failed"),
       },
     );
   };
@@ -214,6 +245,48 @@ export default function LawDetailPage() {
               </div>
               <Field label="Completed" value={fmt(item.completedAt)} />
               <Field label="Last Updated" value={fmt(item.updatedAt)} />
+            </CardContent>
+          </Card>
+
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>SLA Alert</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-sm">
+                <span
+                  className={cn(
+                    "size-2 shrink-0 rounded-full",
+                    SEVERITY_DOT[item.severity ?? "none"],
+                  )}
+                  aria-hidden="true"
+                />
+                {ALERT_STATUS_LABEL[item.alertStatus] ?? item.alertStatus}
+              </span>
+              {canUpdate && (
+                <div className="flex gap-2">
+                  {item.alertStatus === "flagged" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={updateAlert.isPending}
+                      onClick={() => handleAlertAction("acknowledge")}
+                    >
+                      Acknowledge
+                    </Button>
+                  )}
+                  {(item.alertStatus === "flagged" ||
+                    item.alertStatus === "acknowledged") && (
+                    <Button
+                      size="sm"
+                      disabled={updateAlert.isPending}
+                      onClick={() => handleAlertAction("resolve")}
+                    >
+                      Resolve
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

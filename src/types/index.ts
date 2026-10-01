@@ -95,6 +95,9 @@ export type {
   LawRequestFilter,
   CreateAdviceRequestInput,
   UpdateAdviceRequestInput,
+  UpdateLawAlertInput,
+  KnowledgeBaseEntry,
+  CreateKnowledgeBaseEntryInput,
 } from "./law";
 export type {
   Assignment,

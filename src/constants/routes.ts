@@ -83,6 +83,7 @@ export const ROUTES = {
     LIST: "/law",
     DETAIL: "/law/:id",
     CREATE: "/law/create",
+    KNOWLEDGE_BASE: "/law/knowledge-base",
   },
 
   // Assignment routes

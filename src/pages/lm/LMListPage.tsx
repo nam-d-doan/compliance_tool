@@ -4,7 +4,7 @@
  * 2. Filter state → useLMCaseList (server filter qua query string).
  * 3. canCreate/canDelete theo lm:create / lm:delete.
  * 4. GĐ3: cột "Cảnh báo" đọc redFlagCount server tính sẵn (đếm hạn đang
- *    flagged) — không tự tính lại ở FE, tránh lệch với lib/lm-alerts.ts.
+ *    flagged) — không tự tính lại ở FE, tránh lệch với lib/deadline-alerts.ts.
  * 5. UI text tiếng Anh cho khớp phần còn lại của app (user yêu cầu) — chỉ
  *    đổi copy hiển thị, pseudo-code comment vẫn giữ tiếng Việt.
  */
