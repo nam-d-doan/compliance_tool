@@ -109,13 +109,13 @@ function evaluateDeadlines(db: MockDb): void {
         "deadline_flagged",
         lmCase.ownerId,
         lmCase.ownerName,
-        `Hệ thống bật cảnh báo hạn "${label}"`,
+        `System flagged deadline "${label}"`,
       );
       db.notifications.unshift({
         id: `ntf-${crypto.randomUUID()}`,
         userId: lmCase.ownerId,
-        title: `Cảnh báo hạn: ${lmCase.code}`,
-        description: `Hạn "${label}" của hồ sơ "${lmCase.title}" sắp/đã tới ngưỡng xử lý`,
+        title: `Deadline alert: ${lmCase.code}`,
+        description: `Deadline "${label}" on case "${lmCase.title}" is approaching or past the alert threshold`,
         type: "compliance",
         read: false,
         entityType: "lm",
@@ -291,7 +291,7 @@ export async function handleCreateLMCase({
     "created",
     newCase.ownerId,
     newCase.ownerName,
-    `Tạo hồ sơ ${newCase.code}`,
+    `Created case ${newCase.code}`,
   );
 
   return jsonResponse(newCase, 201);
@@ -328,7 +328,7 @@ export async function handleUpdateLMCase({
       "stage_changed",
       actorId,
       actorName,
-      `Chuyển giai đoạn: ${STAGE_STYLES[prev.stage].label} → ${STAGE_STYLES[body.stage].label}`,
+      `Stage changed: ${STAGE_STYLES[prev.stage].label} → ${STAGE_STYLES[body.stage].label}`,
       prev.stage,
       body.stage,
     );
@@ -343,7 +343,7 @@ export async function handleUpdateLMCase({
       "reassigned",
       actorId,
       actorName,
-      `Phân công lại: ${prev.ownerName} → ${next.ownerName}`,
+      `Reassigned: ${prev.ownerName} → ${next.ownerName}`,
       prev.ownerName,
       next.ownerName,
     );
@@ -361,7 +361,7 @@ export async function handleUpdateLMCase({
       "updated",
       actorId,
       actorName,
-      `Cập nhật: ${changedKeys.join(", ")}`,
+      `Updated: ${changedKeys.join(", ")}`,
     );
   }
 
@@ -431,7 +431,7 @@ export async function handleUpdateLMDeadline({
 
   if (body.action === "acknowledge") {
     if (deadline.status !== "flagged") {
-      return badRequest("Chỉ tiếp nhận được hạn đang ở trạng thái cảnh báo");
+      return badRequest("Only a flagged deadline can be acknowledged");
     }
     deadline.status = "acknowledged";
     deadline.acknowledgedAt = now;
@@ -442,11 +442,11 @@ export async function handleUpdateLMDeadline({
       "deadline_acknowledged",
       actorId,
       actorName,
-      `Đã tiếp nhận cảnh báo hạn "${label}"`,
+      `Acknowledged alert for deadline "${label}"`,
     );
   } else if (body.action === "resolve") {
     if (deadline.status !== "flagged" && deadline.status !== "acknowledged") {
-      return badRequest("Hạn chưa được cảnh báo hoặc đã xử lý xong rồi");
+      return badRequest("Deadline has not been flagged yet or is already resolved");
     }
     deadline.status = "resolved";
     deadline.resolvedAt = now;
@@ -457,10 +457,10 @@ export async function handleUpdateLMDeadline({
       "deadline_resolved",
       actorId,
       actorName,
-      `Đã xử lý xong cảnh báo hạn "${label}"`,
+      `Resolved alert for deadline "${label}"`,
     );
   } else {
-    return badRequest("action phải là acknowledge hoặc resolve");
+    return badRequest("action must be acknowledge or resolve");
   }
 
   deadline.updatedAt = now;
@@ -506,10 +506,10 @@ export async function handleUpdateLMMilestone({
     return !Number.isNaN(d.getTime()) && d.getFullYear() >= 2000 && d.getFullYear() <= 2100;
   };
   if (body.currentPlannedDate && !isPlausibleDate(body.currentPlannedDate)) {
-    return badRequest("currentPlannedDate không hợp lệ");
+    return badRequest("currentPlannedDate is invalid");
   }
   if (body.actualDate && !isPlausibleDate(body.actualDate)) {
-    return badRequest("actualDate không hợp lệ");
+    return badRequest("actualDate is invalid");
   }
 
   const now = new Date().toISOString();
@@ -525,7 +525,7 @@ export async function handleUpdateLMMilestone({
       "milestone_date_changed",
       lmCase.ownerId,
       lmCase.ownerName,
-      `Dời ngày kế hoạch mốc "${stageLabel}"`,
+      `Rescheduled milestone "${stageLabel}"`,
       milestone.currentPlannedDate,
       body.currentPlannedDate,
     );
@@ -540,7 +540,7 @@ export async function handleUpdateLMMilestone({
       "milestone_completed",
       lmCase.ownerId,
       lmCase.ownerName,
-      `Hoàn thành mốc "${stageLabel}"`,
+      `Completed milestone "${stageLabel}"`,
     );
 
     // Chỉ tự chuyển giai đoạn khi hoàn thành ĐÚNG mốc đang là giai đoạn
@@ -555,7 +555,7 @@ export async function handleUpdateLMMilestone({
           "stage_changed",
           lmCase.ownerId,
           lmCase.ownerName,
-          `Chuyển giai đoạn: ${stageLabel} → ${STAGE_STYLES[nextStage].label}`,
+          `Stage changed: ${stageLabel} → ${STAGE_STYLES[nextStage].label}`,
           lmCase.stage,
           nextStage,
         );
@@ -569,7 +569,7 @@ export async function handleUpdateLMMilestone({
           "updated",
           lmCase.ownerId,
           lmCase.ownerName,
-          "Đóng hồ sơ — hoàn tất thi hành án",
+          "Case closed — enforcement completed",
         );
       }
       lmCase.updatedAt = now;
@@ -633,8 +633,8 @@ export async function handleRemindLMCase({
   db.notifications.unshift({
     id: `ntf-${crypto.randomUUID()}`,
     userId: lmCase.ownerId,
-    title: `Đôn đốc: ${lmCase.code}`,
-    description: `${fromUserName} nhắc cập nhật tiến độ hồ sơ "${lmCase.title}"`,
+    title: `Reminder: ${lmCase.code}`,
+    description: `${fromUserName} is asking for a progress update on case "${lmCase.title}"`,
     type: "compliance",
     read: false,
     entityType: "lm",
@@ -650,7 +650,7 @@ export async function handleRemindLMCase({
     "reminded",
     fromUserId,
     fromUserName,
-    `Đôn đốc tiến độ gửi tới ${lmCase.ownerName}`,
+    `Reminder sent to ${lmCase.ownerName}`,
   );
 
   return jsonResponse({ success: true });
@@ -693,7 +693,7 @@ export async function handleGetLMDashboard() {
       (e) =>
         e.caseId === m.caseId &&
         e.type === "milestone_completed" &&
-        e.description === `Hoàn thành mốc "${label}"`,
+        e.description === `Completed milestone "${label}"`,
     );
   });
   const milestoneUpdateRate =

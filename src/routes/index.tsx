@@ -172,10 +172,10 @@ export const router = createBrowserRouter([
           route("/ncc/create", <NCCCreatePage />, "Create NCC"),
           route("/ncc/:id", <NCCDetailPage />, "NCC Detail"),
 
-          route("/lm", <LMDashboardPage />, "Tố tụng"),
-          route("/lm/list", <LMListPage />, "Danh sách hồ sơ"),
-          route("/lm/create", <LMCreatePage />, "Tạo hồ sơ"),
-          route("/lm/:id", <LMDetailPage />, "Chi tiết hồ sơ"),
+          route("/lm", <LMDashboardPage />, "Litigation"),
+          route("/lm/list", <LMListPage />, "Case List"),
+          route("/lm/create", <LMCreatePage />, "Create Case"),
+          route("/lm/:id", <LMDetailPage />, "Case Detail"),
 
           route("/regulation", <RegulationLibraryPage />, "Regulations"),
           route("/regulation/create", <RegulationCreatePage />, "Create"),

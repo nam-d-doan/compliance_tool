@@ -927,7 +927,7 @@ function generateLitigationCases(
       type: "created",
       userId: owner.id,
       userName: owner.name,
-      description: `Tạo hồ sơ ${created.code}`,
+      description: `Created case ${created.code}`,
       createdAt: iso(createdAt),
       updatedAt: iso(createdAt),
     });
@@ -964,7 +964,7 @@ function generateLitigationCases(
           type: "milestone_date_changed",
           userId: owner.id,
           userName: owner.name,
-          description: `Dời ngày kế hoạch mốc "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
+          description: `Rescheduled milestone "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
           fromValue: iso(planned),
           toValue: iso(currentPlanned),
           createdAt: iso(subDays(today, faker.number.int({ min: 1, max: 20 }))),
@@ -978,7 +978,7 @@ function generateLitigationCases(
           type: "milestone_completed",
           userId: owner.id,
           userName: owner.name,
-          description: `Hoàn thành mốc "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
+          description: `Completed milestone "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
           createdAt: iso(actualDate!),
           updatedAt: iso(actualDate!),
         });
@@ -1037,7 +1037,7 @@ function generateLitigationCases(
         type: "deadline_resolved",
         userId: owner.id,
         userName: owner.name,
-        description: `Xử lý xong cảnh báo hạn "${DEADLINE_TYPE_LABELS[deadlineType]}"`,
+        description: `Resolved alert for deadline "${DEADLINE_TYPE_LABELS[deadlineType]}"`,
         createdAt: iso(resolvedAt),
         updatedAt: iso(resolvedAt),
       });

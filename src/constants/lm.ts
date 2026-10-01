@@ -46,11 +46,11 @@ export interface StageStyle {
 }
 
 export const STAGE_STYLES: Record<CaseStage, StageStyle> = {
-  khoi_kien: { label: "Khởi kiện", icon: FileText },
-  thu_ly: { label: "Thụ lý", icon: Scale },
-  hoa_giai: { label: "Hòa giải", icon: Handshake },
-  xet_xu: { label: "Xét xử", icon: Gavel },
-  thi_hanh_an: { label: "Thi hành án", icon: Landmark },
+  khoi_kien: { label: "Filing Lawsuit", icon: FileText },
+  thu_ly: { label: "Case Acceptance", icon: Scale },
+  hoa_giai: { label: "Mediation", icon: Handshake },
+  xet_xu: { label: "Trial", icon: Gavel },
+  thi_hanh_an: { label: "Enforcement", icon: Landmark },
 };
 
 /** So sánh thứ tự 2 giai đoạn. Dùng để tính "mốc đã qua" cho KPI b. */
@@ -70,12 +70,12 @@ export const CASE_CATEGORIES = [
 export type CaseCategory = (typeof CASE_CATEGORIES)[number];
 
 export const CASE_CATEGORY_LABELS: Record<CaseCategory, string> = {
-  no_xau_ca_nhan: "Nợ xấu tín dụng cá nhân",
-  no_xau_doanh_nghiep: "Nợ xấu tín dụng doanh nghiệp",
-  tranh_chap_hop_dong: "Tranh chấp hợp đồng tín dụng",
-  xu_ly_tai_san_bao_dam: "Xử lý tài sản bảo đảm",
-  thi_hanh_an_dan_su: "Thi hành án dân sự",
-  khac: "Khác",
+  no_xau_ca_nhan: "Individual Bad Debt",
+  no_xau_doanh_nghiep: "Corporate Bad Debt",
+  tranh_chap_hop_dong: "Credit Contract Dispute",
+  xu_ly_tai_san_bao_dam: "Collateral Liquidation",
+  thi_hanh_an_dan_su: "Civil Judgment Enforcement",
+  khac: "Other",
 };
 
 export const DEADLINE_TYPES = [
@@ -88,10 +88,10 @@ export const DEADLINE_TYPES = [
 export type DeadlineType = (typeof DEADLINE_TYPES)[number];
 
 export const DEADLINE_TYPE_LABELS: Record<DeadlineType, string> = {
-  khang_cao: "Kháng cáo",
-  an_phi: "Đóng án phí",
-  gia_han_thi_hanh_an: "Gia hạn thi hành án",
-  khac: "Khác",
+  khang_cao: "Appeal",
+  an_phi: "Court Fee Payment",
+  gia_han_thi_hanh_an: "Enforcement Extension",
+  khac: "Other",
 };
 
 /**
@@ -108,11 +108,11 @@ export const DEADLINE_TYPE_DEFAULT_DAYS_BEFORE: Record<DeadlineType, number> =
 
 /** Tài liệu bắt buộc theo từng giai đoạn — dùng cho KPI d (00-decisions.md mục 4). */
 export const REQUIRED_DOCS_BY_STAGE: Record<CaseStage, string[]> = {
-  khoi_kien: ["Đơn khởi kiện", "Hợp đồng tín dụng", "Chứng từ giải ngân"],
-  thu_ly: ["Thông báo thụ lý của Tòa án"],
-  hoa_giai: ["Biên bản hòa giải"],
-  xet_xu: ["Bản án/Quyết định của Tòa án"],
-  thi_hanh_an: ["Quyết định thi hành án", "Biên bản thi hành án"],
+  khoi_kien: ["Lawsuit Petition", "Credit Contract", "Disbursement Documents"],
+  thu_ly: ["Court Case Acceptance Notice"],
+  hoa_giai: ["Mediation Minutes"],
+  xet_xu: ["Court Judgment/Decision"],
+  thi_hanh_an: ["Enforcement Decision", "Enforcement Minutes"],
 };
 
 /** Trọng số tải công việc theo ưu tiên (00-decisions.md mục 5). */

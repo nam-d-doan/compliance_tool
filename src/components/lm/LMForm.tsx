@@ -5,6 +5,7 @@
  *    chi nhánh ở GĐ1, xem docs/lm/00-decisions.md).
  * 3. ownerId lọc role=owner (chuyên viên), managerId lọc role=executive
  *    (cấp quản lý) — đúng phân quyền đã chốt.
+ * 4. UI text + validation message tiếng Anh cho khớp phần còn lại của app.
  */
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,18 +23,18 @@ const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
 
 const lmSchema = z.object({
-  title: z.string().min(3, "Tiêu đề tối thiểu 3 ký tự"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
   category: z.enum([...CASE_CATEGORIES] as [string, ...string[]]),
-  customerCif: z.string().min(1, "CIF khách hàng là bắt buộc"),
-  customerName: z.string().min(1, "Tên khách hàng là bắt buộc"),
-  outstandingDebt: z.coerce.number().min(0, "Dư nợ không hợp lệ"),
+  customerCif: z.string().min(1, "Customer CIF is required"),
+  customerName: z.string().min(1, "Customer name is required"),
+  outstandingDebt: z.coerce.number().min(0, "Invalid outstanding debt"),
   collateralDescription: z.string().optional(),
-  courtOrEnforcementAgency: z.string().min(1, "Tòa án/cơ quan thi hành án là bắt buộc"),
+  courtOrEnforcementAgency: z.string().min(1, "Court/enforcement agency is required"),
   judgeName: z.string().optional(),
   priority: z.enum([...PRIORITY_LEVELS] as [string, ...string[]]),
-  ownerUnitId: z.string().min(1, "Đơn vị sở hữu là bắt buộc"),
-  ownerId: z.string().min(1, "Chuyên viên thụ lý là bắt buộc"),
-  managerId: z.string().min(1, "Cấp quản lý là bắt buộc"),
+  ownerUnitId: z.string().min(1, "Owner unit is required"),
+  ownerId: z.string().min(1, "Case owner is required"),
+  managerId: z.string().min(1, "Manager is required"),
   tags: z.string().optional(),
 });
 
@@ -52,7 +53,7 @@ export function LMForm({
   onSubmit,
   onCancel,
   isSubmitting,
-  submitLabel = "Tạo hồ sơ",
+  submitLabel = "Create Case",
 }: LMFormProps) {
   const orgUnitsQuery = useOrgUnits();
   const ownersQuery = useAdminUsers(1, 200, { status: "Active", role: "owner" });
@@ -85,7 +86,7 @@ export function LMForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="lm-title">Tiêu đề</Label>
+          <Label htmlFor="lm-title">Title</Label>
           <Input
             id="lm-title"
             {...register("title")}
@@ -97,7 +98,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-category">Nhóm vụ việc</Label>
+          <Label htmlFor="lm-category">Case Category</Label>
           <Controller
             name="category"
             control={control}
@@ -114,7 +115,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-priority">Ưu tiên</Label>
+          <Label htmlFor="lm-priority">Priority</Label>
           <Controller
             name="priority"
             control={control}
@@ -131,7 +132,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-customerCif">CIF khách hàng</Label>
+          <Label htmlFor="lm-customerCif">Customer CIF</Label>
           <Input
             id="lm-customerCif"
             {...register("customerCif")}
@@ -145,7 +146,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-customerName">Tên khách hàng</Label>
+          <Label htmlFor="lm-customerName">Customer Name</Label>
           <Input
             id="lm-customerName"
             {...register("customerName")}
@@ -159,7 +160,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-outstandingDebt">Dư nợ (VND)</Label>
+          <Label htmlFor="lm-outstandingDebt">Outstanding Debt (VND)</Label>
           <Input
             id="lm-outstandingDebt"
             type="number"
@@ -175,16 +176,16 @@ export function LMForm({
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="lm-collateralDescription">Tài sản bảo đảm</Label>
+          <Label htmlFor="lm-collateralDescription">Collateral</Label>
           <Input
             id="lm-collateralDescription"
             {...register("collateralDescription")}
-            placeholder="Mô tả tài sản bảo đảm (nếu có)"
+            placeholder="Describe the collateral (if any)"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-court">Tòa án / Cơ quan thi hành án</Label>
+          <Label htmlFor="lm-court">Court / Enforcement Agency</Label>
           <Input
             id="lm-court"
             {...register("courtOrEnforcementAgency")}
@@ -198,12 +199,12 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-judgeName">Thẩm phán</Label>
+          <Label htmlFor="lm-judgeName">Judge</Label>
           <Input id="lm-judgeName" {...register("judgeName")} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-ownerUnitId">Đơn vị sở hữu</Label>
+          <Label htmlFor="lm-ownerUnitId">Owner Unit</Label>
           <Controller
             name="ownerUnitId"
             control={control}
@@ -214,7 +215,7 @@ export function LMForm({
                 disabled={orgUnitsQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Chọn đơn vị</option>
+                <option value="">Select unit</option>
                 {hoDepartments.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -231,7 +232,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-ownerId">Chuyên viên thụ lý</Label>
+          <Label htmlFor="lm-ownerId">Case Owner</Label>
           <Controller
             name="ownerId"
             control={control}
@@ -242,7 +243,7 @@ export function LMForm({
                 disabled={ownersQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Chọn chuyên viên</option>
+                <option value="">Select owner</option>
                 {owners.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -257,7 +258,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-managerId">Cấp quản lý</Label>
+          <Label htmlFor="lm-managerId">Manager</Label>
           <Controller
             name="managerId"
             control={control}
@@ -268,7 +269,7 @@ export function LMForm({
                 disabled={managersQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Chọn quản lý</option>
+                <option value="">Select manager</option>
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -285,7 +286,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="lm-tags">Tags (cách nhau bằng dấu phẩy)</Label>
+          <Label htmlFor="lm-tags">Tags (comma separated)</Label>
           <Textarea id="lm-tags" {...register("tags")} className="min-h-[3rem]" />
         </div>
       </div>
@@ -298,7 +299,7 @@ export function LMForm({
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Hủy
+            Cancel
           </Button>
         )}
         <Button type="submit" disabled={isSubmitting}>

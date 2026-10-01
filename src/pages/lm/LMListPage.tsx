@@ -5,6 +5,8 @@
  * 3. canCreate/canDelete theo lm:create / lm:delete.
  * 4. GĐ3: cột "Cảnh báo" đọc redFlagCount server tính sẵn (đếm hạn đang
  *    flagged) — không tự tính lại ở FE, tránh lệch với lib/lm-alerts.ts.
+ * 5. UI text tiếng Anh cho khớp phần còn lại của app (user yêu cầu) — chỉ
+ *    đổi copy hiển thị, pseudo-code comment vẫn giữ tiếng Việt.
  */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -66,26 +68,26 @@ export default function LMListPage() {
   };
 
   const handleDelete = (id: string, code: string) => {
-    if (!window.confirm(`Xóa hồ sơ ${code}? Thao tác này không thể hoàn tác.`)) {
+    if (!window.confirm(`Delete case ${code}? This action cannot be undone.`)) {
       return;
     }
     remove.mutate(id, {
-      onSuccess: () => toast.success(`Đã xóa hồ sơ ${code}`),
-      onError: (err) => toast.error(err.message || "Xóa thất bại"),
+      onSuccess: () => toast.success(`Case ${code} deleted`),
+      onError: (err) => toast.error(err.message || "Delete failed"),
     });
   };
 
   return (
     <div className="space-y-6">
       <PageHero
-        title="Hồ sơ Tố tụng & Thi hành án"
-        subtitle="Quản lý hồ sơ tố tụng, thi hành án của ngân hàng."
+        title="Litigation & Enforcement Cases"
+        subtitle="Manage the bank's litigation and judgment enforcement cases."
       >
         {canCreate && (
           <Button asChild>
             <Link to="/lm/create">
               <Plus className="size-4" aria-hidden="true" />
-              Tạo hồ sơ
+              New Case
             </Link>
           </Button>
         )}
@@ -96,7 +98,7 @@ export default function LMListPage() {
         className="flex flex-wrap items-center gap-3"
       >
         <Input
-          placeholder="Tìm theo mã, tiêu đề, khách hàng..."
+          placeholder="Search by code, title, customer..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="max-w-xs"
@@ -112,7 +114,7 @@ export default function LMListPage() {
             }));
           }}
         >
-          <option value="">Tất cả giai đoạn</option>
+          <option value="">All stages</option>
           {CASE_STAGES.map((s) => (
             <option key={s} value={s}>
               {STAGE_STYLES[s].label}
@@ -131,7 +133,7 @@ export default function LMListPage() {
             }));
           }}
         >
-          <option value="">Tất cả ưu tiên</option>
+          <option value="">All priorities</option>
           {PRIORITY_LEVELS.map((p) => (
             <option key={p} value={p}>
               {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -150,12 +152,12 @@ export default function LMListPage() {
             }));
           }}
         >
-          <option value="">Tất cả trạng thái</option>
+          <option value="">All statuses</option>
           <option value="Open">Open</option>
           <option value="Closed">Closed</option>
         </select>
         <Button type="submit" variant="outline">
-          Lọc
+          Filter
         </Button>
       </form>
 
@@ -165,23 +167,23 @@ export default function LMListPage() {
         <ErrorState onRetry={() => refetch()} />
       ) : items.length === 0 ? (
         <EmptyState
-          title="Chưa có hồ sơ nào"
-          description="Tạo hồ sơ đầu tiên hoặc bỏ bớt bộ lọc."
+          title="No cases yet"
+          description="Create the first case or clear some filters."
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">Mã hồ sơ</th>
-                <th className="px-3 py-2">Tiêu đề</th>
-                <th className="px-3 py-2">Nhóm</th>
-                <th className="px-3 py-2">Giai đoạn</th>
-                <th className="px-3 py-2">Cảnh báo</th>
-                <th className="px-3 py-2">Ưu tiên</th>
-                <th className="px-3 py-2">Trạng thái</th>
-                <th className="px-3 py-2">Chuyên viên</th>
-                <th className="px-3 py-2">Cập nhật</th>
+                <th className="px-3 py-2">Case Code</th>
+                <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2">Category</th>
+                <th className="px-3 py-2">Stage</th>
+                <th className="px-3 py-2">Alerts</th>
+                <th className="px-3 py-2">Priority</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Owner</th>
+                <th className="px-3 py-2">Updated</th>
                 {canDelete && <th className="px-3 py-2" />}
               </tr>
             </thead>
@@ -227,7 +229,7 @@ export default function LMListPage() {
                           e.stopPropagation();
                           handleDelete(c.id, c.code);
                         }}
-                        aria-label={`Xóa hồ sơ ${c.code}`}
+                        aria-label={`Delete case ${c.code}`}
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -248,10 +250,10 @@ export default function LMListPage() {
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
-            Trước
+            Previous
           </Button>
           <span className="text-sm text-muted-foreground">
-            Trang {page}/{totalPages}
+            Page {page}/{totalPages}
           </span>
           <Button
             variant="outline"
@@ -259,7 +261,7 @@ export default function LMListPage() {
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Sau
+            Next
           </Button>
         </div>
       )}

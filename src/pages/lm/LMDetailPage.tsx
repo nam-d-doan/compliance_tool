@@ -6,7 +6,7 @@
  *    đúng mốc đang là giai đoạn hiện tại (xem lm_handlers.ts).
  * 3. Hạn & cảnh báo (GĐ3): severity (đỏ/vàng/xám) do server tính sẵn
  *    (DEMO_TODAY, không dùng ngày thực của máy — xem lib/lm-alerts.ts).
- *    Nút "Đã tiếp nhận"/"Đã xử lý" gọi PUT /api/lm/deadlines/:id.
+ *    Nút "Acknowledge"/"Resolve" gọi PUT /api/lm/deadlines/:id.
  * 4. Lịch sử dùng list riêng (không tái dùng ActivityFeed) vì
  *    ActivityFeed/TimelineEvent gắn cứng bộ type khác (submission/approval/
  *    ...), không khớp CaseEvent.type — tái dùng sẽ phải sửa component dùng
@@ -16,6 +16,8 @@
  *    qua useUpdateLMCase co sẵn (không cần mutation riêng).
  * 6. Đôn đốc (GĐ2): 1 nút gọi useRemindLMCase — server tự tạo Notification
  *    + CaseEvent, FE chỉ cần invalidate + toast.
+ * 7. UI text tiếng Anh cho khớp phần còn lại của app (user yêu cầu) — chỉ
+ *    đổi copy hiển thị, pseudo-code comment vẫn giữ tiếng Việt.
  */
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -86,10 +88,10 @@ function toValidDateIso(input: string): string | null {
 }
 
 const DEADLINE_STATUS_LABEL: Record<string, string> = {
-  pending: "Chưa tới hạn",
-  flagged: "Đã bật cảnh báo",
-  acknowledged: "Đã tiếp nhận",
-  resolved: "Đã xử lý",
+  pending: "Not due yet",
+  flagged: "Flagged",
+  acknowledged: "Acknowledged",
+  resolved: "Resolved",
 };
 
 export default function LMDetailPage() {
@@ -140,10 +142,10 @@ export default function LMDetailPage() {
     };
     update.mutate(payload, {
       onSuccess: () => {
-        toast.success("Đã cập nhật hồ sơ");
+        toast.success("Case updated");
         setEditOpen(false);
       },
-      onError: (err) => toast.error(err.message || "Cập nhật thất bại"),
+      onError: (err) => toast.error(err.message || "Update failed"),
     });
   };
 
@@ -151,8 +153,8 @@ export default function LMDetailPage() {
     remind.mutate(
       { fromUserId: user?.id, fromUserName: user?.name },
       {
-        onSuccess: () => toast.success("Đã gửi thông báo đôn đốc"),
-        onError: (err) => toast.error(err.message || "Gửi đôn đốc thất bại"),
+        onSuccess: () => toast.success("Reminder sent"),
+        onError: (err) => toast.error(err.message || "Failed to send reminder"),
       },
     );
   };
@@ -169,9 +171,9 @@ export default function LMDetailPage() {
       {
         onSuccess: () =>
           toast.success(
-            action === "acknowledge" ? "Đã tiếp nhận cảnh báo" : "Đã xử lý xong",
+            action === "acknowledge" ? "Alert acknowledged" : "Alert resolved",
           ),
-        onError: (err) => toast.error(err.message || "Thao tác thất bại"),
+        onError: (err) => toast.error(err.message || "Action failed"),
       },
     );
   };
@@ -181,10 +183,10 @@ export default function LMDetailPage() {
       { ownerId },
       {
         onSuccess: () => {
-          toast.success(`Đã phân công cho ${ownerName}`);
+          toast.success(`Assigned to ${ownerName}`);
           setAssignOpen(false);
         },
-        onError: (err) => toast.error(err.message || "Phân công thất bại"),
+        onError: (err) => toast.error(err.message || "Assignment failed"),
       },
     );
   };
@@ -205,19 +207,19 @@ export default function LMDetailPage() {
               disabled={remind.isPending}
             >
               <Send className="size-4" aria-hidden="true" />
-              Đôn đốc
+              Remind
             </Button>
           )}
           {canApprove && (
             <Button variant="outline" onClick={() => setAssignOpen(true)}>
               <Users className="size-4" aria-hidden="true" />
-              Phân công
+              Assign
             </Button>
           )}
           {canUpdate && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden="true" />
-              Sửa hồ sơ
+              Edit Case
             </Button>
           )}
         </div>
@@ -233,35 +235,35 @@ export default function LMDetailPage() {
 
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-          <TabsTrigger value="progress">Tiến trình</TabsTrigger>
-          <TabsTrigger value="deadlines">Hạn & cảnh báo</TabsTrigger>
-          <TabsTrigger value="files">Tài liệu</TabsTrigger>
-          <TabsTrigger value="history">Lịch sử</TabsTrigger>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsTrigger value="deadlines">Deadlines & Alerts</TabsTrigger>
+          <TabsTrigger value="files">Documents</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <Card>
             <CardHeader>
-              <CardTitle>Thông tin hồ sơ</CardTitle>
+              <CardTitle>Case Information</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nhóm vụ việc" value={CASE_CATEGORY_LABELS[item.category]} />
-              <Field label="Khách hàng" value={`${item.customerName} (${item.customerCif})`} />
-              <Field label="Dư nợ" value={formatVnd(item.outstandingDebt)} />
+              <Field label="Case Category" value={CASE_CATEGORY_LABELS[item.category]} />
+              <Field label="Customer" value={`${item.customerName} (${item.customerCif})`} />
+              <Field label="Outstanding Debt" value={formatVnd(item.outstandingDebt)} />
               <Field
-                label="Tài sản bảo đảm"
+                label="Collateral"
                 value={item.collateralDescription ?? "—"}
               />
               <Field
-                label="Tòa án / Cơ quan thi hành án"
+                label="Court / Enforcement Agency"
                 value={item.courtOrEnforcementAgency}
               />
-              <Field label="Thẩm phán" value={item.judgeName ?? "—"} />
-              <Field label="Đơn vị sở hữu" value={item.ownerUnitName} />
-              <Field label="Chuyên viên thụ lý" value={item.ownerName} />
-              <Field label="Cấp quản lý" value={item.managerName || "—"} />
-              <Field label="Cập nhật lần cuối" value={fmt(item.updatedAt)} />
+              <Field label="Judge" value={item.judgeName ?? "—"} />
+              <Field label="Owner Unit" value={item.ownerUnitName} />
+              <Field label="Case Owner" value={item.ownerName} />
+              <Field label="Manager" value={item.managerName || "—"} />
+              <Field label="Last Updated" value={fmt(item.updatedAt)} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -269,13 +271,13 @@ export default function LMDetailPage() {
         <TabsContent value="progress">
           <Card>
             <CardHeader>
-              <CardTitle>Tiến trình 5 mốc</CardTitle>
+              <CardTitle>5-Milestone Progress</CardTitle>
             </CardHeader>
             <CardContent>
               {milestones.isPending ? (
                 <DetailSkeleton />
               ) : (milestones.data ?? []).length === 0 ? (
-                <EmptyState title="Chưa có mốc nào" />
+                <EmptyState title="No milestones yet" />
               ) : (
                 <ol className="space-y-3">
                   {(milestones.data ?? []).map((m) => (
@@ -291,9 +293,9 @@ export default function LMDetailPage() {
                         updateMilestone.mutate(
                           { id: m.id, data: { currentPlannedDate: dateIso } },
                           {
-                            onSuccess: () => toast.success("Đã dời ngày kế hoạch"),
+                            onSuccess: () => toast.success("Planned date rescheduled"),
                             onError: (err) =>
-                              toast.error(err.message || "Dời ngày thất bại"),
+                              toast.error(err.message || "Reschedule failed"),
                           },
                         )
                       }
@@ -303,10 +305,10 @@ export default function LMDetailPage() {
                           {
                             onSuccess: () =>
                               toast.success(
-                                `Đã hoàn thành mốc "${STAGE_STYLES[m.stage].label}"`,
+                                `Milestone "${STAGE_STYLES[m.stage].label}" completed`,
                               ),
                             onError: (err) =>
-                              toast.error(err.message || "Cập nhật thất bại"),
+                              toast.error(err.message || "Update failed"),
                           },
                         )
                       }
@@ -321,13 +323,13 @@ export default function LMDetailPage() {
         <TabsContent value="deadlines">
           <Card>
             <CardHeader>
-              <CardTitle>Hạn pháp lý & cảnh báo</CardTitle>
+              <CardTitle>Legal Deadlines & Alerts</CardTitle>
             </CardHeader>
             <CardContent>
               {deadlines.isPending ? (
                 <DetailSkeleton />
               ) : (deadlines.data ?? []).length === 0 ? (
-                <EmptyState title="Không có hạn pháp lý nào đang mở" />
+                <EmptyState title="No open legal deadlines" />
               ) : (
                 <ul className="space-y-3">
                   {(deadlines.data ?? []).map((d) => (
@@ -348,7 +350,7 @@ export default function LMDetailPage() {
         <TabsContent value="files">
           <Card>
             <CardHeader>
-              <CardTitle>Tài liệu đính kèm</CardTitle>
+              <CardTitle>Attached Documents</CardTitle>
             </CardHeader>
             <CardContent>
               <FileUploadComponent
@@ -363,13 +365,13 @@ export default function LMDetailPage() {
         <TabsContent value="history">
           <Card>
             <CardHeader>
-              <CardTitle>Lịch sử thao tác</CardTitle>
+              <CardTitle>Activity History</CardTitle>
             </CardHeader>
             <CardContent>
               {events.isPending ? (
                 <DetailSkeleton />
               ) : (events.data ?? []).length === 0 ? (
-                <EmptyState title="Chưa có lịch sử" />
+                <EmptyState title="No history yet" />
               ) : (
                 <ul className="space-y-3">
                   {(events.data ?? []).map((e) => (
@@ -390,7 +392,7 @@ export default function LMDetailPage() {
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>Sửa hồ sơ {item.code}</SheetTitle>
+            <SheetTitle>Edit Case {item.code}</SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">
             <LMForm
@@ -412,7 +414,7 @@ export default function LMDetailPage() {
               onSubmit={handleEditSubmit}
               onCancel={() => setEditOpen(false)}
               isSubmitting={update.isPending}
-              submitLabel="Lưu thay đổi"
+              submitLabel="Save Changes"
             />
           </div>
         </SheetContent>
@@ -421,7 +423,7 @@ export default function LMDetailPage() {
       <Sheet open={assignOpen} onOpenChange={setAssignOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Phân công lại {item.code}</SheetTitle>
+            <SheetTitle>Reassign {item.code}</SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">
             <AssignList
@@ -480,10 +482,10 @@ function MilestoneRow({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{STAGE_STYLES[m.stage].label}</span>
         <span className="text-sm text-muted-foreground">
-          Kế hoạch gốc: {fmt(m.originalPlannedDate)}
+          Original plan: {fmt(m.originalPlannedDate)}
           {deltaDays !== 0 && (
             <>
-              {" → Hiện tại: "}
+              {" → Current: "}
               {fmt(m.currentPlannedDate)}{" "}
               <span
                 className={cn(
@@ -492,7 +494,7 @@ function MilestoneRow({
                 )}
               >
                 ({deltaDays > 0 ? "+" : ""}
-                {deltaDays} ngày)
+                {deltaDays} days)
               </span>
             </>
           )}
@@ -500,10 +502,10 @@ function MilestoneRow({
         <span className="text-sm">
           {m.actualDate ? (
             <span className="text-success">
-              Hoàn thành: {fmt(m.actualDate)}
+              Completed: {fmt(m.actualDate)}
             </span>
           ) : (
-            "Chưa hoàn thành"
+            "Not completed"
           )}
         </span>
       </div>
@@ -523,13 +525,13 @@ function MilestoneRow({
             onClick={() => {
               const iso = toValidDateIso(plannedInput);
               if (!iso) {
-                toast.error("Ngày kế hoạch không hợp lệ");
+                toast.error("Invalid planned date");
                 return;
               }
               onReschedule(iso);
             }}
           >
-            Dời ngày kế hoạch
+            Reschedule
           </Button>
           <span className="text-muted-foreground">·</span>
           <Input
@@ -544,14 +546,14 @@ function MilestoneRow({
             onClick={() => {
               const iso = toValidDateIso(completeInput);
               if (!iso) {
-                toast.error("Ngày hoàn thành không hợp lệ");
+                toast.error("Invalid completion date");
                 return;
               }
               onComplete(iso);
             }}
           >
             <Check className="size-4" aria-hidden="true" />
-            Đánh dấu hoàn thành
+            Mark Complete
           </Button>
         </div>
       )}
@@ -567,8 +569,8 @@ const SEVERITY_DOT: Record<string, string> = {
 
 /**
  * 1 dòng hạn pháp lý. `severity` do server tính sẵn (GĐ3) — đỏ/vàng/xám.
- * Nút hành động chỉ hiện khi còn việc để làm: "Đã tiếp nhận" lúc đang
- * flagged, "Đã xử lý" lúc flagged hoặc đã tiếp nhận.
+ * Nút hành động chỉ hiện khi còn việc để làm: "Acknowledge" lúc đang
+ * flagged, "Resolve" lúc flagged hoặc đã tiếp nhận.
  */
 function DeadlineRow({
   deadline: d,
@@ -604,7 +606,7 @@ function DeadlineRow({
               disabled={isSaving}
               onClick={() => onAction(d.id, "acknowledge")}
             >
-              Đã tiếp nhận
+              Acknowledge
             </Button>
           )}
           {canResolve && (
@@ -613,7 +615,7 @@ function DeadlineRow({
               disabled={isSaving}
               onClick={() => onAction(d.id, "resolve")}
             >
-              Đã xử lý
+              Resolve
             </Button>
           )}
         </div>
@@ -660,17 +662,17 @@ function AssignList({
                 <span className="font-medium">{w.userName}</span>
                 {i === 0 && !isCurrent && (
                   <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs text-success">
-                    Gợi ý — ít việc nhất
+                    Suggested — lowest load
                   </span>
                 )}
                 {isCurrent && (
                   <span className="rounded-full bg-muted-foreground/10 px-2 py-0.5 text-xs text-muted-foreground">
-                    Đang thụ lý
+                    Current owner
                   </span>
                 )}
               </span>
               <span className="text-muted-foreground">
-                {w.openCaseCount} hồ sơ mở · tải {w.weightedLoad}
+                {w.openCaseCount} open cases · load {w.weightedLoad}
               </span>
             </button>
           </li>

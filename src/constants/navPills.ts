@@ -73,7 +73,7 @@ export const NAV_PILLS: NavPill[] = [
   },
   {
     key: "lm",
-    label: "Tố tụng",
+    label: "Litigation",
     icon: Gavel,
     path: ROUTES.LM.DASHBOARD,
     matchPrefixes: ["/lm"],

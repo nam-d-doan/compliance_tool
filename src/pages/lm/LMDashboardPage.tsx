@@ -45,7 +45,7 @@ export default function LMDashboardPage() {
   if (dashboard.isPending) {
     return (
       <div className="space-y-6">
-        <PageHero title="Tố tụng & Thi hành án" subtitle="Tổng quan & KPI." />
+        <PageHero title="Litigation & Enforcement" subtitle="Overview & KPIs." />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <CardSkeleton key={i} />
@@ -63,7 +63,7 @@ export default function LMDashboardPage() {
   if (dashboard.isError || !data) {
     return (
       <div className="space-y-6">
-        <PageHero title="Tố tụng & Thi hành án" subtitle="Tổng quan & KPI." />
+        <PageHero title="Litigation & Enforcement" subtitle="Overview & KPIs." />
         <ErrorState onRetry={() => dashboard.refetch()} />
       </div>
     );
@@ -92,55 +92,55 @@ export default function LMDashboardPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <PageHero title="Tố tụng & Thi hành án" subtitle="Tổng quan & KPI.">
+      <PageHero title="Litigation & Enforcement" subtitle="Overview & KPIs.">
         <Button variant="outline" asChild>
           <Link to={ROUTES.LM.LIST}>
             <List className="size-4" aria-hidden="true" />
-            Xem danh sách
+            View List
           </Link>
         </Button>
         {canCreate && (
           <Button asChild>
             <Link to={ROUTES.LM.CREATE}>
               <PlusCircle className="size-4" aria-hidden="true" />
-              Tạo hồ sơ
+              New Case
             </Link>
           </Button>
         )}
       </PageHero>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KPICard label="Hồ sơ đang mở" value={data.totalOpen} icon={Briefcase} />
+        <KPICard label="Open Cases" value={data.totalOpen} icon={Briefcase} />
         <KPICard
-          label="Hồ sơ đang cảnh báo"
+          label="Cases with Alerts"
           value={data.totalRedFlagCases}
           icon={AlertTriangle}
           iconClassName="bg-destructive/10 text-destructive"
         />
-        <KPICard label="Hồ sơ đã đóng" value={data.totalClosed} icon={CheckCircle2} />
+        <KPICard label="Closed Cases" value={data.totalClosed} icon={CheckCircle2} />
         <KPICard
-          label="Cập nhật tiến độ"
+          label="Progress Updates"
           value={`${data.milestoneUpdateRate}%`}
           icon={ClipboardCheck}
-          subtitle="Mốc hoàn thành có ghi lịch sử"
+          subtitle="Completed milestones with a logged event"
         />
         <KPICard
-          label="Xử lý cảnh báo"
+          label="Alert Resolution"
           value={`${data.alertResolutionRate}%`}
           icon={Gavel}
-          subtitle="Hạn đã bật cờ mà xử lý xong"
+          subtitle="Flagged deadlines already resolved"
         />
         <KPICard
-          label="Đủ tài liệu"
+          label="Document Completeness"
           value={`${data.documentCompletionRate}%`}
           icon={FileCheck2}
-          subtitle="Theo số lượng yêu cầu/giai đoạn"
+          subtitle="By required count per stage"
         />
       </div>
 
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         <PieChartCard
-          title="Theo giai đoạn"
+          title="By Stage"
           data={stageData}
           nameKey="name"
           valueKey="value"
@@ -148,27 +148,27 @@ export default function LMDashboardPage() {
           className="h-full"
         />
         <BarChartCard
-          title="Theo nhóm vụ việc"
+          title="By Case Category"
           data={categoryData}
           xKey="name"
-          yKeys={[{ key: "value", name: "Hồ sơ" }]}
+          yKeys={[{ key: "value", name: "Cases" }]}
           height={240}
           className="h-full"
         />
         <BarChartCard
-          title="Tải công việc theo chuyên viên"
-          subtitle="Số hồ sơ đang mở"
+          title="Owner Workload"
+          subtitle="Number of open cases"
           data={workloadData}
           xKey="name"
-          yKeys={[{ key: "value", name: "Hồ sơ mở" }]}
+          yKeys={[{ key: "value", name: "Open cases" }]}
           height={240}
           className="h-full"
         />
         <BarChartCard
-          title="Theo đơn vị"
+          title="By Business Unit"
           data={unitData}
           xKey="name"
-          yKeys={[{ key: "value", name: "Hồ sơ" }]}
+          yKeys={[{ key: "value", name: "Cases" }]}
           height={240}
           className="h-full"
         />
@@ -194,7 +194,7 @@ function TopRedFlagCard({
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-destructive" aria-hidden="true" />
-            <h3 className="text-sm font-medium">Hồ sơ cảnh báo nhiều nhất</h3>
+            <h3 className="text-sm font-medium">Most Flagged Cases</h3>
           </div>
           <Badge variant="secondary" className="h-5">
             {items.length}
@@ -202,7 +202,7 @@ function TopRedFlagCard({
         </div>
         {items.length === 0 ? (
           <EmptyState
-            title="Không có hồ sơ nào đang cảnh báo"
+            title="No cases currently flagged"
             className="h-40 border-0 bg-transparent"
           />
         ) : (

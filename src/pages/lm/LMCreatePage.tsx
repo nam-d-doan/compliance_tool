@@ -42,10 +42,10 @@ export default function LMCreatePage() {
     };
     create.mutate(payload, {
       onSuccess: (data) => {
-        toast.success(`Đã tạo hồ sơ ${data.code}`);
+        toast.success(`Case ${data.code} created`);
         navigate(`/lm/${data.id}`);
       },
-      onError: (err) => toast.error(err.message || "Tạo hồ sơ thất bại"),
+      onError: (err) => toast.error(err.message || "Failed to create case"),
     });
   };
 
@@ -57,19 +57,19 @@ export default function LMCreatePage() {
       className="space-y-6"
     >
       <PageHero
-        title="Tạo hồ sơ tố tụng"
-        subtitle="Khởi tạo hồ sơ tố tụng / thi hành án mới."
+        title="Create Litigation Case"
+        subtitle="Open a new litigation / enforcement case."
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Thông tin hồ sơ</CardTitle>
+          <CardTitle>Case Information</CardTitle>
         </CardHeader>
         <CardContent>
           <LMForm
             onSubmit={handleSubmit}
             isSubmitting={create.isPending}
-            submitLabel="Tạo hồ sơ"
+            submitLabel="Create Case"
           />
         </CardContent>
       </Card>
