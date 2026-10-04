@@ -12,3 +12,4 @@ export * from "./useFileQueries";
 export * from "./useObligationQueries";
 export { useTabActionCounts } from "@/hooks/useTabActionCounts";
 export type { TabActionCounts } from "@/hooks/useTabActionCounts";
+export * from "./useCMSQueries";

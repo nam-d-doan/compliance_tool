@@ -42,7 +42,7 @@ function isOverdue(dueDate: string | undefined, isTerminal: boolean): boolean {
 }
 
 function isHighOrCritical(severity: string | undefined): boolean {
-  return severity === "high" || severity === "critical";
+  return severity === "high";
 }
 
 /**

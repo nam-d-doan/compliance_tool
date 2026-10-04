@@ -46,7 +46,7 @@ export function DashboardNeedsAttentionList({
           isOverdueDueDate(
             c.dueDate,
             ["completed", "approved"].includes(c.status),
-          ) || c.riskLevel === "critical",
+          ) || c.riskLevel === "high",
       )
       .map((c) => ({
         id: c.id,
@@ -62,9 +62,7 @@ export function DashboardNeedsAttentionList({
       .filter(
         (c) =>
           c.status !== "Closed" &&
-          (isOverdueDueDate(c.dueDate, false) ||
-            c.priority === "critical" ||
-            c.priority === "high"),
+          (isOverdueDueDate(c.dueDate, false) || c.priority === "high"),
       )
       .map((c) => ({
         id: c.id,
@@ -103,7 +101,7 @@ export function DashboardNeedsAttentionList({
           {items.length === 0 ? (
             <EmptyState
               title="Nothing needs attention"
-              description="No overdue or critical items found."
+              description="No overdue or high-risk items found."
               className="border-0 bg-transparent"
             />
           ) : (

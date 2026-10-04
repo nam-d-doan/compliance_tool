@@ -56,7 +56,7 @@ const CATEGORIES = [
   "Financial Reporting",
 ] as const;
 
-const PRIORITIES = ["low", "medium", "high", "critical"] as const;
+const PRIORITIES = ["low", "medium", "high"] as const;
 
 const ACCEPT_FILE_TYPES =
   ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";

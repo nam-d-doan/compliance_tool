@@ -45,7 +45,7 @@ export const CURATED_REGULATIONS: CuratedRegulation[] = [
     regulatoryBody: "Quốc hội Việt Nam (National Assembly)",
     effectiveDate: "2024-07-01T00:00:00.000Z",
     status: "Effective",
-    priority: "critical",
+    priority: "high",
     source: "internal",
     articles: [
       {
@@ -125,7 +125,7 @@ export const CURATED_REGULATIONS: CuratedRegulation[] = [
     regulatoryBody: "Ngân hàng Nhà nước Việt Nam (SBV)",
     effectiveDate: "2025-09-15T00:00:00.000Z",
     status: "Effective",
-    priority: "critical",
+    priority: "high",
     source: "internal",
     articles: [
       {
@@ -250,7 +250,7 @@ export const CURATED_REGULATIONS: CuratedRegulation[] = [
     regulatoryBody: "Ngân hàng Nhà nước Việt Nam (SBV)",
     effectiveDate: "2026-07-01T00:00:00.000Z",
     status: "Effective",
-    priority: "critical",
+    priority: "high",
     source: "internal",
     articles: [
       {
@@ -439,7 +439,7 @@ export const CURATED_REGULATIONS: CuratedRegulation[] = [
     regulatoryBody: "Quốc hội Việt Nam (National Assembly)",
     effectiveDate: "2023-03-01T00:00:00.000Z",
     status: "Effective",
-    priority: "critical",
+    priority: "high",
     source: "internal",
     articles: [
       {
@@ -538,7 +538,7 @@ export const CURATED_REGULATIONS: CuratedRegulation[] = [
     regulatoryBody: "Ngân hàng Nhà nước Việt Nam (SBV)",
     effectiveDate: "2025-11-01T00:00:00.000Z",
     status: "Effective",
-    priority: "critical",
+    priority: "high",
     source: "internal",
     articles: [
       {
@@ -1021,7 +1021,7 @@ export interface CuratedComplianceObligation {
   title: string;
   description: string;
   department: string;
-  criticality: "low" | "medium" | "high" | "critical";
+  criticality: "low" | "medium" | "high";
   frequency: "once" | "monthly" | "quarterly" | "biannually" | "annually";
   penalty: string;
   tags: string[];
@@ -1038,7 +1038,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Cập nhật công cụ tính toán tỷ lệ an toàn vốn theo định nghĩa vốn Basel III mới (CET1, AT1, T2). Điều chỉnh bảng hệ số rủi ro có trọng số (RWA) theo Thông tư 14/2025 Điều 5.",
     department: "Risk Management",
-    criticality: "critical",
+    criticality: "high",
     frequency: "once",
     penalty: "Đình chỉ hoạt động, phạt đến 2 tỷ VND",
     tags: ["basel3", "capital", "reporting"],
@@ -1052,7 +1052,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Đảm bảo duy trì các tỷ lệ vốn tối thiểu theo Basel III. Phân loại công cụ vốn theo Basel III, tái phân loại dự trữ và goodwill theo quy định giảm trừ mới.",
     department: "Finance",
-    criticality: "critical",
+    criticality: "high",
     frequency: "quarterly",
     penalty: "Hạn chế chia cổ tức, yêu cầu tăng vốn",
     tags: ["basel3", "capital"],
@@ -1095,7 +1095,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Thu thập dữ liệu tài sản thanh khoản chất lượng cao (HQLA). Thử nghiệm áp lực thanh khoản. Nâng cấp hệ thống treasury để giám sát LCR/NSFR theo Thông tư 14 Điều 23.",
     department: "Treasury & ALM",
-    criticality: "critical",
+    criticality: "high",
     frequency: "monthly",
     penalty: "Yêu cầu kế hoạch cấp vốn khẩn cấp",
     tags: ["basel3", "liquidity", "reporting"],
@@ -1153,7 +1153,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Tái cấu trúc quản trị: định nghĩa tuyến 1 (business), tuyến 2 (risk/compliance), tuyến 3 (internal audit). Áp dụng taxonomy rủi ro, định nghĩa KRI, gắn khẩu vị rủi ro với ICS.",
     department: "Internal Control",
-    criticality: "critical",
+    criticality: "high",
     frequency: "once",
     penalty: "Khiển trách, yêu cầu tái cơ cấu",
     tags: ["ics", "governance", "3lod"],
@@ -1167,7 +1167,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Thiết lập/bổ sung bộ phận quản lý rủi ro độc lập. Bổ nhiệm Chief Risk Officer đủ năng lực. Triển khai mô hình lượng hóa rủi ro (VaR, chấm điểm tín dụng, stress engine). Báo cáo cho HĐQT.",
     department: "Risk Management",
-    criticality: "critical",
+    criticality: "high",
     frequency: "once",
     penalty: "Vi phạm Điều 4, phạt hành chính",
     tags: ["ics", "risk", "governance"],
@@ -1253,7 +1253,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Xây dựng khung kiểm soát nội bộ toàn doanh nghiệp (three lines of defense) và kiểm toán nội bộ độc lập. Bao gồm quản trị (HĐQT/Ban Rủi ro), chính sách quy trình, định nghĩa vai trò, đăng ký rủi ro/gian lận.",
     department: "Internal Control",
-    criticality: "critical",
+    criticality: "high",
     frequency: "once",
     penalty: "Vi phạm Luật, phạt đến 5 tỷ VND",
     tags: ["ics", "governance", "law"],
@@ -1283,7 +1283,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Cập nhật quy trình onboarding để thu thập tất cả dữ liệu KYC: tên, ngày sinh, số ID, địa chỉ. Đối với pháp nhân: tên doanh nghiệp, mã số thuế. Nâng cấp eKYC (quét ID). Theo Điều 10.",
     department: "AML Compliance",
-    criticality: "critical",
+    criticality: "high",
     frequency: "once",
     penalty: "Phạt đến 1 tỷ VND, đình chỉ giao dịch",
     tags: ["aml", "kyc", "cdd"],
@@ -1311,7 +1311,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Phát triển và áp dụng mô hình chấm điểm rủi ro khách hàng (thấp/trung bình/cao). Áp dụng EDD cho khách hàng cao rủi ro (PEP, vùng địa lý rủi ro). Cập nhật chính sách SDD vs EDD. Theo Điều 16.",
     department: "AML Compliance",
-    criticality: "critical",
+    criticality: "high",
     frequency: "annually",
     penalty: "Phạt đến 2 tỷ VND, khiển trách",
     tags: ["aml", "risk", "cdd"],
@@ -1353,7 +1353,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Thiết lập quy trình nội bộ nhận diện và báo cáo STR. Triển khai red-flag rules tự động. Bổ nhiệm AML Compliance Officer. Định nghĩa workflow escalation. Báo cáo điện tử cho FIU. Theo Điều 26.",
     department: "AML Compliance",
-    criticality: "critical",
+    criticality: "high",
     frequency: "monthly",
     penalty: "Phạt đến 2 tỷ VND, truy cứu hình sự",
     tags: ["aml", "reporting", "str"],
@@ -1454,7 +1454,7 @@ const CURATED_COMPLIANCE_OBLIGATIONS_SOURCE: CuratedComplianceObligation[] = [
     description:
       "Triển khai hệ thống phát hiện gian lận thời gian thực: anomaly detection, rule-based + ML models. Giám sát trên tất cả kênh (thẻ, IB, mobile, ATM). Device fingerprinting, velocity checks. Theo Thông tư 18/2019.",
     department: "Information Technology",
-    criticality: "critical",
+    criticality: "high",
     frequency: "once",
     penalty: "Tổn thất gian lận lớn, đình chỉ kênh",
     tags: ["fraud", "monitoring", "realtime"],
@@ -1557,7 +1557,7 @@ export interface CuratedAssignment {
   title: string;
   description: string;
   departmentIds: string[];
-  priority: "low" | "medium" | "high" | "critical";
+  priority: "low" | "medium" | "high";
   dueOffset: number;
   status: string;
   notes?: string;
@@ -1570,7 +1570,7 @@ export const CURATED_ASSIGNMENTS: CuratedAssignment[] = [
     description:
       "Đánh giá toàn diện tiến độ triển khai Thông tư 14/2025: nâng cấp công cụ tính CAR, phân loại vốn, RWA, bộ đệm, LCR/NSFR. Yêu cầu các khối liên quan báo cáo tiến độ và kế hoạch hoàn thành.",
     departmentIds: ["dept-risk", "dept-finance", "dept-treasury", "dept-it"],
-    priority: "critical",
+    priority: "high",
     dueOffset: -10,
     status: "in_progress",
     notes: "Ưu tiên cao nhất — deadline lộ trình Basel III 2030.",
@@ -1586,7 +1586,7 @@ export const CURATED_ASSIGNMENTS: CuratedAssignment[] = [
       "dept-audit",
       "dept-internal-control",
     ],
-    priority: "critical",
+    priority: "high",
     dueOffset: 30,
     status: "acknowledged",
     notes: "Thông tư 83 có hiệu lực từ 01/07/2026 — cần đánh giá ngay.",
@@ -1597,7 +1597,7 @@ export const CURATED_ASSIGNMENTS: CuratedAssignment[] = [
     description:
       "Rà soát toàn bộ chương trình AML/CFT: KYC/CDD, UBO, customer risk rating, correspondent banking, CTR/STR, ongoing monitoring. Đánh giá tuân thủ từng điều khoản của Luật Phòng chống rửa tiền 2022.",
     departmentIds: ["dept-aml", "dept-compliance", "dept-risk"],
-    priority: "critical",
+    priority: "high",
     dueOffset: -20,
     status: "in_progress",
     notes: "Luật có hiệu lực từ 03/2023 — cần rà soát tuân thủ đầy đủ.",
@@ -1649,7 +1649,7 @@ export const CURATED_ASSIGNMENTS: CuratedAssignment[] = [
     description:
       "Rà soát toàn diện tuân thủ Luật TCTD 2024: kiểm soát nội bộ (Điều 57), kiểm soát gian lận (Điều 55), quản trị, quản lý rủi ro. Đánh giá gap và kế hoạch khắc phục.",
     departmentIds: ["dept-legal", "dept-risk", "dept-compliance", "dept-board"],
-    priority: "critical",
+    priority: "high",
     dueOffset: 60,
     status: "published",
     notes: "Luật nền tảng — tất cả thông tư SBV đều dựa trên Luật này.",
@@ -1706,7 +1706,7 @@ export interface CuratedObligation {
   articleRef: string;
   title: string;
   description: string;
-  riskLevel: "low" | "medium" | "high" | "critical";
+  riskLevel: "low" | "medium" | "high";
   dueOffset: number;
   status: string;
   /** Optional richer fields ported from the legacy compliance-obligation
@@ -1725,7 +1725,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Tính toán CET1, Tier 1, Total Capital Ratio theo Basel III",
     description:
       "Cập nhật công cụ tính CAR với định nghĩa vốn Basel III mới. Phân loại công cụ vốn, giảm trừ goodwill và dự trữ.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -10,
     status: "cap_in_progress",
   },
@@ -1755,7 +1755,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Đảm bảo LCR ≥ 100% và NSFR ≥ 100%",
     description:
       "Thu thập dữ liệu HQLA. Nâng cấp hệ thống treasury. Thử nghiệm áp lực thanh khoản.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -5,
     status: "cap_in_progress",
   },
@@ -1787,7 +1787,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Thiết lập ba tuyến phòng vệ (3LoD)",
     description:
       "Định nghĩa tuyến 1 (business), tuyến 2 (risk/compliance), tuyến 3 (audit). Áp dụng risk taxonomy.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -15,
     status: "cap_in_progress",
   },
@@ -1797,7 +1797,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Bổ nhiệm CRO và bộ phận quản lý rủi ro độc lập",
     description:
       "Bổ nhiệm CRO đủ năng lực. Thiết lập bộ phận risk độc lập. Triển khai mô hình lượng hóa rủi ro.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: 25,
     status: "submitted",
   },
@@ -1849,7 +1849,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "CDD/KYC đầy đủ cho tất cả khách hàng",
     description:
       "Thu thập thông tin nhận dạng. Nâng cấp eKYC. Lưu trữ trường KYC bắt buộc.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -20,
     status: "cap_in_progress",
   },
@@ -1869,7 +1869,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Customer Risk Rating model",
     description:
       "Scorecard rủi ro. PEP screening. EDD cho high-risk. SDD cho low-risk.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -10,
     status: "cap_in_progress",
   },
@@ -1889,7 +1889,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Quy trình STR và báo cáo FIU",
     description:
       "Red-flag rules tự động. AML Compliance Officer. Workflow escalation. Báo cáo điện tử.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -5,
     status: "cap_in_progress",
   },
@@ -1951,7 +1951,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Kiểm soát giao dịch trực tuyến và ngăn ngừa gian lận",
     description:
       "Giám sát giao dịch bất thường. Cảnh báo gian lận. Hệ thống phát hiện real-time.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -30,
     status: "cap_in_progress",
   },
@@ -2042,7 +2042,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     title: "Hệ thống kiểm soát nội bộ theo Luật TCTD",
     description:
       "ICS toàn doanh nghiệp. Three lines of defense. Kiểm toán nội bộ độc lập.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -50,
     status: "completed",
   },
@@ -2073,7 +2073,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     articleRef: "Điều 23",
     title: "Đảm bảo LCR ≥ 100%",
     description: "Dữ liệu HQLA. Hệ thống giám sát LCR. Báo cáo hàng ngày.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -7,
     status: "cap_in_progress",
   },
@@ -2146,7 +2146,7 @@ const CURATED_OBLIGATIONS_BASE: CuratedObligation[] = [
     articleRef: "Điều 16",
     title: "Xây dựng scorecard phân loại khách hàng AML",
     description: "Scorecard rủi ro. Trọng số. Điểm cắt low/medium/high.",
-    riskLevel: "critical",
+    riskLevel: "high",
     dueOffset: -12,
     status: "cap_in_progress",
   },
@@ -2262,7 +2262,7 @@ export interface CuratedCAP {
   complianceIndex: number;
   title: string;
   description: string;
-  priority: "low" | "medium" | "high" | "critical";
+  priority: "low" | "medium" | "high";
   rootCause: string;
   actionTitles: string[];
   dueOffset: number;
@@ -2276,7 +2276,7 @@ export const CURATED_CAPS: CuratedCAP[] = [
     title: "Khắc phục chậm trễ nâng cấp hệ thống tính CAR Basel III",
     description:
       "Hệ thống tính CAR chưa được cập nhật đầy đủ theo định nghĩa vốn Basel III. RWA tính sai do hệ số rủi ro cũ. Cần nâng cấp gấp để đáp ứng deadline Thông tư 14/2025.",
-    priority: "critical",
+    priority: "high",
     rootCause:
       "Thiếu nguồn lực IT và chưa phân bổ ngân sách kịp thời cho dự án nâng cấp capital engine.",
     actionTitles: [
@@ -2313,7 +2313,7 @@ export const CURATED_CAPS: CuratedCAP[] = [
     title: "Khắc phục LCR dưới ngưỡng 100%",
     description:
       "Tỷ lệ đủ vốn ngắn hạn (LCR) giảm xuống dưới 100% do thiếu dữ liệu HQLA chính xác và chiến lược cấp vốn chưa tối ưu. Cần kế hoạch khắc phục gấp.",
-    priority: "critical",
+    priority: "high",
     rootCause:
       "Hệ thống treasury chưa theo dõi HQLA real-time; chiến lược funding quá phụ thuộc vào nguồn vốn ngắn hạn.",
     actionTitles: [
@@ -2332,7 +2332,7 @@ export const CURATED_CAPS: CuratedCAP[] = [
     title: "Thiết lập ba tuyến phòng vệ (3LoD) cho ICS",
     description:
       "Cấu trúc quản trị chưa phân chia rõ 3LoD. Tuyến 1 và tuyến 2 chồng chéo trách nhiệm. Tuyến 3 thiếu độc lập. Cần tái cơ cấu theo Thông tư 83/2025.",
-    priority: "critical",
+    priority: "high",
     rootCause:
       "Tổ chức hiện tại không phân chia rõ ràng vai trò business (1LoD), risk/compliance (2LoD), và audit (3LoD).",
     actionTitles: [
@@ -2370,7 +2370,7 @@ export const CURATED_CAPS: CuratedCAP[] = [
     title: "Khắc phục thiếu hụt dữ liệu KYC cho khách hàng hiện tại",
     description:
       "Nhiều khách hàng hiện tại thiếu thông tin KYC đầy đủ theo Điều 10 Luật AML 2022. Cần bổ sung gấp để đáp ứng yêu cầu CDD.",
-    priority: "critical",
+    priority: "high",
     rootCause:
       "Quy trình onboarding cũ không thu thập đủ trường KYC; thiếu hệ thống eKYC tự động.",
     actionTitles: [
@@ -2389,7 +2389,7 @@ export const CURATED_CAPS: CuratedCAP[] = [
     title: "Khắc phục Customer Risk Rating chưa được phê duyệt",
     description:
       "Mô hình phân loại khách hàng theo rủi ro AML chưa hoàn thiện. Scorecard thiếu trọng số. PEP screening chưa tích hợp. Cần hoàn thiện và phê duyệt gấp.",
-    priority: "critical",
+    priority: "high",
     rootCause:
       "Thiếu chuyên gia AML analytics; mô hình scorecard được phát triển nội bộ nhưng chưa được validate độc lập.",
     actionTitles: [
@@ -2408,7 +2408,7 @@ export const CURATED_CAPS: CuratedCAP[] = [
     title: "Khắc phục quy trình STR không đáp ứng thời hạn",
     description:
       "Quy trình STR hiện tại thủ công, không đáp ứng thời hạn báo cáo FIU. Thiếu red-flag rules tự động. Cần tự động hóa toàn bộ workflow STR.",
-    priority: "critical",
+    priority: "high",
     rootCause:
       "Hệ thống AML monitoring cũ, thiếu rules engine tự động; STR được soạn thủ công bởi AML team.",
     actionTitles: [
@@ -2447,7 +2447,7 @@ export const CURATED_CAPS: CuratedCAP[] = [
       "Khắc phục hệ thống giám sát gian lận thời gian thực chưa hoàn thiện",
     description:
       "Hệ thống fraud monitoring hiện tại chỉ rule-based, thiếu ML models. Không giám sát real-time trên tất cả kênh. Tỷ lệ false positive cao.",
-    priority: "critical",
+    priority: "high",
     rootCause:
       "Hệ thống fraud detection cũ, chỉ dựa trên static rules; thiếu đầu tư vào ML/analytics và data lake.",
     actionTitles: [

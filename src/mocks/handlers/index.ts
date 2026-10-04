@@ -13,6 +13,7 @@ import { commentHandlers } from "./comment_handlers";
 import { assignmentHandlers } from "./assignment_handlers";
 import { obligationHandlers } from "./obligation_handlers";
 import { fileHandlers } from "./file_handlers";
+import { cmsHandlers } from "./cms_handlers";
 
 export const handlers = [
   ...authHandlers,
@@ -30,4 +31,5 @@ export const handlers = [
   ...assignmentHandlers,
   ...obligationHandlers,
   ...fileHandlers,
+  ...cmsHandlers,
 ];

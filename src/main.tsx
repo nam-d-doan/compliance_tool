@@ -2,6 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
+import {
+  setTranslatorLanguage,
+  startTranslator,
+  useLanguageStore,
+} from "./i18n";
 
 async function purgeServiceWorkersAndCaches(): Promise<void> {
   if (!("serviceWorker" in navigator)) return;
@@ -50,6 +55,10 @@ async function enableMocking() {
     console.info("[MSW] Mock worker started");
   }
 }
+
+// Vietnamese / English interface (see src/i18n/translator.ts).
+startTranslator(useLanguageStore.getState().language);
+useLanguageStore.subscribe((s) => setTranslatorLanguage(s.language));
 
 enableMocking().then(() => {
   createRoot(document.getElementById("root")!).render(

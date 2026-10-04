@@ -34,6 +34,13 @@ const actionIcons: Record<AuditLog["action"], LucideIcon> = {
   ai_usage: Cpu,
   export: Activity,
   settings_change: Server,
+  submit: Activity,
+  return: Activity,
+  escalate: Shield,
+  acknowledge: CheckCircle,
+  sync: Database,
+  assign: Activity,
+  override: Shield,
 };
 
 const actionColors: Record<AuditLog["action"], string> = {
@@ -50,6 +57,16 @@ const actionColors: Record<AuditLog["action"], string> = {
     "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
   export: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
   settings_change:
+    "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  submit: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  return:
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  escalate: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  acknowledge:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+  sync: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+  assign: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  override:
     "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
 };
 

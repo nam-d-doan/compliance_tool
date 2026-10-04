@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore, useThemeStore } from "@/stores";
 import { AuthService } from "@/services/auth_service";
-import { useNotifications } from "@/hooks/queries";
-import { getNavPillsForRole } from "@/constants/navPills";
+import { useCmsOverview, useNotifications } from "@/hooks/queries";
+import { DemoClock, GlobalSearch } from "@/components/cms";
+import { activePillKey, getNavPillsForRole } from "@/constants/navPills";
+import { LanguageSwitch } from "./LanguageSwitch";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,19 +49,33 @@ export function TopNav() {
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   const pills = getNavPillsForRole(role);
+  const activeKey = activePillKey(pills, location.pathname);
   const tabCounts = useTabActionCounts();
+  const { data: cms } = useCmsOverview();
+
+  // Ctrl/Cmd + K opens the repository search from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const pillCount = (key: string): number => {
     switch (key) {
+      // Grouped tabs add up the items of every page in their sub-menu.
+      case "legal":
+        return (cms?.legalUpdates.unread ?? 0) + tabCounts.assignments;
+      case "qdnb":
+        return cms?.revisions.overdue ?? 0;
       case "regulations":
-        return tabCounts.regulations;
-      case "assignments":
-        return tabCounts.assignments;
-      case "obligations":
-        return tabCounts.obligations;
-      case "cap":
-        return tabCounts.caps;
-      case "ncc":
-        return tabCounts.nccs;
+        return tabCounts.regulations + tabCounts.obligations;
+      case "issues":
+        return tabCounts.nccs + tabCounts.caps;
       default:
         return 0;
     }
@@ -100,11 +115,7 @@ export function TopNav() {
         <div className="flex min-w-0 flex-1 justify-center">
           <nav className="relative flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[18px] border bg-[var(--nav-bg)] px-2.5 py-1.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {pills.map((pill) => {
-              const isActive =
-                location.pathname === pill.path ||
-                pill.matchPrefixes?.some((p) =>
-                  location.pathname.startsWith(p),
-                );
+              const isActive = pill.key === activeKey;
               return (
                 <Link
                   key={pill.key}
@@ -120,7 +131,10 @@ export function TopNav() {
                   <pill.icon className="size-3.5" />
                   {/* On cramped widths, hide the label for inactive tabs; keep
                       it for the active tab so the current location is obvious. */}
-                  <span className={isActive ? "inline" : "hidden xl:inline"}>
+                  <span
+                    className={isActive ? "inline" : "hidden xl:inline"}
+                    data-vi={pill.labelVi}
+                  >
                     {pill.label}
                   </span>
                   {(() => {
@@ -142,32 +156,17 @@ export function TopNav() {
         </div>
 
         <div className="flex shrink-0 flex-nowrap items-center gap-2.5">
-          <div
-            className={cn(
-              "flex h-[38px] items-center gap-2 overflow-hidden rounded-[19px] border bg-[var(--nav-bg)] px-3 shadow-[var(--card-shadow)] backdrop-blur-xl transition-[width] duration-200 [border-color:var(--nav-border)]",
-              searchOpen ? "w-[220px]" : "w-[38px]",
-            )}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search (Ctrl+K)"
+            title="Search laws, QĐNB and issues (Ctrl+K)"
+            className="flex size-[38px] shrink-0 items-center justify-center rounded-full border bg-[var(--nav-bg)] text-muted-foreground shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
           >
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                if (!searchOpen) setSearchOpen(true);
-              }}
-              className="shrink-0 text-muted-foreground"
-              aria-label="Search"
-            >
-              <Search className="size-[15px]" />
-            </button>
-            {searchOpen && (
-              <Input
-                autoFocus
-                placeholder="Search obligations, regulations…"
-                className="h-auto border-none bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
-                onBlur={() => setSearchOpen(false)}
-              />
-            )}
-          </div>
+            <Search className="size-[15px]" />
+          </button>
+
+          <DemoClock />
 
           <button
             type="button"
@@ -187,6 +186,8 @@ export function TopNav() {
               </span>
             )}
           </button>
+
+          <LanguageSwitch />
 
           <button
             type="button"
@@ -299,6 +300,7 @@ export function TopNav() {
         open={notificationsOpen}
         onOpenChange={setNotificationsOpen}
       />
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }

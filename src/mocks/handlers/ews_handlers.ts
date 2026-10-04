@@ -190,7 +190,7 @@ export async function handleGetEWSReport({ request }: { request: Request }) {
     else existing.closed++;
     severityMap.set(n.severity, existing);
   });
-  const severityOrder = ["critical", "high", "medium", "low"];
+  const severityOrder = ["high", "medium", "low"];
   const bySeverity = Array.from(severityMap.values()).sort(
     (a, b) =>
       severityOrder.indexOf(a.severity) - severityOrder.indexOf(b.severity),

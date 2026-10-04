@@ -9,6 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrgUnits, useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { PRIORITY_LEVELS } from "@/constants/status";
+import {
+  ISSUE_SOURCES,
+  ISSUE_SOURCE_LABELS,
+  VIOLATION_CATEGORIES,
+} from "@/lib/cms-rules";
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
@@ -22,6 +27,10 @@ const nccSchema = z.object({
   dueDate: z.string().min(1, "Due date is required"),
   linkedDocs: z.string().optional(),
   tags: z.string().optional(),
+  source: z.string().min(1, "Source is required"),
+  sourceRef: z.string().optional(),
+  category: z.string().min(1, "Category is required"),
+  regulationRef: z.string().optional(),
 });
 
 export type NCCFormValues = z.infer<typeof nccSchema>;
@@ -34,6 +43,8 @@ export interface NCCFormProps {
   submitLabel?: string;
   /** When editing, disable the owner unit select (owner unit shouldn't change after creation). */
   lockOwnerUnit?: boolean;
+  /** Extra content rendered above the buttons (e.g. the risk rating panel). */
+  children?: React.ReactNode;
 }
 
 export function NCCForm({
@@ -43,6 +54,7 @@ export function NCCForm({
   isSubmitting,
   submitLabel = "Create Case",
   lockOwnerUnit = false,
+  children,
 }: NCCFormProps) {
   const orgUnitsQuery = useOrgUnits();
   const usersQuery = useAdminUsers(1, 200, { status: "Active" });
@@ -63,6 +75,8 @@ export function NCCForm({
       dueDate: format(addDays(new Date(), 30), "yyyy-MM-dd"),
       tags: "",
       linkedDocs: "",
+      source: "compliance_monitoring",
+      category: "",
       ...defaultValues,
     },
   });
@@ -98,25 +112,61 @@ export function NCCForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ncc-severity">Severity</Label>
+          <Label htmlFor="ncc-source">Source</Label>
           <Controller
-            name="severity"
+            name="source"
             control={control}
             render={({ field }) => (
-              <select id="ncc-severity" {...field} className={selectClass}>
-                {PRIORITY_LEVELS.map((p) => (
-                  <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+              <select id="ncc-source" {...field} className={selectClass}>
+                {ISSUE_SOURCES.map((src) => (
+                  <option key={src} value={src}>
+                    {ISSUE_SOURCE_LABELS[src]}
                   </option>
                 ))}
               </select>
             )}
           />
-          {errors.severity && (
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ncc-sourceRef">Source reference</Label>
+          <Input
+            id="ncc-sourceRef"
+            {...register("sourceRef")}
+            placeholder="e.g. KL 145/KL-TTGSNH, BC KTNB 22/2026"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ncc-category">Issue category</Label>
+          <Controller
+            name="category"
+            control={control}
+            render={({ field }) => (
+              <select id="ncc-category" {...field} className={selectClass}>
+                <option value="">Select from the violation catalog</option>
+                {VIOLATION_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+          {errors.category && (
             <p className="text-xs text-destructive">
-              {errors.severity.message}
+              {errors.category.message}
             </p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ncc-regulationRef">Linked law / QĐNB article</Label>
+          <Input
+            id="ncc-regulationRef"
+            {...register("regulationRef")}
+            placeholder="e.g. QĐ 0950/2024/QĐ-TGĐ – Bước 2"
+          />
         </div>
 
         <div className="space-y-2">
@@ -217,6 +267,8 @@ export function NCCForm({
           />
         </div>
       </div>
+
+      {children}
 
       <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
         {onCancel && (

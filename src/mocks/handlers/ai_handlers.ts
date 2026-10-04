@@ -54,7 +54,7 @@ const COPILOT_RESPONSES = [
   {
     keywords: ["risk", "highest", "month"],
     content:
-      "The highest compliance risks this month are concentrated in Treasury (3 critical overdue obligations) and Operations (2 open CAPs past due date). I recommend escalation to the regional manager.",
+      "The highest compliance risks this month are concentrated in Treasury (3 high-risk overdue obligations) and Operations (2 open CAPs past due date). I recommend escalation to the regional manager.",
     followups: ["Show Treasury obligations", "Summarize open CAPs"],
   },
   {
@@ -283,7 +283,7 @@ export async function handleAiRegulationImpact({
 
 export async function handleAiExecutiveSummary() {
   await getDelay(500, 900);
-  const summary = `Enterprise compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 critical items.`;
+  const summary = `Enterprise compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 high-risk items.`;
   return jsonResponse({ summary, explanation: createExplanation(summary) });
 }
 

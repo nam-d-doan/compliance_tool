@@ -33,7 +33,7 @@ const schema = z.object({
   approverId: z.string().min(1, "Select an approver"),
   frequency: z.enum(FREQUENCIES),
   dueDate: z.string().min(1, "Due date is required"),
-  criticality: z.enum(["low", "medium", "high", "critical"] as const),
+  criticality: z.enum(["low", "medium", "high"] as const),
   penalty: z.string().min(1, "Penalty is required"),
   tags: z.string().optional(),
 });
@@ -366,7 +366,6 @@ export function ComplianceForm({
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
-                <option value="critical">Critical</option>
               </select>
             )}
           />

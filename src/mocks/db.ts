@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { addDays, subDays, formatISO } from "date-fns";
+import { addDays, subDays, formatISO, startOfDay } from "date-fns";
 import { DEMO_USERS } from "@/constants/demo-users";
 import { CAP_STATUSES, USER_STATUSES } from "@/constants/status";
 import type {
@@ -24,7 +24,31 @@ import type {
   Obligation,
   FileAttachment,
   NonComplianceCase,
+  LegalUpdate,
+  InternalRegulation,
+  RevisionTask,
+  IcisFinding,
+  RiskMatrix,
+  EscalationRule,
+  ReportTemplate,
+  ScheduledReport,
 } from "@/types";
+import {
+  generateRiskMatrices,
+  generateEscalationRules,
+  generateInternalRegulations,
+  generateLegalUpdates,
+  generateIncomingLegalQueue,
+  generateRevisionTasks,
+  generateIcisFindings,
+  generateIssues,
+  generateReportTemplates,
+  generateScheduledReports,
+} from "@/mocks/cms-seed";
+import {
+  generateCmsAuditLogs,
+  generateCmsNotifications,
+} from "@/mocks/cms-engine";
 import {
   CURATED_REGULATIONS,
   CURATED_DEPENDENCIES,
@@ -35,12 +59,13 @@ import {
 
 faker.seed(42);
 
-// Fixed reference date (not `new Date()`) so every reload, tab, and device
-// generates byte-identical demo data — due dates and "days remaining" are
-// computed relative to this, not real wall-clock time. Other mock handlers
-// that compute overdue/derived stats against seed data should import this
-// rather than calling `new Date()` directly, to stay consistent with it.
-export const DEMO_TODAY = new Date("2026-07-11T00:00:00.000Z");
+// Reference date for the seed data: the start of the real current day, so
+// due dates and "days remaining" look the same whenever the demo is
+// presented (the UI compares against the real date + demo clock offset).
+// Data is still deterministic within a day. Other mock handlers that compute
+// overdue/derived stats against seed data should import this rather than
+// calling `new Date()` directly, to stay consistent with it.
+export const DEMO_TODAY = startOfDay(new Date());
 const today = DEMO_TODAY;
 
 const DEPARTMENTS = [
@@ -121,16 +146,6 @@ function randomDate(start: Date, end: Date): Date {
 
 function pick<T>(arr: readonly T[]): T {
   return faker.helpers.arrayElement(arr);
-}
-
-function weightedPick<T>(items: { item: T; weight: number }[]): T {
-  const total = items.reduce((sum, i) => sum + i.weight, 0);
-  let random = faker.number.float({ min: 0, max: total });
-  for (const { item, weight } of items) {
-    random -= weight;
-    if (random <= 0) return item;
-  }
-  return items[items.length - 1].item;
 }
 
 function uid(prefix: string): string {
@@ -593,209 +608,35 @@ function generateFiles(caps: CAP[]): FileAttachment[] {
   return files;
 }
 
-const NCC_TITLES = [
-  "Failure to submit monthly AML report",
-  "Incomplete KYC documentation for corporate client",
-  "Delayed regulatory filing",
-  "Breach of transaction monitoring thresholds",
-  "Missing risk assessment for high-value transaction",
-  "Non-compliance with capital adequacy reporting",
-  "Failure to conduct periodic compliance training",
-  "Inadequate customer due diligence records",
-  "Late submission of suspicious activity report",
-  "Violation of sanctions screening requirements",
-  "Incomplete regulatory capital disclosure",
-  "Failure to report large cash transactions",
-  "Non-compliance with data retention policy",
-  "Missing board-approved risk management policy",
-  "Breach of lending limit regulations",
-  "Inadequate internal controls over financial reporting",
-  "Failure to reconcile regulatory accounts",
-  "Non-compliance with foreign exchange reporting",
-  "Missing anti-bribery compliance certification",
-  "Delayed implementation of regulatory directive",
-  "Breach of customer information confidentiality",
-  "Inadequate whistleblower protection procedures",
-  "Failure to maintain minimum reserve requirements",
-  "Non-compliance with consumer protection regulations",
-] as const;
-
-const NCC_TAGS = [
-  "audit",
-  "regulatory",
-  "operational",
-  "procedural",
-  "systemic",
-] as const;
-
-const NCC_RESOLUTIONS = [
-  "Root cause identified and corrective action plan implemented. Staff retrained on reporting procedures.",
-  "Process updated to include automated reminders. All missing documentation retrieved and filed.",
-  "Policy revised and approved by the compliance committee. Monitoring controls strengthened.",
-  "Issue remediated through system upgrade. Post-implementation review confirmed compliance.",
-  "Control deficiency addressed via additional review layer. No recurrence observed in subsequent audits.",
-  "Regulatory filing completed with explanatory note. Preventive controls deployed to avoid future delays.",
-] as const;
-
-function generateNCCs(
-  organizationSettings: OrganizationSettings,
-  users: UserProfile[],
-  count = 24,
-): NonComplianceCase[] {
-  const { hoDepartments, branches } = organizationSettings;
-  const items = Array.from({ length: count }, (_, i) => {
-    // ~40% HO department, ~60% branch.
-    const isHo = faker.number.float({ min: 0, max: 1 }) < 0.4;
-    const unit = isHo
-      ? { dept: pick(hoDepartments), branch: undefined }
-      : { dept: undefined, branch: pick(branches) };
-    const ownerUnitId = unit.branch?.id ?? unit.dept!.id;
-    const ownerUnitName = unit.branch?.name ?? unit.dept!.name;
-    const ownerUnitType: NonComplianceCase["ownerUnitType"] = unit.branch
-      ? "branch"
-      : "ho_department";
-    const ownerUnitRegion = unit.branch?.region;
-
-    const owner = pick(users);
-    const createdAt = randomDate(subDays(today, 200), subDays(today, 3));
-    const status: NonComplianceCase["status"] = weightedPick([
-      { item: "Open", weight: 65 },
-      { item: "Closed", weight: 35 },
-    ]);
-
-    // Due dates: for Open cases ~40% past due (overdue), rest today/future.
-    // For Closed cases, due date can be anything.
-    let dueDate: Date;
-    if (status === "Open" && faker.number.float({ min: 0, max: 1 }) < 0.4) {
-      dueDate = subDays(today, faker.number.int({ min: 1, max: 30 }));
-    } else if (status === "Open") {
-      dueDate = addDays(today, faker.number.int({ min: 0, max: 90 }));
-    } else {
-      dueDate = addDays(createdAt, faker.number.int({ min: 10, max: 120 }));
-    }
-
-    const fileIds: string[] =
-      faker.number.float({ min: 0, max: 1 }) < 0.3
-        ? Array.from(
-            { length: faker.number.int({ min: 1, max: 2 }) },
-            () => `file-${crypto.randomUUID()}`,
-          )
-        : [];
-
-    const tags: string[] =
-      faker.number.float({ min: 0, max: 1 }) < 0.4
-        ? faker.helpers.arrayElements(
-            NCC_TAGS,
-            faker.number.int({ min: 1, max: 2 }),
-          )
-        : [];
-
-    const linkedDocs: string | undefined =
-      faker.number.float({ min: 0, max: 1 }) < 0.2
-        ? `See compliance report Q${faker.number.int({ min: 1, max: 4 })}-${today.getFullYear()}`
-        : undefined;
-
-    const closedAt =
-      status === "Closed" ? iso(randomDate(createdAt, today)) : undefined;
-    const resolution = status === "Closed" ? pick(NCC_RESOLUTIONS) : undefined;
-
-    return {
-      id: uid("ncc"),
-      nccId: `NCC-${today.getFullYear()}-${pad(i + 1)}`,
-      title: pick(NCC_TITLES),
-      description: faker.lorem.sentences(2),
-      severity: faker.helpers.weightedArrayElement([
-        { weight: 25, value: "low" },
-        { weight: 35, value: "medium" },
-        { weight: 30, value: "high" },
-        { weight: 10, value: "critical" },
-      ]),
-      ownerUnitId,
-      ownerUnitName,
-      ownerUnitType,
-      ownerUnitRegion,
-      ownerId: owner.id,
-      ownerName: owner.name,
-      dueDate: iso(dueDate),
-      status,
-      resolution,
-      fileIds,
-      linkedDocs,
-      closedAt,
-      tags,
-      createdAt: iso(createdAt),
-      updatedAt: iso(randomDate(createdAt, today)),
-    };
-  });
-
-  // Newest first.
-  items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  return items;
-}
-
-function generateNotifications(
-  users: UserProfile[],
-  count = 30,
-): Notification[] {
-  const types = ["approval", "compliance", "cap", "ai", "system"] as const;
+/**
+ * Session (login/logout) history. Business actions are generated from the
+ * CMS seed in `generateCmsAuditLogs` and recorded live by the handlers.
+ */
+function generateSessionLogs(users: UserProfile[], count = 60): AuditLog[] {
+  const now = new Date();
   return Array.from({ length: count }, () => {
     const user = pick(users);
-    const type = pick(types);
-    const createdAt = randomDate(subDays(today, 14), today);
-    return {
-      id: uid("ntf"),
-      userId: user.id,
-      title: `${type.charAt(0).toUpperCase() + type.slice(1)} notification`,
-      description: faker.lorem.sentence(),
-      type,
-      read: faker.datatype.boolean(0.4),
-      entityType: pick(["compliance", "cap", "regulation"]),
-      entityId: uid("ent"),
-      actionUrl: "#",
-      createdAt: iso(createdAt),
-      updatedAt: iso(createdAt),
-    };
-  });
-}
-
-function generateAuditLogs(users: UserProfile[], count = 200): AuditLog[] {
-  const actions = [
-    "login",
-    "logout",
-    "create",
-    "update",
-    "delete",
-    "approve",
-    "ai_usage",
-    "export",
-    "settings_change",
-  ] as const;
-  const modules = [
-    "compliance",
-    "cap",
-    "regulation",
-    "report",
-    "admin",
-    "auth",
-    "ai",
-  ] as const;
-  return Array.from({ length: count }, () => {
-    const user = pick(users);
-    const timestamp = randomDate(subDays(today, 90), today);
+    const timestamp = randomDate(subDays(now, 60), now);
+    const action = faker.datatype.boolean(0.6) ? "login" : "logout";
+    const failed = action === "login" && faker.datatype.boolean(0.04);
     return {
       id: uid("aud"),
       timestamp: iso(timestamp),
       userId: user.id,
       userName: user.name,
-      action: pick(actions),
-      object: faker.lorem.words(2),
-      module: pick(modules),
+      action,
+      object: "Session",
+      module: "auth",
       ip: faker.internet.ip(),
-      result: faker.datatype.boolean(0.95) ? "success" : "failure",
-      details: faker.lorem.sentence(),
+      result: failed ? "failure" : "success",
+      details: failed
+        ? "Login failed — wrong MFA code"
+        : action === "login"
+          ? "Signed in with SSO + MFA"
+          : "Signed out",
       createdAt: iso(timestamp),
       updatedAt: iso(timestamp),
-    };
+    } satisfies AuditLog;
   });
 }
 
@@ -1116,6 +957,19 @@ export interface MockDb {
   organizations: Organization[];
   aiConfig: AIConfig;
   organizationSettings: OrganizationSettings;
+  // CMS (RFQ Phụ lục 1)
+  legalUpdates: LegalUpdate[];
+  /** Documents waiting in the simulated feed; "Sync now" pulls them in. */
+  incomingLegalQueue: LegalUpdate[];
+  internalRegulations: InternalRegulation[];
+  revisionTasks: RevisionTask[];
+  icisFindings: IcisFinding[];
+  /** ICIS findings waiting upstream; "Sync now" pulls them in. */
+  incomingIcisQueue: IcisFinding[];
+  riskMatrices: RiskMatrix[];
+  escalationRules: EscalationRule[];
+  reportTemplates: ReportTemplate[];
+  scheduledReports: ScheduledReport[];
   generateTimelineFor: typeof generateTimelineFor;
   generateCommentsFor: typeof generateCommentsFor;
 }
@@ -1130,7 +984,34 @@ export function getDb(): MockDb {
   const regulationDependencies = generateRegulationDependencies(regulations);
   const relatedRegs = buildRegulationRelatedIndex(regulationDependencies);
   const organizationSettings = generateOrganizationSettings();
-  const nccs = generateNCCs(organizationSettings, users);
+  const riskMatrices = generateRiskMatrices();
+  const escalationRules = generateEscalationRules();
+  const activeMatrix = riskMatrices.find((m) => m.status === "active")!;
+  const nccs = generateIssues(
+    organizationSettings,
+    users,
+    activeMatrix,
+    escalationRules,
+  );
+  const internalRegulations = generateInternalRegulations(organizationSettings);
+  const legalUpdates = generateLegalUpdates();
+  const incomingLegalQueue = generateIncomingLegalQueue();
+  const revisionTasks = generateRevisionTasks(
+    internalRegulations,
+    legalUpdates,
+    organizationSettings,
+  );
+  revisionTasks
+    .filter((t) => t.status !== "issued" && t.qdnbId)
+    .forEach((t) => {
+      const q = internalRegulations.find((r) => r.id === t.qdnbId);
+      if (q) q.activeRevisionId = t.id;
+    });
+  const allIcis = generateIcisFindings(organizationSettings);
+  const incomingIcisQueue = allIcis
+    .filter((f) => f.status === "pending")
+    .slice(4);
+  const icisFindings = allIcis.filter((f) => !incomingIcisQueue.includes(f));
   const assignments = generateAssignments(
     regulations,
     users,
@@ -1144,8 +1025,17 @@ export function getDb(): MockDb {
   );
   const caps = generateCAPs(obligations, users, relatedRegs);
   const files = generateFiles(caps);
-  const notifications = generateNotifications(users);
-  const auditLogs = generateAuditLogs(users);
+  const notifications = generateCmsNotifications(
+    legalUpdates,
+    revisionTasks,
+    nccs,
+  );
+  const auditLogs = [
+    ...generateSessionLogs(users),
+    ...generateCmsAuditLogs(users, legalUpdates, revisionTasks, nccs),
+  ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  const reportTemplates = generateReportTemplates();
+  const scheduledReports = generateScheduledReports();
   const roles = generateRoles();
   const organizations = generateOrganizations();
   const aiConfig = generateAIConfig();
@@ -1165,6 +1055,16 @@ export function getDb(): MockDb {
     organizations,
     aiConfig,
     organizationSettings,
+    legalUpdates,
+    incomingLegalQueue,
+    internalRegulations,
+    revisionTasks,
+    icisFindings,
+    incomingIcisQueue,
+    riskMatrices,
+    escalationRules,
+    reportTemplates,
+    scheduledReports,
     generateTimelineFor,
     generateCommentsFor,
   };

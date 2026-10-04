@@ -292,8 +292,7 @@ export default function ReportsCAPPage() {
                         <td className="px-3 py-2.5">
                           <PriorityBadge
                             priority={
-                              String(row.priority) as
-                                "low" | "medium" | "high" | "critical"
+                              String(row.priority) as "low" | "medium" | "high"
                             }
                           />
                         </td>

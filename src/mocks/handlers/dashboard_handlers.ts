@@ -1,6 +1,7 @@
 import { http } from "msw";
 import { getDb, DEMO_TODAY } from "@/mocks/db";
 import { isOverdueDueDate } from "@/lib/due-date";
+import { complianceRateOf } from "@/lib/obligation-helpers";
 import {
   getDelay,
   jsonResponse,
@@ -24,14 +25,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
   const pendingApproval = compliance.filter((i) =>
     ["review_required", "submitted"].includes(i.status),
   ).length;
-  const complianceRate = compliance.length
-    ? Math.round(
-        (compliance.filter((i) => ["completed", "approved"].includes(i.status))
-          .length /
-          compliance.length) *
-          1000,
-      ) / 10
-    : 0;
+  const complianceRate = complianceRateOf(compliance);
   const openCaps = caps.filter((i) => i.status !== "Closed").length;
 
   const common: DashboardKPI[] = [
@@ -39,7 +33,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
       id: "compliance-rate",
       title: "Compliance Rate",
       value: `${complianceRate}%`,
-      previousPeriod: "93.8%",
+      previousPeriod: `${Math.round((complianceRate - 1.2) * 10) / 10}%`,
       trend: "up",
       trendPercent: 1.2,
     },
@@ -76,7 +70,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           id: "enterprise-score",
           title: "Enterprise Score",
           value: `${complianceRate}%`,
-          previousPeriod: "93%",
+          previousPeriod: `${Math.round((complianceRate - 3) * 10) / 10}%`,
           trend: "up",
           trendPercent: 3,
         },
@@ -85,7 +79,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "Top Risks",
           value: compliance.filter(
             (i) =>
-              i.riskLevel === "critical" &&
+              i.riskLevel === "high" &&
               isOverdueDueDate(
                 i.dueDate,
                 ["completed", "approved"].includes(i.status),
@@ -136,7 +130,7 @@ function buildKpis(role: string, db: ReturnType<typeof getDb>): DashboardKPI[] {
           title: "High Risk Cases",
           value: compliance.filter(
             (i) =>
-              i.riskLevel === "critical" &&
+              i.riskLevel === "high" &&
               ["review_required", "submitted"].includes(i.status),
           ).length,
         },

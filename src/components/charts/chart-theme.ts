@@ -11,14 +11,13 @@ export const CHART_COLORS = [
 /**
  * Semantic hex colors for risk/severity levels in charts. recharts needs raw
  * color values (not CSS vars) for per-cell fills. Mirrors the tailwind ramp
- * used by PRIORITY_STYLES and RiskHeatmap: emerald -> amber -> orange -> red
- * (low -> medium -> high -> critical).
+ * used by PRIORITY_STYLES and RiskHeatmap: emerald -> amber -> red
+ * (low -> medium -> high), Nam A Bank's 3-level scale.
  */
 export const RISK_CHART_COLORS: Record<string, string> = {
   low: "#10b981",
   medium: "#f59e0b",
-  high: "#f97316",
-  critical: "#ef4444",
+  high: "#ef4444",
 };
 
 export const CHART_TOOLTIP_STYLE = {

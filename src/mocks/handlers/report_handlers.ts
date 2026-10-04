@@ -1,3 +1,4 @@
+import { complianceRateOf } from "@/lib/obligation-helpers";
 import { http } from "msw";
 import { format, addDays } from "date-fns";
 import { getDb, DEMO_TODAY } from "@/mocks/db";
@@ -22,19 +23,13 @@ const today = DEMO_TODAY;
 
 function statusReport(db: ReturnType<typeof getDb>): Report {
   const items = db.obligations;
-  const total = items.length;
-  const completed = items.filter((i) =>
-    ["completed", "approved"].includes(i.status),
-  ).length;
   const submitted = items.filter((i) => i.status === "submitted").length;
   const approved = items.filter((i) => i.status === "approved").length;
   const overdue = items.filter((i) =>
     isOverdueDueDate(i.dueDate, ["completed", "approved"].includes(i.status)),
   ).length;
   const rejected = items.filter((i) => i.status === "rejected").length;
-  const complianceRate = total
-    ? Math.round((completed / total) * 1000) / 10
-    : 0;
+  const complianceRate = complianceRateOf(items);
 
   const kpis: ReportKPI[] = [
     {
@@ -70,8 +65,11 @@ function statusReport(db: ReturnType<typeof getDb>): Report {
   const trendValues = trendLabels.map((_, i) => {
     const variance = Math.sin(i * 0.8) * 2.5;
     return Math.max(
-      80,
-      Math.min(99, Math.round((trendBase + variance) * 10) / 10),
+      0,
+      Math.min(
+        100,
+        Math.round((trendBase - (5 - i) * 0.8 + variance) * 10) / 10,
+      ),
     );
   });
 
@@ -411,12 +409,7 @@ function executiveReport(
   const compliance = db.obligations;
   const caps = db.caps;
   const total = compliance.length;
-  const completed = compliance.filter((i) =>
-    ["completed", "approved"].includes(i.status),
-  ).length;
-  const complianceRate = total
-    ? Math.round((completed / total) * 1000) / 10
-    : 0;
+  const complianceRate = complianceRateOf(compliance);
   const overdue = compliance.filter((i) =>
     isOverdueDueDate(i.dueDate, ["completed", "approved"].includes(i.status)),
   ).length;
@@ -429,7 +422,7 @@ function executiveReport(
     topRisks: compliance
       .filter(
         (i) =>
-          i.riskLevel === "critical" &&
+          i.riskLevel === "high" &&
           isOverdueDueDate(
             i.dueDate,
             ["completed", "approved"].includes(i.status),
@@ -443,7 +436,7 @@ function executiveReport(
         dueDate: i.dueDate,
       })),
     criticalCompliance: compliance
-      .filter((i) => i.riskLevel === "critical")
+      .filter((i) => i.riskLevel === "high")
       .slice(0, 5)
       .map((i) => ({
         id: i.code,
@@ -464,20 +457,15 @@ function executiveReport(
       title: r.title,
       effectiveDate: r.effectiveDate,
       impactScore:
-        r.priority === "critical" ? 95 : r.priority === "high" ? 75 : 50,
+        r.priority === "high" ? 85 : r.priority === "medium" ? 60 : 40,
     })),
     departmentRanking: [...new Set(compliance.map((i) => i.department))]
       .slice(0, 5)
       .map((d) => {
         const deptItems = compliance.filter((i) => i.department === d);
-        const completedDept = deptItems.filter((i) =>
-          ["completed", "approved"].includes(i.status),
-        ).length;
         return {
           department: d,
-          complianceRate: deptItems.length
-            ? Math.round((completedDept / deptItems.length) * 1000) / 10
-            : 0,
+          complianceRate: complianceRateOf(deptItems),
           overdueCount: deptItems.filter((i) =>
             isOverdueDueDate(
               i.dueDate,
@@ -488,10 +476,10 @@ function executiveReport(
         };
       }),
     aiSummary:
-      "Overall compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 critical items.",
+      "Overall compliance improved 3% this month. However, Treasury and Operations continue to show the highest overdue rates. AI recommends reviewing workload allocation and escalating 5 high-risk items.",
     recommendedActions: [
       "Review workload allocation in Treasury — owner capacity is below target.",
-      "Escalate 5 overdue critical obligations to the regional risk committee.",
+      "Escalate 5 overdue high-risk obligations to the regional risk committee.",
       "Add approver capacity to Retail Banking CAPs to reduce closure time.",
     ],
   };
@@ -510,20 +498,17 @@ function executiveReport(
     "Jun",
     "Jul",
   ];
-  const trendValues = [
-    91,
-    92,
-    91,
-    93,
-    94,
-    95,
-    94,
-    95,
-    96,
-    95,
-    96,
-    complianceRate,
-  ];
+  // Gradual improvement leading up to the current rate (illustrative history).
+  const trendValues = Array.from({ length: 12 }, (_, i) =>
+    i === 11
+      ? complianceRate
+      : Math.max(
+          0,
+          Math.round(
+            (complianceRate - (11 - i) * 0.9 + Math.sin(i * 1.3) * 1.5) * 10,
+          ) / 10,
+        ),
+  );
 
   const buData = summary.departmentRanking.map((d) => ({
     name: d.department,
@@ -552,9 +537,7 @@ function executiveReport(
             ? "low"
             : d.complianceRate > 75
               ? "medium"
-              : d.complianceRate > 60
-                ? "high"
-                : "critical",
+              : "high",
       })),
     ),
   };

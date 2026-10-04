@@ -71,7 +71,7 @@ export interface AISuggestedCAP {
   rootCause: string;
   recommendedActions: string[];
   timeline: string;
-  priority: "low" | "medium" | "high" | "critical";
+  priority: "low" | "medium" | "high";
   estimatedEffort: string;
   estimatedCost: number;
   explanation: AIExplanation;

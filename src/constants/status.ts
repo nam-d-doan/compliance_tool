@@ -3,7 +3,6 @@ import {
   AlertCircle,
   Archive,
   ArrowDown,
-  ArrowUp,
   CheckCircle,
   CheckCircle2,
   Circle,
@@ -125,11 +124,12 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
   failure: { label: "Failure", icon: XCircle, ...danger },
 };
 
+// Nam A Bank's 3-level compliance risk scale (Thấp – Trung bình – Cao),
+// per RFQ Phụ lục 1 group 4. Used for priority, severity and risk alike.
 export const PRIORITY_STYLES: Record<PriorityLevel, StatusStyle> = {
-  low: { label: "Low", icon: ArrowDown, ...neutral },
-  medium: { label: "Medium", icon: Minus, ...info },
-  high: { label: "High", icon: ArrowUp, ...warning },
-  critical: { label: "Critical", icon: ShieldAlert, ...danger },
+  low: { label: "Low", icon: ArrowDown, ...success },
+  medium: { label: "Medium", icon: Minus, ...warning },
+  high: { label: "High", icon: ShieldAlert, ...danger },
 };
 
 /**
@@ -192,7 +192,7 @@ export const USER_STATUSES = [
   "Deactivated",
 ] as const;
 
-export const PRIORITY_LEVELS = ["low", "medium", "high", "critical"] as const;
+export const PRIORITY_LEVELS = ["low", "medium", "high"] as const;
 
 export const ASSIGNMENT_STATUSES = [
   "draft",

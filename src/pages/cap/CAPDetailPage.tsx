@@ -136,8 +136,7 @@ function computeRiskScore(item: CAP): { score: number; reasoning: string[] } {
   const priorityWeight: Record<PriorityLevel, number> = {
     low: 10,
     medium: 25,
-    high: 45,
-    critical: 65,
+    high: 55,
   };
   const daysToDue = differenceInDays(parseISO(item.dueDate), new Date());
   let score =

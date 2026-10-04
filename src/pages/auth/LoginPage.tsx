@@ -3,6 +3,7 @@ import { Sun, Moon, Sparkles, Lock } from "lucide-react";
 import { useThemeStore } from "@/stores";
 import { AuroraBackground } from "@/components/layout/AuroraBackground";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { LanguageSwitch } from "@/components/layout/LanguageSwitch";
 
 const CHAIN_STEPS = [
   { label: "Regulation", color: "#8bd9c2" },
@@ -17,6 +18,8 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-svh items-center justify-center p-6 sm:p-10">
       <AuroraBackground />
+
+      <LanguageSwitch className="fixed top-6 right-[4.25rem] z-10" />
 
       <button
         type="button"

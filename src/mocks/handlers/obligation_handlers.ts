@@ -22,12 +22,7 @@ import type {
   CAP,
 } from "@/types";
 
-const RISK_LEVELS: ObligationRiskLevel[] = [
-  "low",
-  "medium",
-  "high",
-  "critical",
-];
+const RISK_LEVELS: ObligationRiskLevel[] = ["low", "medium", "high"];
 
 const VALID_STATUSES: ObligationStatus[] = [
   "draft",

@@ -39,7 +39,7 @@ export interface RiskHeatmapData {
     row: string;
     col: string;
     value: number;
-    status: "low" | "medium" | "high" | "critical";
+    status: "low" | "medium" | "high";
   }[];
 }
 
@@ -67,7 +67,20 @@ export interface Notification extends BaseEntity {
   userId: string;
   title: string;
   description: string;
-  type: "approval" | "compliance" | "cap" | "ai" | "system";
+  type:
+    | "approval"
+    | "compliance"
+    | "cap"
+    | "ai"
+    | "system"
+    | "legal_update"
+    | "deadline"
+    | "escalation"
+    | "icis";
+  /** Delivery channels used (for the email/Teams preview). */
+  channels?: ("in_app" | "email" | "teams" | "sms")[];
+  /** Recipient label, e.g. a department or "Ban Điều hành & Ban Kiểm soát". */
+  recipient?: string;
   read: boolean;
   entityType?: string;
   entityId?: string;

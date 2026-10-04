@@ -8,7 +8,9 @@ import {
   parseNumber,
   type MockResolverContext,
 } from "./utils";
-import type { NonComplianceCase } from "@/types";
+import { createIssue } from "./cms_handlers";
+import { recordAudit } from "@/mocks/cms-engine";
+import type { CreateNCCInput, NonComplianceCase } from "@/types";
 
 export async function handleGetNCCList({ request }: { request: Request }) {
   await getDelay();
@@ -37,6 +39,13 @@ export async function handleGetNCCList({ request }: { request: Request }) {
   }
   if (q.ownerId) {
     items = items.filter((item) => item.ownerId === q.ownerId);
+  }
+  if (q.source) {
+    const sources = q.source.split(",").map((s) => s.trim());
+    items = items.filter((item) => sources.includes(item.source));
+  }
+  if (q.escalated === "true") {
+    items = items.filter((item) => item.escalations.some((e) => e.level >= 2));
   }
   if (q.dueDateFrom) {
     items = items.filter((item) => item.dueDate >= q.dueDateFrom);
@@ -80,46 +89,37 @@ export async function handleGetNCCDetail({ params }: MockResolverContext) {
 
 export async function handleCreateNCC({ request }: { request: Request }) {
   await getDelay();
-  const body = (await request.json()) as Partial<NonComplianceCase>;
-  const now = new Date().toISOString();
-  const db = getDb();
-
-  // Derive owner unit name/type/region from organization settings.
-  const hoDept = db.organizationSettings.hoDepartments.find(
-    (d) => d.id === body.ownerUnitId,
-  );
-  const branch = db.organizationSettings.branches.find(
-    (b) => b.id === body.ownerUnitId,
-  );
-  const ownerUnitName = hoDept?.name ?? branch?.name ?? "";
-  const ownerUnitType = branch ? "branch" : "ho_department";
-  const ownerUnitRegion = branch?.region;
-
-  const newItem: NonComplianceCase = {
-    id: `ncc-${crypto.randomUUID()}`,
-    nccId: `NCC-${new Date().getFullYear()}-${String(db.nccs.length + 1).padStart(3, "0")}`,
-    title: body.title ?? "Untitled NCC",
-    description: body.description ?? "",
-    severity: body.severity ?? "medium",
-    ownerUnitId: body.ownerUnitId ?? "",
-    ownerUnitName,
-    ownerUnitType,
-    ownerUnitRegion,
-    ownerId: body.ownerId ?? "",
-    ownerName: body.ownerName ?? "",
-    dueDate: body.dueDate ?? now,
-    status: "Open",
-    resolution: undefined,
-    fileIds: body.fileIds ?? [],
-    linkedDocs: body.linkedDocs,
-    closedAt: undefined,
-    tags: body.tags ?? [],
-    createdAt: now,
-    updatedAt: now,
+  const body = (await request.json()) as CreateNCCInput;
+  // Without an explicit assessment, derive neutral scores from the chosen
+  // severity so the issue still lands at that level on the active matrix.
+  const fallbackScore = { low: 1, medium: 3, high: 4 }[
+    body.severity ?? "medium"
+  ];
+  const scores = body.risk?.scores ?? {
+    fine: fallbackScore,
+    reputation: fallbackScore,
+    scope: fallbackScore,
+    recurrence: fallbackScore,
   };
-
-  db.nccs.unshift(newItem);
-  return jsonResponse(newItem, 201);
+  const issue = createIssue({
+    title: body.title ?? "Untitled issue",
+    description: body.description ?? "",
+    category: body.category ?? "Other",
+    source: body.source ?? "compliance_monitoring",
+    sourceRef: body.sourceRef,
+    regulationRef: body.regulationRef,
+    unitId: body.ownerUnitId,
+    ownerId: body.ownerId,
+    ownerName: body.ownerName,
+    dueDate: body.dueDate,
+    scores,
+    overrideLevel: body.risk?.overridden ? body.risk.finalLevel : undefined,
+    overrideReason: body.risk?.overrideReason,
+    tags: body.tags,
+    linkedDocs: body.linkedDocs,
+    fileIds: body.fileIds,
+  });
+  return jsonResponse(issue, 201);
 }
 
 export async function handleUpdateNCC({
@@ -150,6 +150,26 @@ export async function handleUpdateNCC({
   }
 
   db.nccs[index] = next;
+  const changed = (Object.keys(body) as (keyof NonComplianceCase)[]).filter(
+    (k) => String(prev[k] ?? "") !== String(next[k] ?? ""),
+  );
+  if (changed.length) {
+    recordAudit(db.auditLogs, {
+      action: "update",
+      module: "issues",
+      object: next.nccId,
+      details: `Updated ${changed.join(", ")}`,
+      entityType: "ncc",
+      entityId: next.id,
+      changes: changed
+        .filter((k) => typeof next[k] !== "object")
+        .map((k) => ({
+          field: String(k),
+          before: String(prev[k] ?? ""),
+          after: String(next[k] ?? ""),
+        })),
+    });
+  }
   return jsonResponse(next);
 }
 

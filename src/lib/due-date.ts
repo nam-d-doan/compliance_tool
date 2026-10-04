@@ -5,12 +5,13 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
+import { demoNow } from "@/stores/demoClockStore";
 
 /** True when the due date's calendar day is strictly before today. */
 export function isOverdueDueDate(dueDate: string, completed = false): boolean {
   if (completed) return false;
   try {
-    return isBefore(startOfDay(parseISO(dueDate)), startOfDay(new Date()));
+    return isBefore(startOfDay(parseISO(dueDate)), startOfDay(demoNow()));
   } catch {
     return false;
   }
@@ -19,7 +20,7 @@ export function isOverdueDueDate(dueDate: string, completed = false): boolean {
 /** True when the due date falls on today's calendar day. */
 export function isDueToday(dueDate: string): boolean {
   try {
-    return isSameDay(parseISO(dueDate), new Date());
+    return isSameDay(parseISO(dueDate), demoNow());
   } catch {
     return false;
   }
@@ -38,7 +39,7 @@ export function getDueDateTone(
   try {
     const days = differenceInCalendarDays(
       startOfDay(parseISO(dueDate)),
-      startOfDay(new Date()),
+      startOfDay(demoNow()),
     );
     if (days >= 0 && days <= DUE_DATE_SOON_DAYS) return "soon";
   } catch {

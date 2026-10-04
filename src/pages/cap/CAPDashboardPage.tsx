@@ -40,7 +40,6 @@ const PRIORITY_ORDER: Record<PriorityLevel, number> = {
   low: 1,
   medium: 2,
   high: 3,
-  critical: 4,
 };
 
 function countBy<T>(items: T[], key: keyof T) {

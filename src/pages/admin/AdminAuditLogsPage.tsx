@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { motion } from "motion/react";
 import {
   format,
@@ -33,6 +34,9 @@ import { KPICard } from "@/components/common/KPICard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { PageHero } from "@/components/common";
+import { Download, Lock } from "lucide-react";
+import { downloadCsv } from "@/lib/export";
+import { useClientAudit } from "@/hooks/mutations";
 import { AdminSubNav } from "@/components/admin/AdminSubNav";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
@@ -52,15 +56,29 @@ const ACTIONS = [
   "ai_usage",
   "export",
   "settings_change",
+  "submit",
+  "return",
+  "escalate",
+  "acknowledge",
+  "sync",
+  "assign",
+  "override",
 ] as const;
 const MODULES = [
+  "legal_updates",
+  "qdnb",
+  "issues",
+  "icis",
+  "risk_matrix",
+  "escalation",
+  "report",
+  "regulation",
   "compliance",
   "cap",
-  "regulation",
-  "report",
   "admin",
   "auth",
   "ai",
+  "demo",
 ] as const;
 const RESULTS = ["success", "failure"] as const;
 const PAGE_SIZE = 10;
@@ -68,6 +86,8 @@ const selectClass =
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
 
 export default function AdminAuditLogsPage() {
+  // Also shown under Reports → Audit Trail, where the Reports sub-menu applies.
+  const inAdmin = useLocation().pathname.startsWith("/admin");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [user, setUser] = useState("");
@@ -96,6 +116,7 @@ export default function AdminAuditLogsPage() {
     serverFilters,
   );
   const { data: usersData } = useAdminUsers(1, 1000);
+  const exportAudit = useClientAudit();
 
   const filteredItems = useMemo(() => {
     let items = data?.items ?? [];
@@ -184,11 +205,59 @@ export default function AdminAuditLogsPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <AdminSubNav />
+      {inAdmin && <AdminSubNav />}
       <PageHero
         title="Audit Logs"
-        subtitle="Track system activity, user actions, and configuration changes across all modules."
-      />
+        subtitle="Ghi vết vĩnh viễn — every action, approval, escalation and export across the CMS, recorded as it happens (RFQ 5.4)."
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg px-2.5 py-1 text-xs font-semibold text-success">
+            <Lock className="size-3.5" /> Immutable · append-only
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              downloadCsv(`Audit_log_${format(new Date(), "yyyyMMdd_HHmm")}`, [
+                [
+                  "Timestamp",
+                  "User",
+                  "Action",
+                  "Module",
+                  "Object",
+                  "Details",
+                  "Changes",
+                  "Result",
+                  "IP",
+                ],
+                ...filteredItems.map((l) => [
+                  format(parseISO(l.timestamp), "dd/MM/yyyy HH:mm:ss"),
+                  l.userName,
+                  l.action,
+                  l.module,
+                  l.object,
+                  l.details ?? "",
+                  (l.changes ?? [])
+                    .map(
+                      (c) => `${c.field}: ${c.before ?? ""} → ${c.after ?? ""}`,
+                    )
+                    .join("; "),
+                  l.result,
+                  l.ip,
+                ]),
+              ]);
+              exportAudit.mutate({
+                action: "export",
+                module: "admin",
+                object: "Audit log",
+                details: `${filteredItems.length} entries exported`,
+              });
+            }}
+          >
+            <Download className="size-4" /> Export
+          </Button>
+        </div>
+      </PageHero>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KPICard
@@ -366,6 +435,9 @@ export default function AdminAuditLogsPage() {
                         Object
                       </th>
                       <th className="px-4 py-3 text-left font-medium">
+                        Details
+                      </th>
+                      <th className="px-4 py-3 text-left font-medium">
                         Module
                       </th>
                       <th className="px-4 py-3 text-left font-medium">IP</th>
@@ -395,6 +467,11 @@ export default function AdminAuditLogsPage() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {log.object}
+                        </td>
+                        <td className="max-w-sm px-4 py-3">
+                          <span className="line-clamp-1 text-muted-foreground">
+                            {log.details}
+                          </span>
                         </td>
                         <td className="px-4 py-3 capitalize whitespace-nowrap">
                           {log.module}
@@ -509,7 +586,14 @@ export default function AdminAuditLogsPage() {
                     </p>
                     <pre className="overflow-x-auto rounded bg-muted/50 p-2 text-xs">
                       {JSON.stringify(
-                        { status: "unchanged", module: selectedLog.module },
+                        selectedLog.changes?.length
+                          ? Object.fromEntries(
+                              selectedLog.changes.map((c) => [
+                                c.field,
+                                c.before ?? null,
+                              ]),
+                            )
+                          : { note: "no field changes recorded" },
                         null,
                         2,
                       )}
@@ -521,11 +605,17 @@ export default function AdminAuditLogsPage() {
                     </p>
                     <pre className="overflow-x-auto rounded bg-muted/50 p-2 text-xs">
                       {JSON.stringify(
-                        {
-                          status: selectedLog.result,
-                          module: selectedLog.module,
-                          action: selectedLog.action,
-                        },
+                        selectedLog.changes?.length
+                          ? Object.fromEntries(
+                              selectedLog.changes.map((c) => [
+                                c.field,
+                                c.after ?? null,
+                              ]),
+                            )
+                          : {
+                              action: selectedLog.action,
+                              result: selectedLog.result,
+                            },
                         null,
                         2,
                       )}

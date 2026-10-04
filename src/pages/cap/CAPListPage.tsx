@@ -106,7 +106,6 @@ export default function CAPListPage() {
     low: 1,
     medium: 2,
     high: 3,
-    critical: 4,
   };
   const chartCountBy = (key: keyof CAP) => {
     const m = new Map<string, number>();
@@ -187,7 +186,6 @@ export default function CAPListPage() {
             low: 1,
             medium: 2,
             high: 3,
-            critical: 4,
           };
           return dir * (order[a.priority] - order[b.priority]);
         }
@@ -475,7 +473,7 @@ export default function CAPListPage() {
                     field="priority"
                     sort={sort}
                     onSort={handleSort}
-                    tooltip="Sort by priority (low → critical)"
+                    tooltip="Sort by priority (low → high)"
                   />
                   <SortableTh
                     label="Status"

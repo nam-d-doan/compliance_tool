@@ -1,5 +1,5 @@
 import type { Obligation, CAP } from "@/types";
-import { getDueDateTone } from "@/lib/due-date";
+import { getDueDateTone, isOverdueDueDate } from "@/lib/due-date";
 
 /** Reference "now" — captured once per call chain so tab/badge math is stable. */
 function now(): Date {
@@ -42,7 +42,7 @@ export function needsAttention(
   if (obligation.status === "completed") return false;
   return (
     isOverdue(obligation, ref) ||
-    obligation.riskLevel === "critical" ||
+    obligation.riskLevel === "high" ||
     obligation.status === "review_required"
   );
 }
@@ -126,7 +126,7 @@ export function getSummaryStats(
     if (tab === "in_progress") inProgress++;
 
     if (isOverdue(obg, ref)) overdue++;
-    if (obg.riskLevel === "critical") critical++;
+    if (obg.riskLevel === "high") critical++;
     if (obg.status === "review_required") reviewRequired++;
 
     // Needs-CAP = matches criteria AND has no linked CAP.
@@ -369,4 +369,37 @@ export function dueDateLabel(
   if (d === 0) return "Due today";
   if (d === 1) return "1 day left";
   return `${d} days left`;
+}
+
+/**
+ * Compliance rate used by the dashboards and reports: the share of
+ * obligations that are compliant (completed / approved) or still on track —
+ * in progress, not overdue and not flagged for corrective action or review.
+ * Counting only completed items would score normal work-in-progress as
+ * non-compliance.
+ */
+export function isCompliantOrOnTrack(
+  obligation: Pick<Obligation, "status" | "dueDate">,
+): boolean {
+  const done = ["completed", "approved"].includes(obligation.status);
+  if (done) return true;
+  if (
+    ["cap_in_progress", "review_required", "rejected", "returned"].includes(
+      obligation.status,
+    )
+  )
+    return false;
+  return !isOverdueDueDate(obligation.dueDate, false);
+}
+
+export function complianceRateOf(
+  obligations: Pick<Obligation, "status" | "dueDate">[],
+): number {
+  if (!obligations.length) return 0;
+  return (
+    Math.round(
+      (obligations.filter(isCompliantOrOnTrack).length / obligations.length) *
+        1000,
+    ) / 10
+  );
 }

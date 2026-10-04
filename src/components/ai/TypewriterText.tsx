@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "motion/react";
 import { useTypewriter } from "./useTypewriter";
+import { translateString, useLanguageStore } from "@/i18n";
 
 export interface TypewriterTextProps {
   text: string;
@@ -17,7 +18,11 @@ export function TypewriterText({
   className,
   showCursor = true,
 }: TypewriterTextProps) {
-  const { displayed, isDone } = useTypewriter(text, speed);
+  // Type the sentence in the interface language from the first letter
+  // (the page translator only recognises whole sentences).
+  const language = useLanguageStore((s) => s.language);
+  const shown = language === "vi" ? (translateString(text) ?? text) : text;
+  const { displayed, isDone } = useTypewriter(shown, speed);
 
   useEffect(() => {
     if (isDone) {
@@ -26,7 +31,7 @@ export function TypewriterText({
   }, [isDone, onDone]);
 
   return (
-    <span className={className}>
+    <span className={className} data-no-translate>
       {displayed}
       {showCursor && !isDone && (
         <motion.span

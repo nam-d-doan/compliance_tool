@@ -29,9 +29,17 @@ Both exports use the same functions. The individual functions are MSW-compatible
 ### Mock DB
 
 - `db.ts` — singleton in-memory database (`getDb()`). Seeded with `faker.seed(42)` for deterministic data. Resets on page reload.
-- Collections: users, regulations, regulationDependencies, compliance, obligations, caps, nccs, assignments, notifications, auditLogs, roles, organizations, aiConfig, organizationSettings.
+- Collections: users, regulations, regulationDependencies, compliance, obligations, caps, nccs, assignments, notifications, auditLogs, roles, organizations, aiConfig, organizationSettings, plus the CMS collections legalUpdates, incomingLegalQueue, internalRegulations, revisionTasks, icisFindings, incomingIcisQueue, riskMatrices, escalationRules, reportTemplates, scheduledReports.
 - Helpers: `findById`, `paginate`, `filterByText`.
 - Timeline and comments are generated on-demand via `generateTimelineFor` / `generateCommentsFor`.
+
+### CMS modules (Nam A Bank RFQ Phụ lục 1)
+
+- `cms-seed.ts` — curated, deterministic Vietnamese sample data for the CMS: internal regulations (QĐNB), legal updates (+ the `incomingLegalQueue` pulled by "Sync now"), revision tasks, ICIS findings (+ `incomingIcisQueue`), compliance issues (replaces the old faker NCCs), risk matrices, escalation rules, report templates and schedule. Dates are relative to the real current day.
+- `cms-engine.ts` — `recordAudit`, `pushNotification`, `runScheduler` (reminders, overdue/late-issuance alerts, overdue escalation), `applyRiskEscalation`, and `auditMutation` (generic audit for the original modules).
+- `handlers/cms_handlers.ts` declares **one route table, `cmsRoutes`**, used for both MSW (`cmsHandlers`) and `directApi.ts` (spread into its `routes`). New CMS endpoints only need an entry in `cmsRoutes`.
+- Audit trail: CMS handlers call `recordAudit` themselves; every other mutating request is audited by `auditMutation`, called from `directApi.ts` (dev) and from the MSW `response:mocked` event in `browser.ts` (prod demo).
+- Demo clock: `stores/demoClockStore.ts` shifts "today" (`demoNow()`); `POST /api/cms/scheduler/run` evaluates reminders and escalations at the new date.
 
 ### Utils
 

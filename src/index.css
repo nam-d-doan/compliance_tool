@@ -373,3 +373,28 @@
     @apply font-sans;
   }
 }
+
+/* Report printing (Periodic Reports → "Download PDF"): only the A4 report
+   preview is printed; the app shell, navigation and controls are hidden. */
+@media print {
+  body.printing-report * {
+    visibility: hidden;
+  }
+  body.printing-report .print-area,
+  body.printing-report .print-area * {
+    visibility: visible;
+  }
+  body.printing-report .print-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}

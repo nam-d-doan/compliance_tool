@@ -98,6 +98,9 @@ import {
   handleUploadFile,
   handleDeleteFile,
 } from "./handlers/file_handlers";
+import { cmsRoutes } from "./handlers/cms_handlers";
+import { auditMutation } from "./cms-engine";
+import { getDb } from "./db";
 import type { MockResolverContext } from "./handlers/utils";
 
 type Route = {
@@ -455,6 +458,13 @@ const routes: Route[] = [
     pattern: "/api/comments/:entityType/:entityId",
     handler: handleGetComments,
   },
+
+  // CMS modules (Nam A Bank RFQ Phụ lục 1) — shared route table
+  ...cmsRoutes.map((r) => ({
+    methods: [r.method.toUpperCase()],
+    pattern: r.path,
+    handler: r.handler,
+  })),
 ];
 
 function errorResponse(message: string, status = 500): Response {
@@ -527,6 +537,19 @@ export async function enableDirectMocking(): Promise<void> {
 
         await delay(100, 300);
         const response = await route.handler({ request, params });
+        if (method !== "GET") {
+          const payload = await response
+            .clone()
+            .json()
+            .catch(() => null);
+          auditMutation(
+            getDb().auditLogs,
+            method,
+            pathname,
+            response.status,
+            payload,
+          );
+        }
         return response;
       }
 

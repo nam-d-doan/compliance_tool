@@ -1,5 +1,12 @@
 import type { BaseEntity } from "./base";
 import type { PriorityLevel } from "@/constants/status";
+import type {
+  EscalationRecord,
+  IssueSource,
+  IssueWorkflow,
+  ReminderRecord,
+  RiskAssessment,
+} from "./cms";
 
 /**
  * Non-Compliance Case status. Only two stored values — "Overdue" is NEVER a
@@ -46,6 +53,25 @@ export interface NonComplianceCase extends BaseEntity {
   closedAt?: string;
   /** Tags for categorization. */
   tags: string[];
+  /** Where the issue came from (ICIS, SBV inspection, audits, self-check...). */
+  source: IssueSource;
+  /** Reference of the source document, e.g. an inspection report number. */
+  sourceRef?: string;
+  /** Standard violation category (from the violation catalog). */
+  category: string;
+  /** Linked law / QĐNB article, free text. */
+  regulationRef?: string;
+  /** ICIS finding this issue was created from. */
+  icisFindingId?: string;
+  /** How many times the same category occurred in this unit in 12 months. */
+  repeatCount: number;
+  /** Risk Rating Matrix assessment. `severity` mirrors `risk.finalLevel`. */
+  risk: RiskAssessment;
+  escalations: EscalationRecord[];
+  reminders: ReminderRecord[];
+  workflow: IssueWorkflow;
+  /** Linked action plan (CAP). */
+  capId?: string;
 }
 
 export interface NCCFilter {
@@ -59,6 +85,8 @@ export interface NCCFilter {
   dueDateTo?: string;
   search?: string;
   tags?: string[];
+  source?: IssueSource | IssueSource[];
+  escalated?: boolean;
   page?: number;
   pageSize?: number;
   sortField?: string;
@@ -77,6 +105,12 @@ export interface CreateNCCInput {
   linkedDocs?: string;
   fileIds?: string[];
   tags?: string[];
+  source?: IssueSource;
+  sourceRef?: string;
+  category?: string;
+  regulationRef?: string;
+  icisFindingId?: string;
+  risk?: RiskAssessment;
 }
 
 /** Input payload for updating an NCC (e.g. closing with resolution). */
@@ -93,4 +127,10 @@ export interface UpdateNCCInput {
   linkedDocs?: string;
   fileIds?: string[];
   tags?: string[];
+  source?: IssueSource;
+  sourceRef?: string;
+  category?: string;
+  regulationRef?: string;
+  risk?: RiskAssessment;
+  capId?: string;
 }

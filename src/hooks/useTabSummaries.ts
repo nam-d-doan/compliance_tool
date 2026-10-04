@@ -42,7 +42,7 @@ function isOverdue(dueDate: string | undefined, terminal: boolean): boolean {
 }
 
 function isHighOrCritical(value: string | undefined): boolean {
-  return value === "high" || value === "critical";
+  return value === "high";
 }
 
 /** Role label for the "needs my action" card hint. */
@@ -249,7 +249,7 @@ export function useCAPsSummary(): SummaryCardData[] {
       emphasis: overdue > 0,
     },
     {
-      title: "High / Critical Open",
+      title: "High Risk Open",
       value: highCriticalOpen,
       icon: ShieldAlert,
       iconClassName: highCriticalOpen > 0 ? TINT_DANGER : TINT_WARN,
@@ -294,7 +294,7 @@ export function useNCCsSummary(): SummaryCardData[] {
       hint: `${items.length} Total`,
     },
     {
-      title: "High / Critical & Open",
+      title: "High Risk & Open",
       value: highCriticalOpen,
       icon: AlertTriangle,
       iconClassName: highCriticalOpen > 0 ? TINT_DANGER : TINT_WARN,
@@ -311,7 +311,7 @@ export function useNCCsSummary(): SummaryCardData[] {
       value: counts.nccs,
       icon: UserCheck,
       iconClassName: counts.nccs > 0 ? TINT_DANGER : TINT_INFO,
-      hint: role === "owner" ? "My open / overdue" : "High & critical",
+      hint: role === "owner" ? "My open / overdue" : "High risk",
     },
   ];
 }

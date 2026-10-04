@@ -17,7 +17,10 @@ import {
   useMarkAllNotificationsRead,
 } from "@/hooks/mutations";
 import type { Notification } from "@/types";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistance } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import { demoNow } from "@/stores";
+import { ChannelPreview } from "@/components/cms";
 import {
   Bell,
   Check,
@@ -26,6 +29,10 @@ import {
   Sparkles,
   Megaphone,
   Loader2,
+  Newspaper,
+  CalendarClock,
+  Siren,
+  Inbox,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +45,10 @@ const TYPE_ICON: Record<Notification["type"], LucideIcon> = {
   cap: ScrollText,
   ai: Sparkles,
   system: Megaphone,
+  legal_update: Newspaper,
+  deadline: CalendarClock,
+  escalation: Siren,
+  icis: Inbox,
 };
 
 const TYPE_LABEL: Record<Notification["type"], string> = {
@@ -46,6 +57,10 @@ const TYPE_LABEL: Record<Notification["type"], string> = {
   cap: "CAP",
   ai: "AI",
   system: "System",
+  legal_update: "Legal update",
+  deadline: "Deadline",
+  escalation: "Escalation",
+  icis: "ICIS",
 };
 
 // Category -> tinted icon chip. Mirrors the established pattern in
@@ -56,6 +71,10 @@ const CATEGORY_STYLES: Record<string, string> = {
   AI: "bg-chip text-foreground",
   CAP: "bg-warning-bg text-warning",
   System: "bg-info-bg text-info",
+  "Legal update": "bg-info-bg text-info",
+  Deadline: "bg-warning-bg text-warning",
+  Escalation: "bg-danger-bg text-danger",
+  ICIS: "bg-chip text-foreground",
 };
 
 const DEFAULT_CATEGORY_STYLE = "bg-muted text-muted-foreground";
@@ -72,6 +91,8 @@ export function NotificationDrawer({
   onOpenChange,
 }: NotificationDrawerProps) {
   const [filter, setFilter] = useState<NotificationFilter>("all");
+  const [preview, setPreview] = useState<Notification | null>(null);
+  const navigate = useNavigate();
 
   // Fetch a generous page so the drawer lists everything the mock generates.
   // The TopNav badge reads the same endpoint (filtered to unread) and shares
@@ -88,6 +109,13 @@ export function NotificationDrawer({
 
   const markAllAsRead = () => markAllMutation.mutate();
   const markAsRead = (id: string) => markReadMutation.mutate(id);
+  const openNotification = (n: Notification) => {
+    if (!n.read) markAsRead(n.id);
+    if (n.actionUrl && n.actionUrl !== "#") {
+      onOpenChange(false);
+      navigate(n.actionUrl);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -104,7 +132,8 @@ export function NotificationDrawer({
               </SheetTitle>
             </div>
             <SheetDescription className="text-xs">
-              Stay updated on approvals, deadlines, and AI insights.
+              Legal updates, deadlines, escalations, ICIS findings and approvals
+              — also sent by email / Teams.
             </SheetDescription>
           </div>
 
@@ -142,9 +171,13 @@ export function NotificationDrawer({
                 const category =
                   TYPE_LABEL[notification.type] ?? notification.type;
                 return (
-                  <motion.button
+                  <motion.div
                     key={notification.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") openNotification(notification);
+                    }}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
@@ -152,9 +185,9 @@ export function NotificationDrawer({
                       delay: Math.min(index * 0.04, 0.24),
                       ease: "easeOut",
                     }}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => openNotification(notification)}
                     className={cn(
-                      "group flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition-colors duration-200",
+                      "group flex w-full cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-left transition-colors duration-200",
                       notification.read
                         ? "border-border/70 bg-card/40 hover:border-border hover:bg-muted/60"
                         : "border-primary/15 bg-primary/[0.05] hover:bg-primary/[0.09]",
@@ -193,8 +226,9 @@ export function NotificationDrawer({
                       </p>
                       <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground/70">
                         <span>
-                          {formatDistanceToNow(
+                          {formatDistance(
                             new Date(notification.createdAt),
+                            demoNow(),
                             { addSuffix: true },
                           )}
                         </span>
@@ -202,9 +236,42 @@ export function NotificationDrawer({
                           &middot;
                         </span>
                         <span>{category}</span>
+                        {notification.recipient && (
+                          <>
+                            <span aria-hidden="true" className="opacity-50">
+                              &middot;
+                            </span>
+                            <span className="truncate">
+                              To {notification.recipient}
+                            </span>
+                          </>
+                        )}
                       </div>
+                      {notification.channels?.some((c) => c !== "in_app") && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreview(notification);
+                          }}
+                          className="mt-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                        >
+                          Preview{" "}
+                          {notification.channels
+                            .filter((c) => c !== "in_app")
+                            .map((c) =>
+                              c === "teams"
+                                ? "Teams"
+                                : c === "sms"
+                                  ? "SMS"
+                                  : "email",
+                            )
+                            .join(" / ")}{" "}
+                          message
+                        </button>
+                      )}
                     </div>
-                  </motion.button>
+                  </motion.div>
                 );
               })}
             </div>
@@ -223,6 +290,10 @@ export function NotificationDrawer({
           </Button>
         </SheetFooter>
       </SheetContent>
+      <ChannelPreview
+        notification={preview}
+        onOpenChange={(o) => !o && setPreview(null)}
+      />
     </Sheet>
   );
 }

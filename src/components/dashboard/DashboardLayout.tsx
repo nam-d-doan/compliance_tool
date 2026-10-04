@@ -9,6 +9,8 @@ import { useAuthStore } from "@/stores";
 import { getGreeting } from "@/lib/greeting";
 import { AISummaryLine } from "./AISummaryLine";
 import { cn } from "@/lib/utils";
+import { CmsSummaryStrip } from "./CmsSummaryStrip";
+import { CmsFeatureMap } from "./CmsFeatureMap";
 
 interface DashboardLayoutProps {
   /** Fallback shown as the AI summary line when the page has no dynamic
@@ -89,6 +91,10 @@ export function DashboardLayout({
         </div>
         {actions && <div className="shrink-0">{actions}</div>}
       </div>
+
+      <CmsFeatureMap delay={0.05} />
+
+      <CmsSummaryStrip delay={0.1} />
 
       <div
         className={cn(

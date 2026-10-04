@@ -58,9 +58,7 @@ export function DashboardAssignmentsCard({
   const stats = useMemo(() => {
     const overdue = assignments.filter(isOverdue).length;
     const dueSoon = assignments.filter(isDueSoon).length;
-    const critical = assignments.filter(
-      (a) => a.priority === "critical",
-    ).length;
+    const critical = assignments.filter((a) => a.priority === "high").length;
     const active = assignments.filter(
       (a) => !["completed", "cancelled"].includes(a.status),
     ).length;
@@ -167,7 +165,7 @@ export function DashboardAssignmentsCard({
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-center">
               <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                 <AlertTriangle className="size-3" aria-hidden="true" />
-                Critical
+                High risk
               </div>
               <div
                 className={cn(

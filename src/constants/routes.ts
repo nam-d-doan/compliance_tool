@@ -57,6 +57,7 @@ export const ROUTES = {
     LIST: "/ncc/list",
     DETAIL: "/ncc/:id",
     CREATE: "/ncc/create",
+    ESCALATIONS: "/ncc/escalations",
   },
 
   // Regulation routes
@@ -66,6 +67,19 @@ export const ROUTES = {
     COMPARISON: "/regulation/compare",
     IMPACT: "/regulation/:id/impact",
     CREATE: "/regulation/create",
+  },
+
+  // CMS — Legal Update Workflow (RFQ group 1)
+  LEGAL: {
+    LIST: "/legal-updates",
+    DETAIL: "/legal-updates/:id",
+    MAPPING: "/legal-mapping",
+  },
+
+  // CMS — Internal regulation (QĐNB) tracker (RFQ group 2)
+  QDNB: {
+    LIST: "/qdnb",
+    DETAIL: "/qdnb/:id",
   },
 
   // Assignment routes
@@ -82,6 +96,10 @@ export const ROUTES = {
     CAP: "/reports/cap",
     EXECUTIVE: "/reports/executive",
     EWS: "/reports/ews",
+    PERIODIC: "/reports/periodic",
+    INTERNAL_CONTROL: "/reports/internal-control",
+    LATE_ISSUANCE: "/reports/late-issuance",
+    AUDIT_TRAIL: "/reports/audit-trail",
   },
 
   // Admin routes
@@ -91,6 +109,8 @@ export const ROUTES = {
     ORG: "/admin/organization",
     AUDIT_LOGS: "/admin/audit-logs",
     AI_CONFIG: "/admin/ai-config",
+    RISK_MATRIX: "/admin/risk-matrix",
+    ESCALATION_RULES: "/admin/escalation-rules",
   },
 
   // User routes
@@ -129,7 +149,19 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.ADMIN.ROLES]: ["admin"],
   [ROUTES.ADMIN.ORG]: ["admin"],
   [ROUTES.ADMIN.AUDIT_LOGS]: ["admin"],
+  [ROUTES.REPORTS.AUDIT_TRAIL]: ["executive", "admin"],
   [ROUTES.ADMIN.AI_CONFIG]: ["admin"],
+  [ROUTES.ADMIN.RISK_MATRIX]: ["admin"],
+  [ROUTES.ADMIN.ESCALATION_RULES]: ["admin"],
+
+  [ROUTES.REPORTS.PERIODIC]: ["approver", "owner", "executive", "admin"],
+  [ROUTES.REPORTS.INTERNAL_CONTROL]: [
+    "approver",
+    "owner",
+    "executive",
+    "admin",
+  ],
+  [ROUTES.REPORTS.LATE_ISSUANCE]: ["approver", "owner", "executive", "admin"],
 };
 
 export interface NavItem {

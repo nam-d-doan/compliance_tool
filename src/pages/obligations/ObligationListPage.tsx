@@ -298,7 +298,7 @@ export default function ObligationListPage() {
         size: 120,
         cell: ({ getValue }) => (
           <PriorityBadge
-            priority={getValue<"low" | "medium" | "high" | "critical">()}
+            priority={getValue<"low" | "medium" | "high">()}
             size="sm"
           />
         ),

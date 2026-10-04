@@ -7,3 +7,4 @@ export * from "./useAdminMutations";
 export * from "./useNotificationMutations";
 export * from "./useAIMutations";
 export * from "./useFileMutations";
+export * from "./useCMSMutations";

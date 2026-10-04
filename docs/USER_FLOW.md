@@ -712,3 +712,57 @@ Sidebar → Reports → [Report Type]
 - **Mobile:** Tappable legends, simplified axes
 - **Desktop:** Full interactions, tooltips, zoom
 - **Responsive sizing:** Chart containers adapt to screen size
+
+---
+
+## 12. CMS modules — Nam A Bank RFQ Phụ lục 1
+
+The app uses the bank's **3 risk levels** (Low / Medium / High — Thấp / Trung bình / Cao) everywhere.
+
+### 12.0 Language and navigation
+
+- **Language:** Vietnamese by default; the round **VI / EN** button in the top bar (also on the login page) switches instantly without reloading (demo data is kept). The choice is remembered per browser. How it works: the app is written in English and `src/i18n/translator.ts` swaps every rendered English text, placeholder, tooltip and aria-label for its Vietnamese translation from `src/i18n/vi/*.ts` (exact phrases) and `src/i18n/patterns.ts` (dates, counts, messages built at runtime). New English UI text must get a dictionary entry; in dev, `window.__i18nMissing()` lists English text seen on screen without a translation. Mark an element `data-no-translate` to leave it alone, or give it `data-vi="…"` for a context-specific (e.g. shorter) Vietnamese label.
+
+- **Top menu (6 tabs):** Dashboard · Legal Updates · Regulations · Internal Regs (QĐNB) · Issues & CAPs · Reports. Grouped tabs show the sum of their pages' badges; exactly one tab is highlighted (longest matching route prefix).
+- **Sub-menus** (same frosted bar as Administration, `components/layout/SubNav.tsx`, items in `constants/subNavs.ts`) appear above the list pages of each area; detail and create pages keep their breadcrumbs only. All addresses are unchanged.
+  - Legal Updates: Inbox & Alerts · **Legal Mapping ★** (`/legal-mapping`) · Assignments
+  - Regulations: Library · Obligations · Compare
+  - Internal Regs (QĐNB): Real-time Tracker · Late-issuance Alerts (`/reports/late-issuance`)
+  - Issues & CAPs: Issues (NCC) · CAPs · Escalations (`/ncc/escalations`)
+  - Reports: Executive Summary · Periodic Reports · Internal Control Issues · Early Warning · Status · CAP · Calendar · Audit Trail (`/reports/audit-trail`, executive + admin)
+- **Dashboard → CMS feature map:** 5 cards, one per Phụ lục 1 group, listing each feature with its RFQ code, a live number and a link (Smart search opens Ctrl+K; AI/OCR opens `/legal-updates?ocr=1`). Can be hidden; the choice is remembered per browser.
+
+### 12.1 Legal Updates (`/legal-updates`, `/legal-updates/:id`) — RFQ 1.1–1.3
+
+- Inbox of new legal documents with AI field, relevance and effective-date countdown. **Sync now** pulls new documents from the simulated feed; **Upload document (OCR)** extracts a document from a file.
+- Detail page step bar: Received → Applicability → Impact & AI summary → Legal mapping → Assignment → Tracking.
+- Legal mapping: AI-suggested internal regulations (QĐNB) with confidence; accept/reject, choose Amend/Supplement/Replace/Repeal/Issue new, add QĐNB manually; relationship map ("Lược đồ").
+- **Legal Mapping page** (`/legal-mapping`): all laws → QĐNB → lead units on one map (hover/click highlights links, dashed = AI suggestion), plus a laws × QĐNB matrix. "Open full Legal Mapping" on the detail page's mapping step links here.
+- Assignment creates one revision task per QĐNB (lead + supporting units, deadline, reminder schedule) and notifies the units.
+
+### 12.2 Internal Regulations (`/qdnb`, `/qdnb/:id`) — RFQ 2.1–2.3
+
+- Board / table / register views; KPIs: Not yet revised, In revision, Awaiting approval, Issued, Overdue, Late-issuance risk.
+- Revision workflow: Start → Submit draft → Compliance review (return possible) → Approval → Record issuance (decision number, dates and signed file are required). Issuing creates a new version; **Versions & compare** shows the diff.
+
+### 12.3 Issues (NCC) (`/ncc/list`, tabs Register · ICIS Inbox · Trends) — RFQ 3.1–3.3
+
+- Every issue has a **source** (ICIS, SBV inspection, audits, self-check, monitoring, complaints), category and risk rating.
+- ICIS Inbox: accept a finding as an issue (with suggested rating), merge into a similar open issue, or reject.
+- Issue detail: Check → Submit evidence → Compliance review (accept/return) → Approve closure; reminders and escalations shown on the page.
+
+### 12.4 Risk Matrix & Escalation (`/admin/risk-matrix`, `/admin/escalation-rules`) — RFQ 4.1–4.3
+
+- 4 weighted criteria (fine, reputation, scope, recurrence), thresholds, live preview, versioned approval.
+- **Escalations page** (`/ncc/escalations`, under Issues & CAPs): every escalation with level/status filters and Acknowledge.
+- High risk escalates immediately to the Ban Điều hành & Ban Kiểm soát; overdue items escalate at +1 / +7 / +15 days.
+
+### 12.5 Reports, search, audit — RFQ 5.x
+
+- Reports sub-menu: Periodic Reports (A4 preview, PDF/Excel download), Internal Control Issues Dashboard, Audit Trail, plus the existing reports. Late Issuance Alerts sits under Internal Regs (QĐNB).
+- Search (Ctrl+K): Semantic (AI) or Keyword across laws, QĐNB, articles and issues.
+- Audit Logs record every action; History panels on legal updates, QĐNB revisions and issues.
+
+### 12.6 Demo controls
+
+- Calendar-clock button in the top bar: move the demo date +1 / +7 / +30 days to trigger reminders, overdue alerts and escalations live. **Reset demo** reloads the sample data.

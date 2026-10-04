@@ -31,6 +31,7 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
 import { PageHero } from "@/components/common";
 import { AdminSubNav } from "@/components/admin/AdminSubNav";
+import { CmsAccessMatrix } from "@/components/admin/CmsAccessMatrix";
 import { useAdminRoles } from "@/hooks/queries/useAdminQueries";
 import { useCreateRole } from "@/hooks/mutations/useAdminMutations";
 import { cn } from "@/lib/utils";
@@ -401,6 +402,7 @@ export default function AdminRolesPage() {
           </Card>
         </div>
       )}
+      <CmsAccessMatrix />
     </motion.div>
   );
 }

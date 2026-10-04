@@ -1,3 +1,5 @@
+import { complianceRateOf } from "@/lib/obligation-helpers";
+import { EscalationsAwaitingAck } from "@/components/dashboard/CmsSummaryStrip";
 import { useMemo } from "react";
 import {
   Area,
@@ -126,7 +128,8 @@ export default function ExecutiveDashboardPage() {
       d.setMonth(d.getMonth() - (5 - i));
       return d;
     });
-    // Monthly completion rate among obligations last updated in that month.
+    // Monthly compliance rate (compliant or on track) among obligations last
+    // updated in that month.
     // Months with no activity carry forward the prior month's rate (and
     // leading gaps back-fill from the first observed rate) so the line stays
     // continuous instead of showing misleading gaps/zeros.
@@ -138,12 +141,7 @@ export default function ExecutiveDashboardPage() {
           updated.getMonth() === monthDate.getMonth()
         );
       });
-      const completed = inMonth.filter((item) =>
-        ["completed", "approved"].includes(item.status),
-      ).length;
-      return inMonth.length
-        ? Math.round((completed / inMonth.length) * 1000) / 10
-        : null;
+      return inMonth.length ? complianceRateOf(inMonth) : null;
     });
     const firstKnown = raw.find((v) => v !== null) ?? 0;
     let lastValue = firstKnown;
@@ -207,6 +205,10 @@ export default function ExecutiveDashboardPage() {
           isLoading={aiSummary.isPending}
           delay={0.1}
         />
+      </div>
+
+      <div className="md:col-span-1">
+        <EscalationsAwaitingAck delay={0.12} />
       </div>
 
       <div className="md:col-span-1">

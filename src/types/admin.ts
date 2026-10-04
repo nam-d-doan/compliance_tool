@@ -62,12 +62,24 @@ export interface AuditLog extends BaseEntity {
     | "approve"
     | "ai_usage"
     | "export"
-    | "settings_change";
+    | "settings_change"
+    | "submit"
+    | "return"
+    | "escalate"
+    | "acknowledge"
+    | "sync"
+    | "assign"
+    | "override";
   object: string;
   module: string;
   ip: string;
   result: "success" | "failure";
   details?: string;
+  /** Entity the action applies to — drives the per-record History tab. */
+  entityType?: string;
+  entityId?: string;
+  /** Changed fields, before → after. */
+  changes?: { field: string; before?: string; after?: string }[];
 }
 
 export interface AIConfig extends BaseEntity {

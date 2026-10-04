@@ -179,6 +179,8 @@ export async function handleGetAuditLogs({ request }: { request: Request }) {
   let items = [...db.auditLogs];
   if (q.action) items = items.filter((l) => l.action === q.action);
   if (q.module) items = items.filter((l) => l.module === q.module);
+  if (q.entityId) items = items.filter((l) => l.entityId === q.entityId);
+  items.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   if (q.user)
     items = items.filter(
       (l) =>

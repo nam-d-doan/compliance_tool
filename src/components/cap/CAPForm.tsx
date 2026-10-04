@@ -20,7 +20,7 @@ import type { FileAttachment } from "@/types";
 const schema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  priority: z.enum(["low", "medium", "high", "critical"] as const),
+  priority: z.enum(["low", "medium", "high"] as const),
   ownerId: z.string().min(1, "Select an owner"),
   approverId: z.string().min(1, "Select an approver"),
   department: z.string().min(1, "Department is required"),

@@ -16,8 +16,7 @@ const statusClasses: Record<
   low: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
   medium:
     "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  high: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  high: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
 function buildDefaultData(): RiskHeatmapData {
@@ -37,7 +36,6 @@ function buildDefaultData(): RiskHeatmapData {
         "low",
         "medium",
         "high",
-        "critical",
       ];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
       cells.push({
@@ -138,17 +136,10 @@ export function DashboardRiskHeatmap({
             </span>
             <span className="inline-flex items-center gap-1">
               <span
-                className="size-2 rounded-full bg-orange-500"
-                aria-hidden="true"
-              />{" "}
-              High
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span
                 className="size-2 rounded-full bg-red-500"
                 aria-hidden="true"
               />{" "}
-              Critical
+              High
             </span>
           </div>
         </CardContent>

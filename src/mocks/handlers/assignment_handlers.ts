@@ -33,12 +33,8 @@ function getCurrentUser(request: Request): UserProfile | undefined {
 
 function normalizePriority(priority?: string): Assignment["priority"] {
   const raw = (priority ?? "medium").toLowerCase();
-  if (
-    raw === "low" ||
-    raw === "medium" ||
-    raw === "high" ||
-    raw === "critical"
-  ) {
+  if (raw === "critical") return "high";
+  if (raw === "low" || raw === "medium" || raw === "high") {
     return raw;
   }
   return "medium";

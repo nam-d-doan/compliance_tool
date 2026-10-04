@@ -1,3 +1,7 @@
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Callout } from "@/components/cms";
+import { useCmsOverview } from "@/hooks/queries";
 import { useMemo, useState } from "react";
 import { format, subMonths } from "date-fns";
 import { motion } from "motion/react";
@@ -110,6 +114,8 @@ export default function EWSReportPage() {
           </div>
         </div>
       </PageHero>
+
+      <CmsEarlyWarnings />
 
       {/* Provisional methodology disclaimer */}
       <motion.div
@@ -294,5 +300,34 @@ export default function EWSReportPage() {
         />
       </div>
     </div>
+  );
+}
+
+/** CMS signals fed into the Early Warning System (RFQ 2.3, 4.3). */
+function CmsEarlyWarnings() {
+  const { data } = useCmsOverview();
+  if (!data) return null;
+  const items = [
+    data.revisions.overdue > 0 &&
+      `${data.revisions.overdue} QĐNB revision(s) overdue`,
+    data.revisions.lateRisk > 0 &&
+      `${data.revisions.lateRisk} at risk of late issuance vs the law's effective date`,
+    data.issues.high > 0 && `${data.issues.high} high-risk issue(s) open`,
+    data.issues.escalationsAwaitingAck > 0 &&
+      `${data.issues.escalationsAwaitingAck} escalation(s) awaiting acknowledgement`,
+  ].filter(Boolean) as string[];
+  if (!items.length) return null;
+  return (
+    <Callout
+      tone="warning"
+      title="CMS early warnings"
+      action={
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/reports/late-issuance">Late issuance report</Link>
+        </Button>
+      }
+    >
+      {items.join(" · ")}
+    </Callout>
   );
 }

@@ -243,13 +243,11 @@ export default function RegulationImpactPage() {
   const item = detail.data;
   const impactResult = aiImpact.data;
   const impactScore = item
-    ? item.priority === "critical"
-      ? 95
-      : item.priority === "high"
-        ? 75
-        : item.priority === "medium"
-          ? 50
-          : 25
+    ? item.priority === "high"
+      ? 85
+      : item.priority === "medium"
+        ? 55
+        : 25
     : 0;
 
   const explanation: AIExplanationType | null = useMemo(
@@ -364,9 +362,9 @@ export default function RegulationImpactPage() {
                       Risk Level
                     </span>
                     <p className="text-sm font-medium">
-                      {item.priority === "critical"
+                      {item.priority === "high"
                         ? "High"
-                        : item.priority === "high"
+                        : item.priority === "medium"
                           ? "Medium"
                           : "Low"}
                     </p>
@@ -544,7 +542,7 @@ export default function RegulationImpactPage() {
 }
 
 function PriorityIcon({ priority }: { priority: string }) {
-  if (priority === "high" || priority === "critical")
+  if (priority === "high")
     return <ShieldAlert className="size-4 text-red-500" aria-hidden="true" />;
   if (priority === "medium")
     return (

@@ -93,6 +93,25 @@ export const adminKeys = {
   aiConfig: () => [...adminKeys.all, "ai-config"] as const,
 };
 
+export const cmsKeys = {
+  all: ["cms"] as const,
+  overview: () => [...cmsKeys.all, "overview"] as const,
+  legalUpdates: () => [...cmsKeys.all, "legal-updates"] as const,
+  legalUpdate: (id: string) => [...cmsKeys.legalUpdates(), id] as const,
+  qdnbList: () => [...cmsKeys.all, "qdnb"] as const,
+  qdnb: (id: string) => [...cmsKeys.qdnbList(), id] as const,
+  revisions: () => [...cmsKeys.all, "revisions"] as const,
+  icis: () => [...cmsKeys.all, "icis"] as const,
+  icisSuggestion: (id: string) =>
+    [...cmsKeys.icis(), "suggestion", id] as const,
+  riskMatrices: () => [...cmsKeys.all, "risk-matrices"] as const,
+  escalationRules: () => [...cmsKeys.all, "escalation-rules"] as const,
+  reports: () => [...cmsKeys.all, "reports"] as const,
+  search: (q: string, mode: string) =>
+    [...cmsKeys.all, "search", q, mode] as const,
+  history: (entityId: string) => [...cmsKeys.all, "history", entityId] as const,
+};
+
 export const dashboardKeys = {
   all: ["dashboard"] as const,
   byRole: (role: string) => [...dashboardKeys.all, role] as const,
