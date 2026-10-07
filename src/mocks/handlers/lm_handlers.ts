@@ -576,6 +576,10 @@ export async function handleUpdateLMMilestone({
     }
   }
 
+  if (body.linkedFileIds) {
+    milestone.linkedFileIds = body.linkedFileIds;
+  }
+
   milestone.updatedAt = now;
   return jsonResponse(milestone);
 }

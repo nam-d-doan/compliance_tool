@@ -23,7 +23,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { motion } from "motion/react";
-import { Pencil, Send, Users, Check } from "lucide-react";
+import { Pencil, Send, Users, Check, Paperclip, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,7 +63,15 @@ import {
 } from "@/constants/lm";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { UpdateLMCaseInput, CaseMilestone, LegalDeadline } from "@/types";
+import type {
+  UpdateLMCaseInput,
+  CaseMilestone,
+  LegalDeadline,
+  FileAttachment,
+} from "@/types";
+
+const selectClass =
+  "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
 
 function formatVnd(amount: number): string {
   return new Intl.NumberFormat("vi-VN").format(amount) + " ₫";
@@ -233,16 +241,15 @@ export default function LMDetailPage() {
         </span>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="profile">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsTrigger value="profile">Case Profile</TabsTrigger>
           <TabsTrigger value="deadlines">Deadlines & Alerts</TabsTrigger>
           <TabsTrigger value="files">Documents</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
+        <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Case Information</CardTitle>
@@ -266,9 +273,7 @@ export default function LMDetailPage() {
               <Field label="Last Updated" value={fmt(item.updatedAt)} />
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="progress">
           <Card>
             <CardHeader>
               <CardTitle>5-Milestone Progress</CardTitle>
@@ -289,6 +294,7 @@ export default function LMDetailPage() {
                         updateMilestone.isPending &&
                         updateMilestone.variables?.id === m.id
                       }
+                      caseFiles={filesQuery.data?.items ?? []}
                       onReschedule={(dateIso) =>
                         updateMilestone.mutate(
                           { id: m.id, data: { currentPlannedDate: dateIso } },
@@ -309,6 +315,15 @@ export default function LMDetailPage() {
                               ),
                             onError: (err) =>
                               toast.error(err.message || "Update failed"),
+                          },
+                        )
+                      }
+                      onLinkFiles={(fileIds) =>
+                        updateMilestone.mutate(
+                          { id: m.id, data: { linkedFileIds: fileIds } },
+                          {
+                            onError: (err) =>
+                              toast.error(err.message || "Failed to update linked files"),
                           },
                         )
                       }
@@ -456,14 +471,21 @@ function MilestoneRow({
   milestone: m,
   canEdit,
   isSaving,
+  caseFiles,
   onReschedule,
   onComplete,
+  onLinkFiles,
 }: {
   milestone: CaseMilestone;
   canEdit: boolean;
   isSaving: boolean;
+  /** All files already uploaded to this case (Documents tab), to resolve
+   * `linkedFileIds` into names/URLs and to offer as link candidates. */
+  caseFiles: FileAttachment[];
   onReschedule: (dateIso: string) => void;
   onComplete: (dateIso: string) => void;
+  /** Nam review R2 — sends the FULL new `linkedFileIds` list (add or remove one). */
+  onLinkFiles: (fileIds: string[]) => void;
 }) {
   const [plannedInput, setPlannedInput] = useState(
     m.currentPlannedDate.slice(0, 10),
@@ -476,6 +498,10 @@ function MilestoneRow({
     parseISO(m.currentPlannedDate),
     parseISO(m.originalPlannedDate),
   );
+
+  const linkedIds = new Set(m.linkedFileIds ?? []);
+  const linkedFiles = caseFiles.filter((f) => linkedIds.has(f.id));
+  const unlinkedFiles = caseFiles.filter((f) => !linkedIds.has(f.id));
 
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border p-3">
@@ -557,6 +583,59 @@ function MilestoneRow({
           </Button>
         </div>
       )}
+
+      {/* Nam review R2 (docs/lm/02-review-changes.md mục 2) — each workflow
+          step shows the documents linked to it, with a way to link/unlink
+          from the files already uploaded in the Documents tab. */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+        <Paperclip
+          className="size-3.5 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
+        {linkedFiles.length === 0 ? (
+          <span className="text-xs text-muted-foreground">No linked documents</span>
+        ) : (
+          linkedFiles.map((f) => (
+            <span
+              key={f.id}
+              className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+            >
+              <a href={f.url} target="_blank" rel="noreferrer" className="hover:underline">
+                {f.name}
+              </a>
+              {canEdit && (
+                <button
+                  type="button"
+                  aria-label={`Unlink ${f.name}`}
+                  onClick={() =>
+                    onLinkFiles(Array.from(linkedIds).filter((id) => id !== f.id))
+                  }
+                >
+                  <X className="size-3" aria-hidden="true" />
+                </button>
+              )}
+            </span>
+          ))
+        )}
+        {canEdit && unlinkedFiles.length > 0 && (
+          <select
+            value=""
+            className={cn(selectClass, "h-7 w-auto text-xs")}
+            onChange={(e) => {
+              if (e.target.value) {
+                onLinkFiles([...Array.from(linkedIds), e.target.value]);
+              }
+            }}
+          >
+            <option value="">+ Link a file...</option>
+            {unlinkedFiles.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
     </li>
   );
 }

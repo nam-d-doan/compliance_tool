@@ -107,6 +107,10 @@ export interface CaseMilestone extends BaseEntity {
   /** Ngày hoàn thành thực tế; undefined nghĩa là mốc chưa xong. */
   actualDate?: string;
   notes?: string;
+  /** Nam review R2 (docs/lm/02-review-changes.md mục 2) — IDs của
+   * FileAttachment (đã upload cho case ở tab Documents) được gắn vào đúng
+   * mốc này, hiển thị trong "Case Profile" workflow. */
+  linkedFileIds?: string[];
 }
 
 /** Một hạn pháp lý cần theo dõi cảnh báo đỏ (Phụ lục 2 mục 1 hàng "Cảnh báo & Nhắc lịch"). */
@@ -181,6 +185,9 @@ export interface UpdateLMMilestoneInput {
   currentPlannedDate?: string;
   /** Đánh dấu mốc hoàn thành vào ngày này. */
   actualDate?: string;
+  /** Nam review R2 — thay TOÀN BỘ danh sách file gắn vào mốc này (không
+   * phải patch từng phần tử) — client luôn gửi lại full list mới. */
+  linkedFileIds?: string[];
 }
 
 /**
