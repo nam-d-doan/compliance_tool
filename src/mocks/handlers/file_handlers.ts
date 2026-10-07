@@ -172,6 +172,18 @@ export async function handleDeleteFile({ params }: MockResolverContext) {
     }
   }
 
+  // Review fix (sau Nam review R2/R4) — CaseMilestone.linkedFileIds là nơi
+  // tham chiếu file mới thêm ở R2, nhưng chỗ dọn dẹp này chưa cập nhật theo
+  // nên trước đây ID mồ côi bị bỏ sót (không crash vì FE đã filter, nhưng
+  // là lỗ hổng vệ sinh dữ liệu — không nhất quán với 3 vòng lặp trên).
+  for (const milestone of db.caseMilestones) {
+    if (milestone.linkedFileIds?.includes(removed.id)) {
+      milestone.linkedFileIds = milestone.linkedFileIds.filter(
+        (id) => id !== removed.id,
+      );
+    }
+  }
+
   return jsonResponse({ success: true });
 }
 

@@ -159,7 +159,9 @@ export interface CaseEvent extends BaseEntity {
     | "deadline_resolved"
     | "file_attached"
     | "reassigned"
-    | "reminded";
+    | "reminded"
+    | "task_created"
+    | "task_status_changed";
   userId: string;
   userName: string;
   /** Mô tả ngắn, hiển thị trực tiếp trong ActivityFeed. */
@@ -198,6 +200,12 @@ export interface CreateLMTaskInput {
   description?: string;
   dueDate: string;
   priority: PriorityLevel;
+  /** Người tạo thật (user đang đăng nhập) — fallback về chủ hồ sơ nếu
+   * không gửi, cùng pattern với UpdateLMDeadlineInput.actorId. Sửa theo
+   * review của reviewer sau Nam review R3: trước đó hardcode luôn thành
+   * chủ hồ sơ, sai nếu Manager tạo task hộ. */
+  actorId?: string;
+  actorName?: string;
 }
 
 export type UpdateLMTaskInput = Partial<
@@ -205,7 +213,12 @@ export type UpdateLMTaskInput = Partial<
     LMTask,
     "id" | "caseId" | "createdAt" | "updatedAt" | "createdById" | "createdByName"
   >
->;
+> & {
+  /** Người thực hiện thao tác (toggle done/reopen) — để ghi CaseEvent đúng
+   * người, không mặc định về chủ hồ sơ. */
+  actorId?: string;
+  actorName?: string;
+};
 
 /** GĐ2 — tải công việc 1 chuyên viên, dùng cho hộp thoại phân công. */
 export interface LMWorkloadEntry {

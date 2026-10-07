@@ -505,6 +505,10 @@ export async function handleCreateLMTask({ request }: MockResolverContext) {
   const lmCase = findById(db.litigationCases, body.caseId);
   if (!lmCase) return notFound("Case not found");
 
+  // Review fix (sau Nam review R3): actor THẬT (người đang bấm nút), không
+  // mặc định là chủ hồ sơ — trước đó hardcode sai nếu Manager tạo hộ.
+  const actorId = body.actorId || lmCase.ownerId;
+  const actorName = body.actorName || lmCase.ownerName;
   const now = new Date().toISOString();
   const task: LMTask = {
     id: `task-${crypto.randomUUID()}`,
@@ -514,12 +518,20 @@ export async function handleCreateLMTask({ request }: MockResolverContext) {
     dueDate: body.dueDate,
     priority: body.priority,
     status: "open",
-    createdById: lmCase.ownerId,
-    createdByName: lmCase.ownerName,
+    createdById: actorId,
+    createdByName: actorName,
     createdAt: now,
     updatedAt: now,
   };
   db.lmTasks.unshift(task);
+  recordEvent(
+    db,
+    body.caseId,
+    "task_created",
+    actorId,
+    actorName,
+    `Created task "${task.title}"`,
+  );
   return jsonResponse(task, 201);
 }
 
@@ -532,8 +544,24 @@ export async function handleUpdateLMTask({
   const task = findById(db.lmTasks, params.id as string);
   if (!task) return notFound("Task not found");
 
-  const body = (await request.json()) as UpdateLMTaskInput;
-  Object.assign(task, body, { updatedAt: new Date().toISOString() });
+  const { actorId, actorName, ...fields } = (await request.json()) as UpdateLMTaskInput;
+  const prevStatus = task.status;
+  Object.assign(task, fields, { updatedAt: new Date().toISOString() });
+
+  // Review fix — Work Calendar không ghi vết gì vào History trước đây.
+  // Chỉ ghi khi status đổi thật (không ghi lúc sửa title/priority vặt).
+  if (fields.status && fields.status !== prevStatus) {
+    recordEvent(
+      db,
+      task.caseId,
+      "task_status_changed",
+      actorId || task.createdById,
+      actorName || task.createdByName,
+      `Task "${task.title}" marked ${fields.status}`,
+      prevStatus,
+      fields.status,
+    );
+  }
   return jsonResponse(task);
 }
 

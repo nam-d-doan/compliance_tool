@@ -95,6 +95,7 @@ export function useCreateLMTask(caseId: string) {
     mutationFn: (data: CreateLMTaskInput) => LMService.createTask(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lmKeys.tasks(caseId) });
+      queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
     },
   });
 }
@@ -112,6 +113,7 @@ export function useUpdateLMTask(caseId: string) {
     }) => LMService.updateTask(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: lmKeys.tasks(caseId) });
+      queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
     },
   });
 }

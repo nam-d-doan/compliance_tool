@@ -1,22 +1,35 @@
 /**
- * PSEUDO CODE (ngắn gọn)
- * 1. 5 tab: Tổng quan / Tiến trình / Hạn & cảnh báo / Tài liệu / Lịch sử.
- * 2. Tiến trình (GĐ2): mốc chưa xong có input đổi ngày kế hoạch + nút đánh
+ * PSEUDO CODE (ngắn gọn) — cập nhật sau Nam review (docs/lm/02-review-changes.md)
+ * 1. 4 tab: Case Profile / Work Calendar / Documents / History. GĐ2 gốc có
+ *    5 tab (Overview + Progress tách riêng); R2 merge 2 tab đó thành "Case
+ *    Profile" (header info + workflow 5-mốc trong cùng 1 tab).
+ * 2. Case Profile — mốc chưa xong có input đổi ngày kế hoạch + nút đánh
  *    dấu hoàn thành. Server tự chuyển stage / đóng hồ sơ khi hoàn thành
- *    đúng mốc đang là giai đoạn hiện tại (xem lm_handlers.ts).
- * 3. Hạn & cảnh báo (GĐ3): severity (đỏ/vàng/xám) do server tính sẵn
- *    (DEMO_TODAY, không dùng ngày thực của máy — xem lib/lm-alerts.ts).
- *    Nút "Acknowledge"/"Resolve" gọi PUT /api/lm/deadlines/:id.
- * 4. Lịch sử dùng list riêng (không tái dùng ActivityFeed) vì
+ *    đúng mốc đang là giai đoạn hiện tại (xem lm_handlers.ts). R2 thêm
+ *    `CaseMilestone.linkedFileIds` — mỗi mốc hiển thị + link/unlink tài
+ *    liệu đã upload ở tab Documents (native <select>, không có Select
+ *    component trong ui/ của repo này).
+ * 3. Work Calendar (R3, trước là "Deadlines & Alerts") — gộp LegalDeadline
+ *    (severity đỏ/vàng/xám do server tính sẵn, DEMO_TODAY — xem
+ *    lib/deadline-alerts.ts) VÀ `LMTask` mới (việc tự do, không có
+ *    severity, chỉ toggle open/done) trong 1 list sort theo dueDate. Nút
+ *    "Acknowledge"/"Resolve" (deadline) gọi PUT /api/lm/deadlines/:id;
+ *    "Mark Done"/"Reopen" (task) gọi PUT /api/lm/tasks/:id. Calendar-view
+ *    toggle (R3b) cố ý cắt — chỉ có table view.
+ * 4. Documents — R4 thêm `showFolders` (opt-in, không ảnh hưởng CAP/NCC
+ *    dùng chung FileUploadComponent) để nhóm file theo folder. Link "đi
+ *    tới Case Profile" thay vì làm lại UI link-file lần 2 (xem Ruling
+ *    trong .superpowers/sdd/lm-nam-review/progress.md).
+ * 5. History dùng list riêng (không tái dùng ActivityFeed) vì
  *    ActivityFeed/TimelineEvent gắn cứng bộ type khác (submission/approval/
  *    ...), không khớp CaseEvent.type — tái dùng sẽ phải sửa component dùng
  *    chung, rủi ro hơn tự viết list riêng cho LM.
- * 5. Phân công (GĐ2): sheet riêng, đọc useLMWorkload() (server đã sort tăng
+ * 6. Phân công (GĐ2): sheet riêng, đọc useLMWorkload() (server đã sort tăng
  *    dần theo tải), gợi ý người ít việc nhất, chọn xong PUT case.ownerId
  *    qua useUpdateLMCase co sẵn (không cần mutation riêng).
- * 6. Đôn đốc (GĐ2): 1 nút gọi useRemindLMCase — server tự tạo Notification
+ * 7. Đôn đốc (GĐ2): 1 nút gọi useRemindLMCase — server tự tạo Notification
  *    + CaseEvent, FE chỉ cần invalidate + toast.
- * 7. UI text tiếng Anh cho khớp phần còn lại của app (user yêu cầu) — chỉ
+ * 8. UI text tiếng Anh cho khớp phần còn lại của app (user yêu cầu) — chỉ
  *    đổi copy hiển thị, pseudo-code comment vẫn giữ tiếng Việt.
  */
 import { useState } from "react";
@@ -214,6 +227,8 @@ export default function LMDetailPage() {
         description: values.description || undefined,
         dueDate: dueIso,
         priority: values.priority,
+        actorId: user?.id,
+        actorName: user?.name,
       },
       {
         onSuccess: () => {
@@ -227,7 +242,14 @@ export default function LMDetailPage() {
 
   const handleToggleTask = (task: LMTask) => {
     updateTask.mutate(
-      { id: task.id, data: { status: task.status === "open" ? "done" : "open" } },
+      {
+        id: task.id,
+        data: {
+          status: task.status === "open" ? "done" : "open",
+          actorId: user?.id,
+          actorName: user?.name,
+        },
+      },
       {
         onError: (err) => toast.error(err.message || "Failed to update task"),
       },
