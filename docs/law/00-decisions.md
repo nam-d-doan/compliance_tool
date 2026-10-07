@@ -1,150 +1,116 @@
-# LAW — Kế hoạch triển khai (Phụ lục 3)
+# LAW — Implementation Plan (Appendix 3)
 
-> Trạng thái: NHÁP. Mục có "⏳ CHỜ DUYỆT" là tạm, code theo giá trị mặc định để không chặn tiến độ, nhưng phải sửa lại khi có xác nhận. Khuôn file này giống `docs/lm/00-decisions.md` — tái dùng tối đa pattern đã có từ module LM.
+> Status: DRAFT. Items marked "⏳ PENDING APPROVAL" are provisional — coded with a default value so they don't block progress, but must be corrected once confirmed. This file follows the same template as `docs/lm/00-decisions.md` — reusing the LM module's patterns as much as possible.
 
-## 0. Tổng quan
+## 0. Overview
 
-Hệ thống Quản lý Yêu cầu Tư vấn Pháp lý (Legal Advisory Workflow — LAW,
-Phụ lục 3) là module thứ 2 trong hồ sơ chào giá, cùng đợt với LM (Phụ lục 2).
-Nguồn: Phụ lục 2 và 3 + Thông báo mời chào giá 2698/2026/TB-NHNA-P.11
-(14/9/2026).
+The Legal Advisory Workflow system (LAW, Appendix 3) is the 2nd module in the bid package, same batch as LM (Appendix 2). Source: Appendices 2 and 3 + Public tender notice for CMS, LM, LAW and ICIS technical solution No. 2698/2026/TB-NHNA-P.11 (14/9/2026).
 
-**Giả định** (giống LM): mục tiêu trước mắt là bản demo cho hồ sơ chào giá,
-viết theo đúng cách compliance_tool đang làm (types → mock → service → hook
-→ trang). GĐ0-4 cho bản demo chạy dữ liệu giả; GĐ5 (SSO/Core Banking/kênh
-thông báo thật) chỉ làm sau khi trúng thầu, có hạ tầng Nam A Bank thật.
+**Assumption** (same as LM): the immediate goal is a demo for the bid package, built the same way `compliance_tool` already works (types → mock → service → hook → page). GĐ0-4 run on fake data for the demo; GĐ5 (SSO/Core Banking/real notification channels) only happens after winning the bid, once Nam A Bank's real infrastructure is available.
 
-**Điểm giống LM, tái dùng được trực tiếp:**
-- Cơ cấu 3 cấp phân quyền (Quản lý/Chuyên viên/Đơn vị gửi yêu cầu) —
-  **y hệt** cơ cấu đã làm cho LM (Quản lý/Chuyên viên/Đơn vị kinh doanh).
-  Dùng lại đúng quyết định đã chốt ở `docs/lm/00-decisions.md` mục 1: role
-  `executive` = Quản lý, `owner` = Chuyên viên, `business_unit` (pending,
-  tạm dùng `owner` lọc theo đơn vị) = Đơn vị gửi yêu cầu.
-- Audit trail, Notification, FileAttachment, AuditLog — dùng lại nguyên
-  entity, chỉ thêm field liên kết (`requestId` thay vì `caseId`).
-- Cảnh báo đỏ theo SLA — dùng lại nguyên lý `evaluateDeadlines`/`AlertRule`
-  của LM (xem `lib/lm-alerts.ts`), chỉ đổi input.
-- Dashboard/KPI — khuôn `LMDashboardPage` + `KPICard`/`PieChartCard`/
-  `BarChartCard` dùng lại gần như nguyên.
+**Similarities to LM, directly reusable:**
+- The 3-tier permission structure (Manager/Specialist/Requesting unit) — **identical** to the structure already built for LM (Manager/Specialist/Business unit). Reuse the decision already locked in `docs/lm/00-decisions.md` section 1: role `executive` = Manager, `owner` = Specialist, `business_unit` (pending, currently using `owner` filtered by unit) = Requesting unit.
+- Audit trail, Notification, FileAttachment, AuditLog — reuse the entities as-is, only adding a linking field (`requestId` instead of `caseId`).
+- Red flag alerts based on SLA — reuse LM's `evaluateDeadlines`/`AlertRule` logic (see `lib/lm-alerts.ts`), just change the input.
+- Dashboard/KPI — reuse the `LMDashboardPage` template + `KPICard`/`PieChartCard`/`BarChartCard` almost as-is.
 
-**Điểm khác LM, phải viết mới:**
-- Không có 5-mốc tiến trình (Khởi kiện→...→Thi hành án). LAW chỉ có 1 vòng
-  đời đơn giản: Mới → Đang xử lý → Hoàn thành (+ Quá hạn tính riêng).
-- Mức ưu tiên LAW gắn với CĂN CỨ PHÁP LÝ (Bắt buộc theo Luật / Quy định
-  NHNN / Nội bộ), không phải mức độ nghiêm trọng chung chung như
-  `PriorityLevel` hiện có (low/medium/high/critical) — cần enum riêng.
-- Khai thác Tri thức (Knowledge Base): kho ý kiến tư vấn mẫu + án lệ nội
-  bộ, tra cứu theo từ khóa. Không có tiền lệ trong code hiện tại — module
-  mới hoàn toàn.
-- KPI b của LAW là "chất lượng hồ sơ" (đạt yêu cầu ngay lần đầu, ít sửa
-  lại) — khác KPI b của LM (cập nhật tiến độ đầy đủ).
+**Differences from LM, must build new:**
+- No 5-step progress milestones (Filed→...→Enforcement). LAW has a single simple lifecycle: New → In progress → Completed (+ Overdue computed separately).
+- LAW's priority level is tied to LEGAL BASIS (Mandatory by law / SBV regulation / Internal), not the generic severity scale of the existing `PriorityLevel` (low/medium/high/critical) — needs its own enum.
+- Knowledge Base: a repository of sample advisory opinions + internal precedents, searchable by keyword. No precedent in the current code — a completely new module.
+- LAW's KPI b is "case quality" (meets requirements on the first submission, minimal rework) — different from LM's KPI b (complete progress updates).
 
-## 1. Thực thể dữ liệu cần xây
+## 1. Data entities to build
 
-Đặt trong `src/types/law.ts`, theo đúng khuôn `types/lm.ts`.
+Located in `src/types/law.ts`, following the exact template of `types/lm.ts`.
 
-| Thực thể | Trường chính | Ghi chú |
+| Entity | Main fields | Notes |
 | --- | --- | --- |
-| `AdviceRequest` (yêu cầu tư vấn) | Mã (`LAW-2026-001`), tiêu đề, mô tả, đơn vị gửi yêu cầu, mức ưu tiên (`law_mandatory`/`sbv_regulation`/`internal`), ngày gửi, hạn SLA (tính từ mức ưu tiên), trạng thái (`new`/`in_progress`/`completed`/`overdue`), chuyên viên phụ trách, cấp quản lý, lần gửi có bị trả lại sửa không (cho KPI b) | Thực thể trung tâm, tương đương `LitigationCase` |
-| `AdvisoryOpinion` (ý kiến tư vấn) | Yêu cầu, nội dung, file đính kèm, người ra ý kiến, thời điểm | Bằng chứng "đã đưa ra ý kiến tư vấn" — mục phi chức năng b |
-| `LawEvent` (lịch sử thao tác) | Yêu cầu, loại thao tác, người làm, thời điểm, giá trị trước/sau | Giống `CaseEvent`, bất biến |
-| `SlaRule` (cấu hình SLA) | Mức ưu tiên, số ngày xử lý, số ngày báo trước khi quá hạn | Giống `AlertRule` của LM — Admin chỉnh được |
-| `KnowledgeBaseEntry` (tri thức) | Tiêu đề, danh mục, từ khóa/tag, tóm tắt, nội dung hoặc file đính kèm, người đăng, thời điểm | Module mới — không có tiền lệ |
-| Dùng lại | `FileAttachment` (thêm `requestId`), `Notification`, `AuditLog`, `UserProfile` | Không tạo kiểu mới |
+| `AdviceRequest` (advisory request) | Code (`LAW-2026-001`), title, description, requesting unit, priority level (`law_mandatory`/`sbv_regulation`/`internal`), submission date, SLA deadline (computed from priority), status (`new`/`in_progress`/`completed`/`overdue`), assigned specialist, manager, whether it was returned for revision (for KPI b) | Central entity, equivalent to `LitigationCase` |
+| `AdvisoryOpinion` (advisory opinion) | Request, content, attached files, author, timestamp | Evidence that "advice was given" — non-functional requirement b |
+| `LawEvent` (activity history) | Request, action type, performed by, timestamp, before/after value | Same as `CaseEvent`, immutable |
+| `SlaRule` (SLA config) | Priority level, processing days, days before overdue warning | Same as LM's `AlertRule` — editable by Admin |
+| `KnowledgeBaseEntry` (knowledge entry) | Title, category, keywords/tags, summary, content or attached file, author, timestamp | New module — no precedent |
+| Reused as-is | `FileAttachment` (add `requestId`), `Notification`, `AuditLog`, `UserProfile` | No new types created |
 
-## 2. Phân quyền
+## 2. Permissions
 
-| Cấp theo Phụ lục 3 | Role trong app | Quyền LAW | Thấy yêu cầu nào |
+| Appendix 3 tier | App role | LAW permissions | Visible requests |
 | --- | --- | --- | --- |
-| Cấp Quản lý (Trưởng phòng/Ban) | `executive` (đã có) | Toàn quyền phê duyệt, xem Dashboard toàn hàng, điều phối nguồn lực | Toàn hệ thống |
-| Cấp Chuyên viên | `owner` (đã có) | Quản lý chi tiết yêu cầu được giao, cập nhật tiến độ, ra ý kiến tư vấn | Yêu cầu được giao |
-| Đơn vị gửi yêu cầu | `business_unit` (mới, giống LM) | Gửi yêu cầu, theo dõi trạng thái, nhận kết quả tư vấn | Yêu cầu của đơn vị mình |
-| Quản trị hệ thống | `admin` (đã có) | Toàn quyền, cấu hình SLA | Toàn hệ thống |
+| Manager tier (Dept./Division Head) | `executive` (existing) | Full approval rights, bank-wide Dashboard, resource allocation | Entire system |
+| Specialist tier | `owner` (existing) | Manage details of assigned requests, update progress, give advisory opinions | Assigned requests |
+| Requesting unit/related unit | `business_unit` (new, same as LM) | Submit requests, track status, receive advisory results | Own unit's requests |
+| System admin | `admin` (existing) | Full access, configure SLA | Entire system |
 
-Quyết định `business_unit` role dùng CHUNG cho cả LM và LAW (không tách 2
-role riêng) — nếu Nam duyệt thêm role này cho LM thì LAW thừa hưởng luôn,
-không cần xin duyệt lần 2.
+Decision: the `business_unit` role is SHARED between LM and LAW (not split into 2 separate roles) — if Nam approves adding this role for LM, LAW inherits it automatically, no need to request approval twice.
 
-## 3. Các giai đoạn
+## 3. Phases
 
-Mỗi giai đoạn kết thúc bằng 1 thứ demo được. Ước tính ngày công 1 người,
-tính thô — LAW ước thấp hơn LM ở GĐ1-2 (vòng đời đơn giản hơn, không có
-5-mốc) nhưng GĐ3 cao hơn (Knowledge Base là module mới).
+Each phase ends with something demoable. Rough one-person-day estimates — LAW is estimated lower than LM for GĐ1-2 (simpler lifecycle, no 5-milestone flow) but higher for GĐ3 (Knowledge Base is a new module).
 
-| GĐ | Nội dung | Demo được gì khi xong | Ước tính |
+| GĐ | Content | What's demoable when done | Estimate |
 | --- | --- | --- | --- |
-| 0 | Chốt thiết kế | Các quyết định ở mục 5 đã chốt | 0,5 ngày |
-| 1 | Nền tảng yêu cầu, lịch sử, phân quyền | Tạo/xem/sửa yêu cầu tư vấn; mọi thao tác có lịch sử | 2,5–3 ngày |
-| 2 | SLA & phân công | Hạn tự tính theo mức ưu tiên, phân công theo tải, đôn đốc | 1,5–2 ngày |
-| 3 | Cảnh báo đỏ & Khai thác tri thức | Cờ đỏ theo SLA; trang Knowledge Base tạo/tra cứu theo từ khóa | 2,5–3 ngày |
-| 4 | Màn hình điều hành, KPI | Dashboard quản lý, báo cáo KPI a-c | 1,5–2 ngày |
-| 5 | Lên hệ thống thật | Backend, SSO, Core Banking, kênh thông báo, UAT | Tùy hạ tầng Nam A Bank |
+| 0 | Design sign-off | Decisions in section 5 locked in | 0.5 day |
+| 1 | Request foundation, history, permissions | Create/view/edit advisory requests; every action has history | 2.5–3 days |
+| 2 | SLA & assignment | Deadline auto-computed from priority, workload-based assignment, follow-up | 1.5–2 days |
+| 3 | Red flag alerts & Knowledge Base | Red flag by SLA; Knowledge Base page to create/search by keyword | 2.5–3 days |
+| 4 | Executive screen, KPI | Manager dashboard, KPI a-c report | 1.5–2 days |
+| 5 | Go-live on real system | Backend, SSO, Core Banking, notification channels, UAT | Depends on Nam A Bank's infrastructure |
 
-**Tổng GĐ0-4 (bản demo): ~8,5–10,5 ngày công.**
+**Total GĐ0-4 (demo build): ~8.5–10.5 person-days.**
 
-### GĐ 0: Chốt thiết kế
-- [ ] Tạo nhánh `feat/law` từ `dev` (hoặc từ `feat/lm` nếu muốn kế thừa luôn code LM đã có)
-- [ ] Chốt các mục ở phần 5 "Việc cần chốt trước khi code"
-- [ ] Soạn bộ dữ liệu mẫu: ~20-25 yêu cầu trải đủ 3 trạng thái, đủ 3 mức ưu tiên, có yêu cầu sắp quá hạn/quá hạn, vài mục Knowledge Base mẫu
+### GĐ 0: Design sign-off
+- [ ] Create branch `feat/law` from `dev` (or from `feat/lm` if we want to inherit LM's code directly)
+- [ ] Lock in the items in section 5 "Decisions needed before coding"
+- [ ] Draft sample data set: ~20-25 requests spread across all 3 statuses, all 3 priority levels, with some approaching/overdue requests, plus a few sample Knowledge Base entries
 
-### GĐ 1: Nền tảng yêu cầu
-- [ ] `types/law.ts`; hằng số mức ưu tiên, trạng thái trong `constants/law.ts`
-- [ ] Dữ liệu mẫu trong `mocks/db.ts` (hoặc file riêng `mocks/law-db.ts` nếu `db.ts` đã quá dài — cân nhắc lúc code)
-- [ ] `mocks/handlers/law_handlers.ts`: CRUD + lịch sử, theo khuôn `lm_handlers.ts` (bao gồm `recordEvent`)
-- [ ] Đăng ký endpoint ở cả `mocks/handlers/index.ts` (MSW) và `mocks/directApi.ts` (dev) — thiếu 1 trong 2 chỉ chạy được 1 chế độ, đã gặp lỗi này ở LM
-- [ ] `constants/api.ts`, `services/law_service.ts`, hooks, `lawKeys` trong `hooks/query-keys.ts`
-- [ ] `pages/law/`: danh sách, chi tiết (tab Tổng quan/Ý kiến tư vấn/Lịch sử), tạo
-- [ ] Route trong `routes/index.tsx`, tab "Tư vấn pháp lý" trong `navPills.ts`, quyền `law:*` trong `rbac.ts`
+### GĐ 1: Request foundation
+- [ ] `types/law.ts`; priority level and status constants in `constants/law.ts`
+- [ ] Sample data in `mocks/db.ts` (or a separate `mocks/law-db.ts` if `db.ts` is already too long — decide during implementation)
+- [ ] `mocks/handlers/law_handlers.ts`: CRUD + history, following the `lm_handlers.ts` template (including `recordEvent`)
+- [ ] Register endpoints in both `mocks/handlers/index.ts` (MSW) and `mocks/directApi.ts` (dev) — missing one means only one mode works, already hit this bug with LM
+- [ ] `constants/api.ts`, `services/law_service.ts`, hooks, `lawKeys` in `hooks/query-keys.ts`
+- [ ] `pages/law/`: list, detail (Overview/Advisory Opinions/History tabs), create
+- [ ] Route in `routes/index.tsx`, "Legal Advisory" tab in `navPills.ts`, `law:*` permissions in `rbac.ts`
 
-### GĐ 2: SLA & phân công
-- [ ] Hạn SLA tự tính khi tạo yêu cầu, theo `SlaRule` của mức ưu tiên
-- [ ] Đổi trạng thái `new` → `in_progress` → `completed`; ghi lịch sử mỗi lần đổi
-- [ ] Hộp thoại phân công: tái dùng nguyên `computeOwnerWorkload`/`AssignList` của LM (đổi nguồn case sang request)
-- [ ] Nút "Đôn đốc" — tái dùng nguyên cơ chế `handleRemindLMCase`
+### GĐ 2: SLA & assignment
+- [ ] SLA deadline auto-computed on request creation, per the priority level's `SlaRule`
+- [ ] Status transitions `new` → `in_progress` → `completed`; log history on every change
+- [ ] Assignment dialog: reuse LM's `computeOwnerWorkload`/`AssignList` as-is (switch the data source from case to request)
+- [ ] "Follow up" button — reuse LM's `handleRemindLMCase` mechanism as-is
 
-### GĐ 3: Cảnh báo đỏ & Khai thác tri thức
-- [ ] Tái dùng `evaluateDeadlines`/`deadlineSeverity` của LM — tổng quát hoá
-      `lib/lm-alerts.ts` thành `lib/deadline-alerts.ts` dùng chung cho cả 2
-      module (tránh copy 2 bản logic giống hệt nhau)
-- [ ] Trang cấu hình SLA trong mục Admin
-- [ ] Nút "Đã tiếp nhận"/"Đã xử lý" trên cảnh báo
-- [ ] `KnowledgeBaseEntry`: trang danh sách + tạo mới + tìm theo từ khóa/tag (client-side filter đủ cho demo, không cần search engine thật)
+### GĐ 3: Red flag alerts & Knowledge Base
+- [ ] Reuse LM's `evaluateDeadlines`/`deadlineSeverity` — generalize `lib/lm-alerts.ts` into
+      `lib/deadline-alerts.ts` shared by both modules (avoid copying the same logic twice)
+- [ ] SLA configuration page under Admin
+- [ ] "Acknowledged"/"Resolved" buttons on alerts
+- [ ] `KnowledgeBaseEntry`: list page + create + search by keyword/tag (client-side filter is enough for the demo, no real search engine needed)
 
-### GĐ 4: Màn hình điều hành, KPI
-- [ ] Dashboard LAW cho cấp Quản lý: số yêu cầu theo trạng thái/mức ưu tiên, cờ đỏ, hiệu quả từng chuyên viên — tái dùng khuôn `LMDashboardPage`
-- [ ] Trang báo cáo KPI a-c (xem mục 4)
-- [ ] Kiểm tra trên điện thoại; `pnpm build`, `pnpm lint`; mở PR vào `dev`
+### GĐ 4: Executive screen, KPI
+- [ ] LAW Dashboard for Manager tier: requests by status/priority, red flags, per-specialist efficiency — reuse the `LMDashboardPage` template
+- [ ] KPI a-c report page (see section 4)
+- [ ] Test on mobile; `pnpm build`, `pnpm lint`; open PR into `dev`
 
-### GĐ 5: Lên hệ thống thật
-- Backend thay mock, giữ nguyên endpoint `/api/law/*`
-- SSO, tích hợp Core Banking (dư nợ, thông tin khách hàng thời gian thực)
-- Kênh thông báo thật (Email/SMS/Teams) — dùng chung hạ tầng gửi với LM nếu GĐ5 của LM đã làm trước
-- Audit log lưu nơi không sửa được; rà soát bảo mật
-- UAT, đào tạo, tài liệu hướng dẫn (giao phẩm)
+### GĐ 5: Go-live on real system
+- Replace mocks with a real backend, keep the `/api/law/*` endpoints unchanged
+- SSO, Core Banking integration (real-time outstanding debt, customer info)
+- Real notification channels (Email/SMS/Teams) — share sending infrastructure with LM if LM's GĐ5 was done first
+- Audit log stored somewhere immutable; security review
+- UAT, training, user guide documentation (deliverables)
 
-## 4. KPI: công thức và dữ liệu
+## 4. KPIs: formulas and data
 
-| KPI (Phụ lục 3, mục 3.2) | Công thức đề xuất | Dữ liệu phải ghi nhận |
+| KPI (Appendix 3, section 3.2) | Proposed formula | Data to record |
 | --- | --- | --- |
-| a. Tỷ lệ hoàn thành đúng hạn | Số yêu cầu hoàn thành trong SLA ÷ tổng số yêu cầu hoàn thành trong kỳ | `submittedAt`, hạn SLA, `completedAt` |
-| b. Chất lượng hồ sơ | Số yêu cầu không bị trả lại sửa ÷ tổng số yêu cầu hoàn thành | Cờ "có bị yêu cầu chỉnh sửa lại không" mỗi lần trả về (proxy demo — không có nghiệp vụ "review" thật) |
-| c. Tỷ lệ xử lý Cảnh báo đỏ | Số cảnh báo được xử lý trước hạn ÷ tổng cảnh báo | Lúc bật cờ, lúc tiếp nhận, lúc xử lý xong — y hệt KPI c của LM |
+| a. On-time completion rate | Requests completed within SLA ÷ total requests completed in the period | `submittedAt`, SLA deadline, `completedAt` |
+| b. Case quality | Requests not returned for revision ÷ total requests completed | "Was it returned for revision" flag each time it's sent back (demo proxy — there's no real "review" workflow) | 
+| c. Red flag resolution rate | Alerts resolved before deadline ÷ total alerts | Flag-raised time, acknowledged time, resolved time — identical to LM's KPI c |
 
-## 5. Việc cần chốt trước khi code ⏳
+## 5. Decisions needed before coding ⏳
 
-- [ ] Role `business_unit`: dùng chung quyết định với LM hay LAW cần ngữ
-      nghĩa khác? (đề xuất: dùng chung)
-- [ ] Số ngày SLA mặc định cho mỗi mức ưu tiên (1/2/3) — **chưa có số nào
-      trong Phụ lục 3**, cần hỏi Nam/bộ phận pháp chế trước khi đặt
-      placeholder, không tự suy diễn như đã làm với `DEADLINE_TYPE_DEFAULT_DAYS_BEFORE`
-      của LM (lần đó ít nhất có gợi ý ngữ cảnh, lần này Phụ lục 3 không
-      nêu số ngày nào cả)
-- [ ] Knowledge Base: nội dung mẫu lấy từ đâu (tự bịa án lệ demo hay cần
-      Nam cung cấp ví dụ thật)? Mức độ "thông minh" của tra cứu cho demo —
-      lọc từ khóa/tag đơn giản có đủ, hay cần thử nghiệm semantic search?
-- [ ] Định dạng mã yêu cầu (đề xuất `LAW-YYYY-NNN`, giống LM)
-- [ ] Làm trong nhánh `feat/law` riêng hay gộp chung `feat/lm` (2 module
-      cùng 1 PR)? Đề xuất nhánh riêng, PR riêng — dễ review hơn.
-- [ ] Hạn demo: giống LM, chốt theo ngày họp 05/10/2026. Nếu gấp, cắt theo
-      thứ tự: Knowledge Base tra cứu nâng cao → xuất KPI CSV → Core
-      Banking giả lập (giữ nguyên GĐ1-2, đó là lõi nghiệp vụ).
+- [ ] `business_unit` role: share the same decision as LM, or does LAW need different semantics? (proposal: share it)
+- [ ] Default SLA days per priority level (1/2/3) — **Appendix 3 gives no numbers at all**, must ask Nam/the legal department before setting a placeholder, unlike what was done for LM's `DEADLINE_TYPE_DEFAULT_DAYS_BEFORE` (that time there was at least some contextual hint; this time Appendix 3 gives no days at all)
+- [ ] Knowledge Base: where do sample entries come from (make up demo precedents, or does Nam need to provide real examples)? How "smart" does search need to be for the demo — is simple keyword/tag filtering enough, or does it need real semantic search?
+- [ ] Request code format (proposed `LAW-YYYY-NNN`, same as LM)
+- [ ] Build on its own `feat/law` branch, or merge into `feat/lm` (2 modules, 1 PR)? Proposal: separate branch, separate PR — easier to review.
+- [ ] Demo deadline: same as LM, set for the 05/10/2026 meeting. If time is tight, cut in this order: advanced Knowledge Base search → KPI CSV export → simulated Core Banking integration (keep GĐ1-2 intact, that's the core business logic).
