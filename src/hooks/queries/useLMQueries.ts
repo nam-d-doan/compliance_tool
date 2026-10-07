@@ -68,11 +68,12 @@ export function useLMWorkload() {
   });
 }
 
-/** GĐ4 — tổng hợp KPI/biểu đồ cho trang Dashboard. */
-export function useLMDashboard() {
+/** GĐ4 — tổng hợp KPI/biểu đồ cho trang Dashboard. `ownerId` (Nam review R1)
+ * scope toàn bộ số liệu về 1 chuyên viên — xem docs/lm/02-review-changes.md. */
+export function useLMDashboard(ownerId?: string) {
   return useQuery({
-    queryKey: lmKeys.dashboard(),
-    queryFn: () => LMService.dashboard(),
+    queryKey: lmKeys.dashboard(ownerId),
+    queryFn: () => LMService.dashboard(ownerId),
     staleTime: 60 * 1000,
   });
 }

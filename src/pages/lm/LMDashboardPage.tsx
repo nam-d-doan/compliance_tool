@@ -37,15 +37,22 @@ import { ROUTES } from "@/constants/routes";
 import { STAGE_STYLES, CASE_CATEGORY_LABELS } from "@/constants/lm";
 
 export default function LMDashboardPage() {
-  const { role } = useAuthStore();
+  const { role, user } = useAuthStore();
   const canCreate = hasPermission(role, "lm:create");
-  const dashboard = useLMDashboard();
+  // Nam review R1 (docs/lm/02-review-changes.md mục 3): chuyên viên chỉ
+  // thấy hồ sơ của mình, Manager/Admin vẫn thấy toàn hàng như cũ.
+  const isSpecialistView = role === "owner";
+  const dashboard = useLMDashboard(isSpecialistView ? user?.id : undefined);
   const data = dashboard.data;
+  const heroTitle = isSpecialistView ? "My Cases" : "Litigation & Enforcement";
+  const heroSubtitle = isSpecialistView
+    ? "Your assigned cases & KPIs."
+    : "Overview & KPIs.";
 
   if (dashboard.isPending) {
     return (
       <div className="space-y-6">
-        <PageHero title="Litigation & Enforcement" subtitle="Overview & KPIs." />
+        <PageHero title={heroTitle} subtitle={heroSubtitle} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <CardSkeleton key={i} />
@@ -63,7 +70,7 @@ export default function LMDashboardPage() {
   if (dashboard.isError || !data) {
     return (
       <div className="space-y-6">
-        <PageHero title="Litigation & Enforcement" subtitle="Overview & KPIs." />
+        <PageHero title={heroTitle} subtitle={heroSubtitle} />
         <ErrorState onRetry={() => dashboard.refetch()} />
       </div>
     );
@@ -92,7 +99,7 @@ export default function LMDashboardPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <PageHero title="Litigation & Enforcement" subtitle="Overview & KPIs.">
+      <PageHero title={heroTitle} subtitle={heroSubtitle}>
         <Button variant="outline" asChild>
           <Link to={ROUTES.LM.LIST}>
             <List className="size-4" aria-hidden="true" />
@@ -109,20 +116,25 @@ export default function LMDashboardPage() {
         )}
       </PageHero>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KPICard label="Open Cases" value={data.totalOpen} icon={Briefcase} />
+      {/* Nam review R1: most actionable info first — needs-attention list
+          before KPI cards/charts, not after. */}
+      <NeedsAttentionCard items={data.topRedFlagCases} />
+
+      {/* KPI cards ordered by urgency: alerts/open (act now) -> SLA/compliance
+          rates (KPI a-d) -> closed (least actionable, a record). */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         <KPICard
           label="Cases with Alerts"
           value={data.totalRedFlagCases}
           icon={AlertTriangle}
           iconClassName="bg-destructive/10 text-destructive"
         />
-        <KPICard label="Closed Cases" value={data.totalClosed} icon={CheckCircle2} />
+        <KPICard label="Open Cases" value={data.totalOpen} icon={Briefcase} />
         <KPICard
-          label="Progress Updates"
-          value={`${data.milestoneUpdateRate}%`}
-          icon={ClipboardCheck}
-          subtitle="Completed milestones with a logged event"
+          label="On-Time Completion"
+          value={`${data.onTimeCompletionRate}%`}
+          icon={Gavel}
+          subtitle="Milestones completed by their planned date"
         />
         <KPICard
           label="Alert Resolution"
@@ -131,13 +143,23 @@ export default function LMDashboardPage() {
           subtitle="Flagged deadlines already resolved"
         />
         <KPICard
+          label="Progress Updates"
+          value={`${data.milestoneUpdateRate}%`}
+          icon={ClipboardCheck}
+          subtitle="Completed milestones with a logged event"
+        />
+        <KPICard
           label="Document Completeness"
           value={`${data.documentCompletionRate}%`}
           icon={FileCheck2}
           subtitle="By required count per stage"
         />
+        <KPICard label="Closed Cases" value={data.totalClosed} icon={CheckCircle2} />
       </div>
 
+      {/* Charts ordered by decision-usefulness: pipeline view always matters;
+          Workload/Unit are manager-only (bank-wide) decision inputs — not
+          informative when already scoped to one specialist's own cases. */}
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         <PieChartCard
           title="By Stage"
@@ -147,6 +169,17 @@ export default function LMDashboardPage() {
           height={240}
           className="h-full"
         />
+        {!isSpecialistView && (
+          <BarChartCard
+            title="Owner Workload"
+            subtitle="Number of open cases"
+            data={workloadData}
+            xKey="name"
+            yKeys={[{ key: "value", name: "Open cases" }]}
+            height={240}
+            className="h-full"
+          />
+        )}
         <BarChartCard
           title="By Case Category"
           data={categoryData}
@@ -155,31 +188,22 @@ export default function LMDashboardPage() {
           height={240}
           className="h-full"
         />
-        <BarChartCard
-          title="Owner Workload"
-          subtitle="Number of open cases"
-          data={workloadData}
-          xKey="name"
-          yKeys={[{ key: "value", name: "Open cases" }]}
-          height={240}
-          className="h-full"
-        />
-        <BarChartCard
-          title="By Business Unit"
-          data={unitData}
-          xKey="name"
-          yKeys={[{ key: "value", name: "Cases" }]}
-          height={240}
-          className="h-full"
-        />
+        {!isSpecialistView && (
+          <BarChartCard
+            title="By Business Unit"
+            data={unitData}
+            xKey="name"
+            yKeys={[{ key: "value", name: "Cases" }]}
+            height={240}
+            className="h-full"
+          />
+        )}
       </div>
-
-      <TopRedFlagCard items={data.topRedFlagCases} />
     </motion.div>
   );
 }
 
-function TopRedFlagCard({
+function NeedsAttentionCard({
   items,
 }: {
   items: { id: string; code: string; title: string; ownerName: string; redFlagCount: number }[];
@@ -188,13 +212,13 @@ function TopRedFlagCard({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: 0.2 }}
+      transition={{ duration: 0.3 }}
     >
       <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-destructive" aria-hidden="true" />
-            <h3 className="text-sm font-medium">Most Flagged Cases</h3>
+            <h3 className="text-sm font-medium">Needs Attention</h3>
           </div>
           <Badge variant="secondary" className="h-5">
             {items.length}

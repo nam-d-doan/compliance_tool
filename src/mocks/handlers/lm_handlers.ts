@@ -673,20 +673,38 @@ export async function handleGetLMAlertRules() {
  * 4. Gộp sẵn 1 API duy nhất thay vì bắt FE gọi nhiều endpoint rồi tự tính —
  *    toàn bộ dữ liệu đã có sẵn trong getDb(), tính 1 lần ở server rẻ hơn.
  */
-export async function handleGetLMDashboard() {
+/**
+ * GĐ4 + Nam review R1 (docs/lm/02-review-changes.md mục 3): nhận `ownerId`
+ * qua query string. Khi có — scope TOÀN BỘ số liệu theo hồ sơ của 1 chuyên
+ * viên (view "My Cases"); khi không — giữ nguyên hành vi cũ (view Manager,
+ * toàn hàng). `ownerWorkload` không có nghĩa khi đã scope về 1 người nên
+ * trả `[]` — trang (LMDashboardPage) không render chart đó ở view chuyên viên.
+ */
+export async function handleGetLMDashboard({ request }: { request: Request }) {
   await getDelay();
+  const url = new URL(request.url);
+  const ownerId = url.searchParams.get("ownerId") ?? undefined;
   const db = getDb();
   evaluateDeadlines(db);
 
-  const openCases = db.litigationCases.filter((c) => c.status === "Open");
-  const closedCases = db.litigationCases.filter((c) => c.status === "Closed");
+  const scopedCases = ownerId
+    ? db.litigationCases.filter((c) => c.ownerId === ownerId)
+    : db.litigationCases;
+  const scopedCaseIds = new Set(scopedCases.map((c) => c.id));
+
+  const openCases = scopedCases.filter((c) => c.status === "Open");
+  const closedCases = scopedCases.filter((c) => c.status === "Closed");
+  const scopedDeadlines = db.legalDeadlines.filter((d) =>
+    scopedCaseIds.has(d.caseId),
+  );
   const redFlagCaseIds = new Set(
-    db.legalDeadlines
-      .filter((d) => d.status === "flagged")
-      .map((d) => d.caseId),
+    scopedDeadlines.filter((d) => d.status === "flagged").map((d) => d.caseId),
   );
 
-  const completedMilestones = db.caseMilestones.filter((m) => m.actualDate);
+  const scopedMilestones = db.caseMilestones.filter((m) =>
+    scopedCaseIds.has(m.caseId),
+  );
+  const completedMilestones = scopedMilestones.filter((m) => m.actualDate);
   const completedWithEvent = completedMilestones.filter((m) => {
     const label = STAGE_STYLES[m.stage].label;
     return db.caseEvents.some(
@@ -701,38 +719,50 @@ export async function handleGetLMDashboard() {
       ? Math.round((completedWithEvent.length / completedMilestones.length) * 100)
       : 0;
 
-  const everFlagged = db.legalDeadlines.filter((d) => d.status !== "pending");
-  const resolved = db.legalDeadlines.filter((d) => d.status === "resolved");
+  // KPI a (Phụ lục 2 mục 3.2.a) — mốc hoàn thành đúng hoặc trước ngày kế
+  // hoạch HIỆN TẠI (currentPlannedDate, không phải originalPlannedDate —
+  // dời lịch hợp lệ không nên bị tính là "trễ").
+  const onTimeCompleted = completedMilestones.filter(
+    (m) => m.actualDate! <= m.currentPlannedDate,
+  );
+  const onTimeCompletionRate =
+    completedMilestones.length > 0
+      ? Math.round((onTimeCompleted.length / completedMilestones.length) * 100)
+      : 0;
+
+  const everFlagged = scopedDeadlines.filter((d) => d.status !== "pending");
+  const resolved = scopedDeadlines.filter((d) => d.status === "resolved");
   const alertResolutionRate =
     everFlagged.length > 0
       ? Math.round((resolved.length / everFlagged.length) * 100)
       : 0;
 
-  const sufficientDocCases = db.litigationCases.filter(
+  const sufficientDocCases = scopedCases.filter(
     (c) => c.fileIds.length >= REQUIRED_DOCS_BY_STAGE[c.stage].length,
   );
-  const documentCompletionRate = Math.round(
-    (sufficientDocCases.length / db.litigationCases.length) * 100,
-  );
+  const documentCompletionRate =
+    scopedCases.length > 0
+      ? Math.round((sufficientDocCases.length / scopedCases.length) * 100)
+      : 0;
 
   const stageDistribution = CASE_STAGES.map((stage) => ({
     stage,
-    count: db.litigationCases.filter((c) => c.stage === stage).length,
+    count: scopedCases.filter((c) => c.stage === stage).length,
   }));
   const categoryDistribution = CASE_CATEGORIES.map((category) => ({
     category,
-    count: db.litigationCases.filter((c) => c.category === category).length,
+    count: scopedCases.filter((c) => c.category === category).length,
   }));
 
   const unitCounts = new Map<string, number>();
-  db.litigationCases.forEach((c) => {
+  scopedCases.forEach((c) => {
     unitCounts.set(c.ownerUnitName, (unitCounts.get(c.ownerUnitName) ?? 0) + 1);
   });
   const unitDistribution = Array.from(unitCounts.entries())
     .map(([unitName, count]) => ({ unitName, count }))
     .sort((a, b) => b.count - a.count);
 
-  const topRedFlagCases = db.litigationCases
+  const topRedFlagCases = scopedCases
     .filter((c) => redFlagCaseIds.has(c.id))
     .map((c) => ({
       id: c.id,
@@ -749,12 +779,13 @@ export async function handleGetLMDashboard() {
     totalClosed: closedCases.length,
     totalRedFlagCases: redFlagCaseIds.size,
     milestoneUpdateRate,
+    onTimeCompletionRate,
     alertResolutionRate,
     documentCompletionRate,
     stageDistribution,
     categoryDistribution,
     unitDistribution,
-    ownerWorkload: computeOwnerWorkload(db),
+    ownerWorkload: ownerId ? [] : computeOwnerWorkload(db),
     topRedFlagCases,
   };
   return jsonResponse(summary);

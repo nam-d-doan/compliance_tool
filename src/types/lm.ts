@@ -197,6 +197,10 @@ export interface LMDashboardSummary {
   totalRedFlagCases: number;
   /** % mốc đã hoàn thành có ghi CaseEvent "milestone_completed" tương ứng. */
   milestoneUpdateRate: number;
+  /** KPI a (Phụ lục 2 mục 3.2.a) — % mốc đã hoàn thành có actualDate <=
+   * currentPlannedDate. Bổ sung theo feedback review của Nam (thiếu hẳn
+   * trước đây) — xem docs/lm/02-review-changes.md mục 0. */
+  onTimeCompletionRate: number;
   /** % hạn đã từng bật cờ (flagged/acknowledged/resolved) mà đã xử lý xong. */
   alertResolutionRate: number;
   /** % hồ sơ có đủ SỐ LƯỢNG tài liệu theo yêu cầu giai đoạn hiện tại. */

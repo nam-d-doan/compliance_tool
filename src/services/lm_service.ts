@@ -70,8 +70,9 @@ export const LMService = {
   workload() {
     return apiGet<LMWorkloadEntry[]>(API_ENDPOINTS.LM_WORKLOAD);
   },
-  dashboard() {
-    return apiGet<LMDashboardSummary>(API_ENDPOINTS.LM_DASHBOARD);
+  dashboard(ownerId?: string) {
+    const query = ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : "";
+    return apiGet<LMDashboardSummary>(`${API_ENDPOINTS.LM_DASHBOARD}${query}`);
   },
   remind(id: string, fromUserId?: string, fromUserName?: string) {
     return apiPost<{ success: boolean }>(API_ENDPOINTS.LM_CASE_REMIND(id), {
