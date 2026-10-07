@@ -29,6 +29,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { PriorityLevel } from "./status";
+import type { Lang } from "@/stores";
 
 export const CASE_STAGES = [
   "khoi_kien",
@@ -52,6 +53,19 @@ export const STAGE_STYLES: Record<CaseStage, StageStyle> = {
   xet_xu: { label: "Trial", icon: Gavel },
   thi_hanh_an: { label: "Enforcement", icon: Landmark },
 };
+
+/** Nhãn tiếng Việt cho 5 giai đoạn — chế độ tiếng Việt (chỉ LM). */
+export const STAGE_LABELS_VI: Record<CaseStage, string> = {
+  khoi_kien: "Khởi kiện",
+  thu_ly: "Thụ lý",
+  hoa_giai: "Hòa giải",
+  xet_xu: "Xét xử",
+  thi_hanh_an: "Thi hành án",
+};
+
+export function getStageLabel(stage: CaseStage, lang: Lang): string {
+  return lang === "vi" ? STAGE_LABELS_VI[stage] : STAGE_STYLES[stage].label;
+}
 
 /** So sánh thứ tự 2 giai đoạn. Dùng để tính "mốc đã qua" cho KPI b. */
 export function stageIndex(stage: CaseStage): number {
@@ -78,6 +92,22 @@ export const CASE_CATEGORY_LABELS: Record<CaseCategory, string> = {
   khac: "Other",
 };
 
+/** Nhãn tiếng Việt cho nhóm vụ việc — chế độ tiếng Việt (chỉ LM). */
+export const CASE_CATEGORY_LABELS_VI: Record<CaseCategory, string> = {
+  no_xau_ca_nhan: "Nợ xấu tín dụng cá nhân",
+  no_xau_doanh_nghiep: "Nợ xấu tín dụng doanh nghiệp",
+  tranh_chap_hop_dong: "Tranh chấp hợp đồng tín dụng",
+  xu_ly_tai_san_bao_dam: "Xử lý tài sản bảo đảm",
+  thi_hanh_an_dan_su: "Thi hành án dân sự",
+  khac: "Khác",
+};
+
+export function getCaseCategoryLabel(category: CaseCategory, lang: Lang): string {
+  return lang === "vi"
+    ? CASE_CATEGORY_LABELS_VI[category]
+    : CASE_CATEGORY_LABELS[category];
+}
+
 export const DEADLINE_TYPES = [
   "khang_cao",
   "an_phi",
@@ -93,6 +123,18 @@ export const DEADLINE_TYPE_LABELS: Record<DeadlineType, string> = {
   gia_han_thi_hanh_an: "Enforcement Extension",
   khac: "Other",
 };
+
+/** Nhãn tiếng Việt cho loại hạn pháp lý — chế độ tiếng Việt (chỉ LM). */
+export const DEADLINE_TYPE_LABELS_VI: Record<DeadlineType, string> = {
+  khang_cao: "Kháng cáo",
+  an_phi: "Đóng án phí",
+  gia_han_thi_hanh_an: "Gia hạn thi hành án",
+  khac: "Khác",
+};
+
+export function getDeadlineTypeLabel(type: DeadlineType, lang: Lang): string {
+  return lang === "vi" ? DEADLINE_TYPE_LABELS_VI[type] : DEADLINE_TYPE_LABELS[type];
+}
 
 /**
  * ⏳ CHỜ DÂN LUẬT XÁC NHẬN — placeholder, xem docs/lm/00-decisions.md mục 3.

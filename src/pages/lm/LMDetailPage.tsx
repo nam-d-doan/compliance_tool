@@ -73,11 +73,9 @@ import {
 import { PRIORITY_LEVELS, type PriorityLevel } from "@/constants/status";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
-import {
-  STAGE_STYLES,
-  CASE_CATEGORY_LABELS,
-  DEADLINE_TYPE_LABELS,
-} from "@/constants/lm";
+import { getStageLabel, getCaseCategoryLabel, getDeadlineTypeLabel } from "@/constants/lm";
+import { useLMT, getPriorityOptionLabel, type LMI18nKey } from "@/constants/lm-i18n";
+import { LMLangToggle } from "@/components/lm/LMLangToggle";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type {
@@ -113,16 +111,17 @@ function toValidDateIso(input: string): string | null {
   return d.toISOString();
 }
 
-const DEADLINE_STATUS_LABEL: Record<string, string> = {
-  pending: "Not due yet",
-  flagged: "Flagged",
-  acknowledged: "Acknowledged",
-  resolved: "Resolved",
+const DEADLINE_STATUS_KEY: Record<string, LMI18nKey> = {
+  pending: "deadlineStatusPending",
+  flagged: "deadlineStatusFlagged",
+  acknowledged: "deadlineStatusAcknowledged",
+  resolved: "deadlineStatusResolved",
 };
 
 export default function LMDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const { role, user } = useAuthStore();
+  const { t, lang } = useLMT();
   const canUpdate = hasPermission(role, "lm:update");
   const canApprove = hasPermission(role, "lm:approve");
 
@@ -173,10 +172,10 @@ export default function LMDetailPage() {
     };
     update.mutate(payload, {
       onSuccess: () => {
-        toast.success("Case updated");
+        toast.success(t("caseUpdated"));
         setEditOpen(false);
       },
-      onError: (err) => toast.error(err.message || "Update failed"),
+      onError: (err) => toast.error(err.message || t("updateFailed")),
     });
   };
 
@@ -184,8 +183,8 @@ export default function LMDetailPage() {
     remind.mutate(
       { fromUserId: user?.id, fromUserName: user?.name },
       {
-        onSuccess: () => toast.success("Reminder sent"),
-        onError: (err) => toast.error(err.message || "Failed to send reminder"),
+        onSuccess: () => toast.success(t("reminderSent")),
+        onError: (err) => toast.error(err.message || t("reminderFailed")),
       },
     );
   };
@@ -202,9 +201,9 @@ export default function LMDetailPage() {
       {
         onSuccess: () =>
           toast.success(
-            action === "acknowledge" ? "Alert acknowledged" : "Alert resolved",
+            action === "acknowledge" ? t("alertAcknowledged") : t("alertResolved"),
           ),
-        onError: (err) => toast.error(err.message || "Action failed"),
+        onError: (err) => toast.error(err.message || t("actionFailed")),
       },
     );
   };
@@ -217,7 +216,7 @@ export default function LMDetailPage() {
   }) => {
     const dueIso = toValidDateIso(values.dueDate);
     if (!dueIso) {
-      toast.error("Invalid due date");
+      toast.error(t("invalidDueDate"));
       return;
     }
     createTask.mutate(
@@ -232,10 +231,10 @@ export default function LMDetailPage() {
       },
       {
         onSuccess: () => {
-          toast.success("Task created");
+          toast.success(t("taskCreated"));
           setTaskOpen(false);
         },
-        onError: (err) => toast.error(err.message || "Failed to create task"),
+        onError: (err) => toast.error(err.message || t("taskCreateFailed")),
       },
     );
   };
@@ -251,7 +250,7 @@ export default function LMDetailPage() {
         },
       },
       {
-        onError: (err) => toast.error(err.message || "Failed to update task"),
+        onError: (err) => toast.error(err.message || t("taskUpdateFailed")),
       },
     );
   };
@@ -261,10 +260,12 @@ export default function LMDetailPage() {
       { ownerId },
       {
         onSuccess: () => {
-          toast.success(`Assigned to ${ownerName}`);
+          toast.success(
+            lang === "vi" ? `Đã phân công cho ${ownerName}` : `Assigned to ${ownerName}`,
+          );
           setAssignOpen(false);
         },
-        onError: (err) => toast.error(err.message || "Assignment failed"),
+        onError: (err) => toast.error(err.message || t("assignmentFailed")),
       },
     );
   };
@@ -278,6 +279,7 @@ export default function LMDetailPage() {
     >
       <PageHero title={item.code} subtitle={item.title}>
         <div className="flex flex-wrap items-center gap-2">
+          <LMLangToggle />
           {canApprove && (
             <Button
               variant="outline"
@@ -285,19 +287,19 @@ export default function LMDetailPage() {
               disabled={remind.isPending}
             >
               <Send className="size-4" aria-hidden="true" />
-              Remind
+              {t("remind")}
             </Button>
           )}
           {canApprove && (
             <Button variant="outline" onClick={() => setAssignOpen(true)}>
               <Users className="size-4" aria-hidden="true" />
-              Assign
+              {t("assign")}
             </Button>
           )}
           {canUpdate && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden="true" />
-              Edit Case
+              {t("editCase")}
             </Button>
           )}
         </div>
@@ -307,52 +309,55 @@ export default function LMDetailPage() {
         <StatusBadge status={item.status} />
         <PriorityBadge priority={item.priority} />
         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-          {STAGE_STYLES[item.stage].label}
+          {getStageLabel(item.stage, lang)}
         </span>
       </div>
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="profile">Case Profile</TabsTrigger>
-          <TabsTrigger value="deadlines">Work Calendar</TabsTrigger>
-          <TabsTrigger value="files">Documents</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="profile">{t("tabProfile")}</TabsTrigger>
+          <TabsTrigger value="deadlines">{t("tabCalendar")}</TabsTrigger>
+          <TabsTrigger value="files">{t("tabDocuments")}</TabsTrigger>
+          <TabsTrigger value="history">{t("tabHistory")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Case Information</CardTitle>
+              <CardTitle>{t("caseInformation")}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field label="Case Category" value={CASE_CATEGORY_LABELS[item.category]} />
-              <Field label="Customer" value={`${item.customerName} (${item.customerCif})`} />
-              <Field label="Outstanding Debt" value={formatVnd(item.outstandingDebt)} />
               <Field
-                label="Collateral"
+                label={t("fieldCategory")}
+                value={getCaseCategoryLabel(item.category, lang)}
+              />
+              <Field label={t("fieldCustomer")} value={`${item.customerName} (${item.customerCif})`} />
+              <Field label={t("fieldDebt")} value={formatVnd(item.outstandingDebt)} />
+              <Field
+                label={t("fieldCollateral")}
                 value={item.collateralDescription ?? "—"}
               />
               <Field
-                label="Court / Enforcement Agency"
+                label={t("fieldCourt")}
                 value={item.courtOrEnforcementAgency}
               />
-              <Field label="Judge" value={item.judgeName ?? "—"} />
-              <Field label="Owner Unit" value={item.ownerUnitName} />
-              <Field label="Case Owner" value={item.ownerName} />
-              <Field label="Manager" value={item.managerName || "—"} />
-              <Field label="Last Updated" value={fmt(item.updatedAt)} />
+              <Field label={t("fieldJudge")} value={item.judgeName ?? "—"} />
+              <Field label={t("fieldOwnerUnit")} value={item.ownerUnitName} />
+              <Field label={t("fieldCaseOwner")} value={item.ownerName} />
+              <Field label={t("fieldManager")} value={item.managerName || "—"} />
+              <Field label={t("fieldLastUpdated")} value={fmt(item.updatedAt)} />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>5-Milestone Progress</CardTitle>
+              <CardTitle>{t("milestoneProgress")}</CardTitle>
             </CardHeader>
             <CardContent>
               {milestones.isPending ? (
                 <DetailSkeleton />
               ) : (milestones.data ?? []).length === 0 ? (
-                <EmptyState title="No milestones yet" />
+                <EmptyState title={t("noMilestones")} />
               ) : (
                 <ol className="space-y-3">
                   {(milestones.data ?? []).map((m) => (
@@ -369,9 +374,9 @@ export default function LMDetailPage() {
                         updateMilestone.mutate(
                           { id: m.id, data: { currentPlannedDate: dateIso } },
                           {
-                            onSuccess: () => toast.success("Planned date rescheduled"),
+                            onSuccess: () => toast.success(t("plannedRescheduled")),
                             onError: (err) =>
-                              toast.error(err.message || "Reschedule failed"),
+                              toast.error(err.message || t("rescheduleFailed")),
                           },
                         )
                       }
@@ -379,12 +384,16 @@ export default function LMDetailPage() {
                         updateMilestone.mutate(
                           { id: m.id, data: { actualDate: dateIso } },
                           {
-                            onSuccess: () =>
+                            onSuccess: () => {
+                              const label = getStageLabel(m.stage, lang);
                               toast.success(
-                                `Milestone "${STAGE_STYLES[m.stage].label}" completed`,
-                              ),
+                                lang === "vi"
+                                  ? `Mốc "${label}" đã hoàn thành`
+                                  : `Milestone "${label}" completed`,
+                              );
+                            },
                             onError: (err) =>
-                              toast.error(err.message || "Update failed"),
+                              toast.error(err.message || t("updateFailed")),
                           },
                         )
                       }
@@ -393,7 +402,7 @@ export default function LMDetailPage() {
                           { id: m.id, data: { linkedFileIds: fileIds } },
                           {
                             onError: (err) =>
-                              toast.error(err.message || "Failed to update linked files"),
+                              toast.error(err.message || t("linkFilesFailed")),
                           },
                         )
                       }
@@ -408,11 +417,11 @@ export default function LMDetailPage() {
         <TabsContent value="deadlines">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Work Calendar</CardTitle>
+              <CardTitle>{t("tabCalendar")}</CardTitle>
               {canUpdate && (
                 <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
                   <PlusCircle className="size-4" aria-hidden="true" />
-                  New Task
+                  {t("newTask")}
                 </Button>
               )}
             </CardHeader>
@@ -420,7 +429,7 @@ export default function LMDetailPage() {
               {deadlines.isPending || tasks.isPending ? (
                 <DetailSkeleton />
               ) : (deadlines.data ?? []).length === 0 && (tasks.data ?? []).length === 0 ? (
-                <EmptyState title="Nothing on the calendar" />
+                <EmptyState title={t("nothingOnCalendar")} />
               ) : (
                 <ul className="space-y-3">
                   {[
@@ -466,7 +475,7 @@ export default function LMDetailPage() {
         <TabsContent value="files">
           <Card>
             <CardHeader>
-              <CardTitle>Attached Documents</CardTitle>
+              <CardTitle>{t("attachedDocuments")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Nam review R4 (docs/lm/02-review-changes.md mục 5) — "link
@@ -478,7 +487,7 @@ export default function LMDetailPage() {
                 onClick={() => setActiveTab("profile")}
                 className="text-sm text-primary hover:underline"
               >
-                Attach a document to a specific workflow step → Case Profile
+                {t("attachToProfile")}
               </button>
               <FileUploadComponent
                 files={filesQuery.data?.items ?? []}
@@ -493,13 +502,13 @@ export default function LMDetailPage() {
         <TabsContent value="history">
           <Card>
             <CardHeader>
-              <CardTitle>Activity History</CardTitle>
+              <CardTitle>{t("activityHistory")}</CardTitle>
             </CardHeader>
             <CardContent>
               {events.isPending ? (
                 <DetailSkeleton />
               ) : (events.data ?? []).length === 0 ? (
-                <EmptyState title="No history yet" />
+                <EmptyState title={t("noHistory")} />
               ) : (
                 <ul className="space-y-3">
                   {(events.data ?? []).map((e) => (
@@ -520,7 +529,9 @@ export default function LMDetailPage() {
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>Edit Case {item.code}</SheetTitle>
+            <SheetTitle>
+              {lang === "vi" ? `Sửa hồ sơ ${item.code}` : `Edit Case ${item.code}`}
+            </SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">
             <LMForm
@@ -542,7 +553,7 @@ export default function LMDetailPage() {
               onSubmit={handleEditSubmit}
               onCancel={() => setEditOpen(false)}
               isSubmitting={update.isPending}
-              submitLabel="Save Changes"
+              submitLabel={t("saveChanges")}
             />
           </div>
         </SheetContent>
@@ -551,7 +562,9 @@ export default function LMDetailPage() {
       <Sheet open={assignOpen} onOpenChange={setAssignOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Reassign {item.code}</SheetTitle>
+            <SheetTitle>
+              {lang === "vi" ? `Phân công lại ${item.code}` : `Reassign ${item.code}`}
+            </SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">
             <AssignList
@@ -566,7 +579,9 @@ export default function LMDetailPage() {
       <Sheet open={taskOpen} onOpenChange={setTaskOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>New Task — {item.code}</SheetTitle>
+            <SheetTitle>
+              {lang === "vi" ? `Tạo việc mới — ${item.code}` : `New Task — ${item.code}`}
+            </SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">
             <TaskForm onSubmit={handleCreateTask} isSubmitting={createTask.isPending} />
@@ -611,6 +626,7 @@ function MilestoneRow({
   /** Nam review R2 — sends the FULL new `linkedFileIds` list (add or remove one). */
   onLinkFiles: (fileIds: string[]) => void;
 }) {
+  const { t, lang } = useLMT();
   const [plannedInput, setPlannedInput] = useState(
     m.currentPlannedDate.slice(0, 10),
   );
@@ -630,12 +646,12 @@ function MilestoneRow({
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium">{STAGE_STYLES[m.stage].label}</span>
+        <span className="font-medium">{getStageLabel(m.stage, lang)}</span>
         <span className="text-sm text-muted-foreground">
-          Original plan: {fmt(m.originalPlannedDate)}
+          {t("originalPlan")} {fmt(m.originalPlannedDate)}
           {deltaDays !== 0 && (
             <>
-              {" → Current: "}
+              {` → ${t("currentLabel")} `}
               {fmt(m.currentPlannedDate)}{" "}
               <span
                 className={cn(
@@ -644,7 +660,7 @@ function MilestoneRow({
                 )}
               >
                 ({deltaDays > 0 ? "+" : ""}
-                {deltaDays} days)
+                {deltaDays} {t("daysLabel")})
               </span>
             </>
           )}
@@ -652,10 +668,10 @@ function MilestoneRow({
         <span className="text-sm">
           {m.actualDate ? (
             <span className="text-success">
-              Completed: {fmt(m.actualDate)}
+              {t("completedLabel")} {fmt(m.actualDate)}
             </span>
           ) : (
-            "Not completed"
+            t("notCompleted")
           )}
         </span>
       </div>
@@ -675,13 +691,13 @@ function MilestoneRow({
             onClick={() => {
               const iso = toValidDateIso(plannedInput);
               if (!iso) {
-                toast.error("Invalid planned date");
+                toast.error(t("invalidPlannedDate"));
                 return;
               }
               onReschedule(iso);
             }}
           >
-            Reschedule
+            {t("reschedule")}
           </Button>
           <span className="text-muted-foreground">·</span>
           <Input
@@ -696,14 +712,14 @@ function MilestoneRow({
             onClick={() => {
               const iso = toValidDateIso(completeInput);
               if (!iso) {
-                toast.error("Invalid completion date");
+                toast.error(t("invalidCompletionDate"));
                 return;
               }
               onComplete(iso);
             }}
           >
             <Check className="size-4" aria-hidden="true" />
-            Mark Complete
+            {t("markComplete")}
           </Button>
         </div>
       )}
@@ -717,7 +733,7 @@ function MilestoneRow({
           aria-hidden="true"
         />
         {linkedFiles.length === 0 ? (
-          <span className="text-xs text-muted-foreground">No linked documents</span>
+          <span className="text-xs text-muted-foreground">{t("noLinkedDocs")}</span>
         ) : (
           linkedFiles.map((f) => (
             <span
@@ -751,7 +767,7 @@ function MilestoneRow({
               }
             }}
           >
-            <option value="">+ Link a file...</option>
+            <option value="">{t("linkAFile")}</option>
             {unlinkedFiles.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}
@@ -786,8 +802,10 @@ function DeadlineRow({
   isSaving: boolean;
   onAction: (id: string, action: "acknowledge" | "resolve") => void;
 }) {
+  const { t, lang } = useLMT();
   const canAcknowledge = canEdit && d.status === "flagged";
   const canResolve = canEdit && (d.status === "flagged" || d.status === "acknowledged");
+  const statusKey = DEADLINE_STATUS_KEY[d.status];
 
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
@@ -796,10 +814,10 @@ function DeadlineRow({
           className={cn("size-2 shrink-0 rounded-full", SEVERITY_DOT[d.severity ?? "none"])}
           aria-hidden="true"
         />
-        {DEADLINE_TYPE_LABELS[d.type]}
+        {getDeadlineTypeLabel(d.type, lang)}
       </span>
       <DueDateCell dueDate={d.dueDate} completed={d.status === "resolved"} />
-      <span className="text-sm">{DEADLINE_STATUS_LABEL[d.status] ?? d.status}</span>
+      <span className="text-sm">{statusKey ? t(statusKey) : d.status}</span>
       {(canAcknowledge || canResolve) && (
         <div className="flex gap-2">
           {canAcknowledge && (
@@ -809,7 +827,7 @@ function DeadlineRow({
               disabled={isSaving}
               onClick={() => onAction(d.id, "acknowledge")}
             >
-              Acknowledge
+              {t("acknowledge")}
             </Button>
           )}
           {canResolve && (
@@ -818,7 +836,7 @@ function DeadlineRow({
               disabled={isSaving}
               onClick={() => onAction(d.id, "resolve")}
             >
-              Resolve
+              {t("resolve")}
             </Button>
           )}
         </div>
@@ -833,7 +851,7 @@ function DeadlineRow({
  * đỏ/vàng do server tính, chỉ 1 nút toggle open/done.
  */
 function TaskRow({
-  task: t,
+  task: taskItem,
   canEdit,
   isSaving,
   onToggleDone,
@@ -843,31 +861,32 @@ function TaskRow({
   isSaving: boolean;
   onToggleDone: () => void;
 }) {
+  const { t } = useLMT();
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
       <span className="flex min-w-0 flex-col">
         <span
           className={cn(
             "flex items-center gap-2 font-medium",
-            t.status === "done" && "text-muted-foreground line-through",
+            taskItem.status === "done" && "text-muted-foreground line-through",
           )}
         >
           <span
             className="size-2 shrink-0 rounded-full bg-primary/40"
             aria-hidden="true"
           />
-          {t.title}
+          {taskItem.title}
         </span>
-        {t.description && (
-          <span className="text-xs text-muted-foreground">{t.description}</span>
+        {taskItem.description && (
+          <span className="text-xs text-muted-foreground">{taskItem.description}</span>
         )}
       </span>
-      <PriorityBadge priority={t.priority} />
-      <DueDateCell dueDate={t.dueDate} completed={t.status === "done"} />
+      <PriorityBadge priority={taskItem.priority} />
+      <DueDateCell dueDate={taskItem.dueDate} completed={taskItem.status === "done"} />
       {canEdit && (
         <Button size="sm" variant="outline" disabled={isSaving} onClick={onToggleDone}>
           <Check className="size-4" aria-hidden="true" />
-          {t.status === "done" ? "Reopen" : "Mark Done"}
+          {t(taskItem.status === "done" ? "reopen" : "markDone")}
         </Button>
       )}
     </li>
@@ -884,6 +903,7 @@ function AssignList({
   isSaving: boolean;
   onPick: (ownerId: string, ownerName: string) => void;
 }) {
+  const { t, lang } = useLMT();
   const workload = useLMWorkload();
 
   if (workload.isPending) return <DetailSkeleton />;
@@ -912,17 +932,19 @@ function AssignList({
                 <span className="font-medium">{w.userName}</span>
                 {i === 0 && !isCurrent && (
                   <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs text-success">
-                    Suggested — lowest load
+                    {t("suggestedLowestLoad")}
                   </span>
                 )}
                 {isCurrent && (
                   <span className="rounded-full bg-muted-foreground/10 px-2 py-0.5 text-xs text-muted-foreground">
-                    Current owner
+                    {t("currentOwner")}
                   </span>
                 )}
               </span>
               <span className="text-muted-foreground">
-                {w.openCaseCount} open cases · load {w.weightedLoad}
+                {lang === "vi"
+                  ? `${w.openCaseCount} hồ sơ đang mở · tải ${w.weightedLoad}`
+                  : `${w.openCaseCount} open cases · load ${w.weightedLoad}`}
               </span>
             </button>
           </li>
@@ -949,6 +971,7 @@ function TaskForm({
   }) => void;
   isSubmitting: boolean;
 }) {
+  const { t, lang } = useLMT();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
@@ -960,7 +983,7 @@ function TaskForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!title.trim() || !dueDate) {
-          toast.error("Title and due date are required");
+          toast.error(t("titleDueRequired"));
           return;
         }
         onSubmit({ title: title.trim(), description, dueDate, priority });
@@ -968,19 +991,19 @@ function TaskForm({
     >
       <div>
         <label htmlFor="task-title" className="text-sm font-medium">
-          Title
+          {t("taskTitleLabel")}
         </label>
         <Input
           id="task-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Follow up with court clerk"
+          placeholder={t("taskTitlePlaceholder")}
           className="mt-1"
         />
       </div>
       <div>
         <label htmlFor="task-description" className="text-sm font-medium">
-          Description
+          {t("taskDescLabel")}
         </label>
         <textarea
           id="task-description"
@@ -993,7 +1016,7 @@ function TaskForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="task-due" className="text-sm font-medium">
-            Due Date
+            {t("taskDueLabel")}
           </label>
           <Input
             id="task-due"
@@ -1005,7 +1028,7 @@ function TaskForm({
         </div>
         <div>
           <label htmlFor="task-priority" className="text-sm font-medium">
-            Priority
+            {t("taskPriorityLabel")}
           </label>
           <select
             id="task-priority"
@@ -1015,14 +1038,14 @@ function TaskForm({
           >
             {PRIORITY_LEVELS.map((p) => (
               <option key={p} value={p}>
-                {p[0].toUpperCase() + p.slice(1)}
+                {getPriorityOptionLabel(p, lang)}
               </option>
             ))}
           </select>
         </div>
       </div>
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? "Creating…" : "Create Task"}
+        {isSubmitting ? t("creating") : t("createTask")}
       </Button>
     </form>
   );

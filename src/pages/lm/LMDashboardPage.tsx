@@ -34,20 +34,23 @@ import { useAuthStore } from "@/stores";
 import { useLMDashboard } from "@/hooks/queries";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
-import { STAGE_STYLES, CASE_CATEGORY_LABELS } from "@/constants/lm";
+import { getStageLabel, getCaseCategoryLabel } from "@/constants/lm";
+import { useLMT } from "@/constants/lm-i18n";
+import { LMLangToggle } from "@/components/lm/LMLangToggle";
 
 export default function LMDashboardPage() {
   const { role, user } = useAuthStore();
+  const { t, lang } = useLMT();
   const canCreate = hasPermission(role, "lm:create");
   // Nam review R1 (docs/lm/02-review-changes.md mục 3): chuyên viên chỉ
   // thấy hồ sơ của mình, Manager/Admin vẫn thấy toàn hàng như cũ.
   const isSpecialistView = role === "owner";
   const dashboard = useLMDashboard(isSpecialistView ? user?.id : undefined);
   const data = dashboard.data;
-  const heroTitle = isSpecialistView ? "My Cases" : "Litigation & Enforcement";
+  const heroTitle = isSpecialistView ? t("heroTitleSpecialist") : t("heroTitleManager");
   const heroSubtitle = isSpecialistView
-    ? "Your assigned cases & KPIs."
-    : "Overview & KPIs.";
+    ? t("heroSubtitleSpecialist")
+    : t("heroSubtitleManager");
 
   if (dashboard.isPending) {
     return (
@@ -77,12 +80,12 @@ export default function LMDashboardPage() {
   }
 
   const stageData = data.stageDistribution.map((d) => ({
-    name: STAGE_STYLES[d.stage].label,
+    name: getStageLabel(d.stage, lang),
     value: d.count,
   }));
   const categoryData = data.categoryDistribution
     .filter((d) => d.count > 0)
-    .map((d) => ({ name: CASE_CATEGORY_LABELS[d.category], value: d.count }));
+    .map((d) => ({ name: getCaseCategoryLabel(d.category, lang), value: d.count }));
   const workloadData = data.ownerWorkload.map((w) => ({
     name: w.userName,
     value: w.openCaseCount,
@@ -100,17 +103,18 @@ export default function LMDashboardPage() {
       className="space-y-6"
     >
       <PageHero title={heroTitle} subtitle={heroSubtitle}>
+        <LMLangToggle />
         <Button variant="outline" asChild>
           <Link to={ROUTES.LM.LIST}>
             <List className="size-4" aria-hidden="true" />
-            View List
+            {t("viewList")}
           </Link>
         </Button>
         {canCreate && (
           <Button asChild>
             <Link to={ROUTES.LM.CREATE}>
               <PlusCircle className="size-4" aria-hidden="true" />
-              New Case
+              {t("newCase")}
             </Link>
           </Button>
         )}
@@ -124,37 +128,37 @@ export default function LMDashboardPage() {
           rates (KPI a-d) -> closed (least actionable, a record). */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         <KPICard
-          label="Cases with Alerts"
+          label={t("kpiAlerts")}
           value={data.totalRedFlagCases}
           icon={AlertTriangle}
           iconClassName="bg-destructive/10 text-destructive"
         />
-        <KPICard label="Open Cases" value={data.totalOpen} icon={Briefcase} />
+        <KPICard label={t("kpiOpen")} value={data.totalOpen} icon={Briefcase} />
         <KPICard
-          label="On-Time Completion"
+          label={t("kpiOnTime")}
           value={`${data.onTimeCompletionRate}%`}
           icon={Gavel}
-          subtitle="Milestones completed by their planned date"
+          subtitle={t("kpiOnTimeSub")}
         />
         <KPICard
-          label="Alert Resolution"
+          label={t("kpiAlertRes")}
           value={`${data.alertResolutionRate}%`}
           icon={Gavel}
-          subtitle="Flagged deadlines already resolved"
+          subtitle={t("kpiAlertResSub")}
         />
         <KPICard
-          label="Progress Updates"
+          label={t("kpiProgress")}
           value={`${data.milestoneUpdateRate}%`}
           icon={ClipboardCheck}
-          subtitle="Completed milestones with a logged event"
+          subtitle={t("kpiProgressSub")}
         />
         <KPICard
-          label="Document Completeness"
+          label={t("kpiDocs")}
           value={`${data.documentCompletionRate}%`}
           icon={FileCheck2}
-          subtitle="By required count per stage"
+          subtitle={t("kpiDocsSub")}
         />
-        <KPICard label="Closed Cases" value={data.totalClosed} icon={CheckCircle2} />
+        <KPICard label={t("kpiClosed")} value={data.totalClosed} icon={CheckCircle2} />
       </div>
 
       {/* Charts ordered by decision-usefulness: pipeline view always matters;
@@ -162,7 +166,7 @@ export default function LMDashboardPage() {
           informative when already scoped to one specialist's own cases. */}
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         <PieChartCard
-          title="By Stage"
+          title={t("chartByStage")}
           data={stageData}
           nameKey="name"
           valueKey="value"
@@ -171,29 +175,29 @@ export default function LMDashboardPage() {
         />
         {!isSpecialistView && (
           <BarChartCard
-            title="Owner Workload"
-            subtitle="Number of open cases"
+            title={t("chartWorkload")}
+            subtitle={t("chartWorkloadSub")}
             data={workloadData}
             xKey="name"
-            yKeys={[{ key: "value", name: "Open cases" }]}
+            yKeys={[{ key: "value", name: t("chartOpenCasesSeries") }]}
             height={240}
             className="h-full"
           />
         )}
         <BarChartCard
-          title="By Case Category"
+          title={t("chartByCategory")}
           data={categoryData}
           xKey="name"
-          yKeys={[{ key: "value", name: "Cases" }]}
+          yKeys={[{ key: "value", name: t("chartCasesSeries") }]}
           height={240}
           className="h-full"
         />
         {!isSpecialistView && (
           <BarChartCard
-            title="By Business Unit"
+            title={t("chartByUnit")}
             data={unitData}
             xKey="name"
-            yKeys={[{ key: "value", name: "Cases" }]}
+            yKeys={[{ key: "value", name: t("chartCasesSeries") }]}
             height={240}
             className="h-full"
           />
@@ -208,6 +212,7 @@ function NeedsAttentionCard({
 }: {
   items: { id: string; code: string; title: string; ownerName: string; redFlagCount: number }[];
 }) {
+  const { t } = useLMT();
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -218,7 +223,7 @@ function NeedsAttentionCard({
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-destructive" aria-hidden="true" />
-            <h3 className="text-sm font-medium">Needs Attention</h3>
+            <h3 className="text-sm font-medium">{t("needsAttention")}</h3>
           </div>
           <Badge variant="secondary" className="h-5">
             {items.length}
@@ -226,7 +231,7 @@ function NeedsAttentionCard({
         </div>
         {items.length === 0 ? (
           <EmptyState
-            title="No cases currently flagged"
+            title={t("noCasesFlagged")}
             className="h-40 border-0 bg-transparent"
           />
         ) : (
