@@ -1,62 +1,62 @@
-# LM — Quyết định GĐ0 (chốt thiết kế)
+# LM — GĐ0 Decisions (Design Sign-off)
 
-> Trạng thái: NHÁP. Mục có "⏳ CHỜ DUYỆT" là tạm, code theo giá trị mặc định để không chặn tiến độ, nhưng phải sửa lại khi có xác nhận.
+> Status: DRAFT. Items marked "⏳ PENDING APPROVAL" are provisional — coded with a default value so they don't block progress, but must be corrected once confirmed.
 
-## 1. business_unit role ⏳ CHỜ NAM DUYỆT
+## 1. `business_unit` role ⏳ PENDING NAM'S APPROVAL
 
-**Quyết định tạm:** KHÔNG thêm role mới ở GĐ1. Đơn vị kinh doanh dùng tạm role `owner` sẵn có, lọc hồ sơ theo `ownerDepartmentId`. Lý do: thêm role mới đụng `Role` type, `ROLE_HIERARCHY`, `ROLE_PERMISSIONS`, `demo-users.ts`, `DashboardRedirect`, `ROUTE_PERMISSIONS` — ảnh hưởng toàn app, đảo ngược tốn công nếu Nam không đồng ý.
+**Provisional decision:** Do NOT add a new role in GĐ1. The business unit temporarily uses the existing `owner` role, filtering cases by `ownerDepartmentId`. Reason: adding a new role touches the `Role` type, `ROLE_HIERARCHY`, `ROLE_PERMISSIONS`, `demo-users.ts`, `DashboardRedirect`, `ROUTE_PERMISSIONS` — it affects the whole app, and reverting it would be costly if Nam doesn't approve.
 
-Nếu Nam duyệt thêm `business_unit`: làm ở nhánh riêng sau, không chặn GĐ1-4.
+If Nam approves adding `business_unit`: do it on a separate branch later, it won't block GĐ1-4.
 
-## 2. Nhóm vụ việc (case category) — cho KPI e
+## 2. Case category (for KPI e)
 
-Đề xuất, dùng luôn (rủi ro thấp, sửa dễ vì chỉ là 1 enum):
+Proposed, use as-is (low risk, easy to change since it's just one enum):
 
-- Nợ xấu tín dụng cá nhân
-- Nợ xấu tín dụng doanh nghiệp
-- Tranh chấp hợp đồng tín dụng
-- Xử lý tài sản bảo đảm
-- Thi hành án dân sự
-- Khác
+- Individual credit bad debt
+- Corporate credit bad debt
+- Credit contract dispute
+- Collateral asset handling
+- Civil judgment enforcement
+- Other
 
-## 3. Loại hạn pháp lý + số ngày báo trước ⏳ CHỜ DÂN LUẬT XÁC NHẬN
+## 3. Legal deadline types + advance notice days ⏳ PENDING LEGAL TEAM CONFIRMATION
 
-**KHÔNG được coi số ngày dưới đây là đúng luật.** Chỉ là placeholder để `AlertRule` có giá trị chạy demo. Phải hỏi lại bộ phận pháp lý trước khi dùng thật.
+**The numbers below must NOT be treated as legally accurate.** They are placeholders only, so `AlertRule` has a value to run the demo with. Must check with the legal department before using in production.
 
-| Loại hạn | Số ngày báo trước (placeholder) |
+| Deadline type | Advance notice days (placeholder) |
 | --- | --- |
-| Kháng cáo | 15 |
-| Đóng án phí | 7 |
-| Gia hạn thi hành án | 30 |
-| Khác | 7 |
+| Appeal | 15 |
+| Court fee payment | 7 |
+| Enforcement extension | 30 |
+| Other | 7 |
 
-## 4. Danh mục tài liệu bắt buộc theo giai đoạn — cho KPI d
+## 4. Required document checklist by stage — for KPI d
 
-Đề xuất, sửa dễ (chỉ là danh sách hiển thị + check đủ/thiếu):
+Proposed, easy to change (just a display list + complete/missing check):
 
-| Giai đoạn | Tài liệu bắt buộc |
+| Stage | Required documents |
 | --- | --- |
-| Khởi kiện | Đơn khởi kiện; Hợp đồng tín dụng; Chứng từ giải ngân |
-| Thụ lý | Thông báo thụ lý của Tòa án |
-| Hòa giải | Biên bản hòa giải (nếu có hòa giải) |
-| Xét xử | Bản án/Quyết định của Tòa án |
-| Thi hành án | Quyết định thi hành án; Biên bản thi hành án |
+| Litigation filed | Lawsuit petition; Credit contract; Disbursement documents |
+| Case accepted | Court's notice of case acceptance |
+| Mediation | Mediation minutes (if mediation occurred) |
+| Trial | Court judgment/decision |
+| Enforcement | Enforcement decision; Enforcement minutes |
 
-## 5. Cách tính tải công việc
+## 5. Workload calculation method
 
-Trọng số theo `PriorityLevel` sẵn có trong `constants/status.ts`, nhân với số hồ sơ đang mở của chuyên viên:
+Weight by `PriorityLevel` (already in `constants/status.ts`), multiplied by the specialist's number of open cases:
 
 ```
 low = 1, medium = 2, high = 3, critical = 5
-tải(người) = Σ trọng số ưu tiên của các hồ sơ đang mở được giao cho người đó
+workload(person) = Σ priority weight of open cases assigned to that person
 ```
 
-Người có tải thấp nhất được gợi ý khi phân công.
+The person with the lowest workload is suggested when assigning.
 
-## 6. Định dạng mã vụ việc
+## 6. Case code format
 
-`LM-YYYY-NNN` (ví dụ `LM-2026-001`), giống mã `OBG-YYYY-NNN` của Obligation. Sinh tự động trong handler.
+`LM-YYYY-NNN` (e.g. `LM-2026-001`), same pattern as Obligation's `OBG-YYYY-NNN` code. Auto-generated in the handler.
 
-## 7. Hạn nộp chào giá / ngày demo
+## 7. Bid submission deadline / demo date
 
-**Chốt:** họp đầu tiên 05/10/2026. Nếu gấp, cắt theo thứ tự: AI giả lập → xuất KPI CSV → Core Banking giả lập (bỏ 3 cái này trước, giữ nguyên GĐ1-2 vì đó là lõi nghiệp vụ).
+**Confirmed:** first meeting on 05/10/2026. If time is tight, cut in this order: simulated AI → KPI CSV export → simulated Core Banking integration (drop these 3 first, keep GĐ1-2 intact since that's the core business logic).

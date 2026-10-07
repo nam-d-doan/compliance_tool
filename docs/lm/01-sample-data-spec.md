@@ -1,57 +1,57 @@
-# LM — Spec dữ liệu mẫu (30 hồ sơ)
+# LM — Sample Data Spec (30 cases)
 
-Dùng để sinh dữ liệu trong `mocks/db.ts` ở GĐ1. Ngày tính theo offset so với `DEMO_TODAY` (2026-07-11, hằng số có sẵn trong `mocks/db.ts`), không dùng `new Date()`, để demo ổn định qua thời gian — theo đúng quy ước curated-data.ts hiện có.
+Used to generate data in `mocks/db.ts` at GĐ1. Dates are offsets from `DEMO_TODAY` (2026-07-11, an existing constant in `mocks/db.ts`), not `new Date()`, so the demo stays stable over time — following the existing `curated-data.ts` convention.
 
-## Phân bổ theo giai đoạn (mỗi giai đoạn 6 hồ sơ = 30)
+## Distribution by stage (6 cases per stage = 30)
 
-| Giai đoạn | Số hồ sơ | Trạng thái mốc |
+| Stage | # cases | Milestone status |
 | --- | --- | --- |
-| Khởi kiện | 6 | 4 đúng tiến độ, 1 trễ kế hoạch (đã dời ngày), 1 mới tạo hôm nay |
-| Thụ lý | 6 | 4 đúng tiến độ, 2 trễ kế hoạch |
-| Hòa giải | 6 | 5 đúng tiến độ, 1 sắp quá hạn hòa giải |
-| Xét xử | 6 | 4 đúng tiến độ, 2 đã dời ngày xét xử |
-| Thi hành án | 6 | 3 đang xử lý, 3 sắp hoàn thành (mốc thi hành án gần xong) |
+| Litigation filed | 6 | 4 on schedule, 1 behind plan (date pushed back), 1 created today |
+| Case accepted | 6 | 4 on schedule, 2 behind plan |
+| Mediation | 6 | 5 on schedule, 1 approaching mediation deadline |
+| Trial | 6 | 4 on schedule, 2 with rescheduled trial date |
+| Enforcement | 6 | 3 in progress, 3 near completion (enforcement milestone nearly done) |
 
-## Cảnh báo đỏ (Red Flag) — phải có đủ 3 trạng thái để test
+## Red Flag — must cover all 3 statuses for testing
 
-- **5 hồ sơ quá hạn** (deadline đã qua, chưa xử lý) — trải đều loại hạn: kháng cáo, án phí, gia hạn thi hành án
-- **5 hồ sơ sắp đến hạn** (còn 1-3 ngày, trong ngưỡng cảnh báo placeholder ở `00-decisions.md`)
-- **5 hồ sơ đã xử lý cảnh báo** (có lịch sử tiếp nhận + xử lý xong, để test KPI c)
-- Còn lại: không có hạn pháp lý nào sắp tới (baseline không nhiễu)
+- **5 overdue cases** (deadline passed, not yet handled) — spread across deadline types: appeal, court fee, enforcement extension
+- **5 cases approaching deadline** (1-3 days left, within the placeholder warning threshold in `00-decisions.md`)
+- **5 cases with resolved alerts** (have acknowledgment + resolution history, to test KPI c)
+- Remaining: no upcoming legal deadlines (clean baseline, no noise)
 
-## Phân bổ ưu tiên (cho test trọng số tải công việc)
+## Priority distribution (to test workload weighting)
 
-- critical: 3 hồ sơ
-- high: 8 hồ sơ
-- medium: 14 hồ sơ
-- low: 5 hồ sơ
+- critical: 3 cases
+- high: 8 cases
+- medium: 14 cases
+- low: 5 cases
 
-## Phân bổ chuyên viên / đơn vị (cho KPI e — hiệu quả theo người/đơn vị)
+## Specialist / unit distribution (for KPI e — per-person/unit efficiency)
 
-- 5 chuyên viên (`owner` role), tải lệch nhau rõ: người A 10 hồ sơ, người B 8, người C 6, người D 4, người E 2 — để hộp thoại phân công có sự khác biệt rõ khi gợi ý người ít việc nhất
-- Đơn vị/phòng ban: dùng lại danh mục có sẵn trong `mocks/db.ts` — ưu tiên `Legal`, `Retail Banking`, `Corporate Banking`, `Credit Risk`, `Operations`
-- Nhóm vụ việc: rải đều 6 nhóm ở `00-decisions.md` mục 2 (khoảng 5 hồ sơ/nhóm)
+- 5 specialists (`owner` role), clearly uneven workload: person A 10 cases, B 8, C 6, D 4, E 2 — so the assignment dialog shows a clear difference when suggesting the least-loaded person
+- Department/unit: reuse the existing list in `mocks/db.ts` — prioritize `Legal`, `Retail Banking`, `Corporate Banking`, `Credit Risk`, `Operations`
+- Case category: spread evenly across the 6 categories in `00-decisions.md` section 2 (~5 cases/category)
 
-## Tài liệu đính kèm (cho KPI d)
+## Attached documents (for KPI d)
 
-- 20 hồ sơ: đủ tài liệu bắt buộc theo giai đoạn hiện tại (theo danh mục ở `00-decisions.md` mục 4)
-- 10 hồ sơ: thiếu ít nhất 1 tài liệu bắt buộc — để KPI d không ra 100% giả tạo
+- 20 cases: have all required documents for their current stage (per the checklist in `00-decisions.md` section 4)
+- 10 cases: missing at least 1 required document — so KPI d doesn't show a fake 100%
 
-## Lịch sử thao tác (CaseEvent) — cho audit trail + KPI b
+## Activity history (CaseEvent) — for audit trail + KPI b
 
-- Mỗi hồ sơ: tối thiểu 1 sự kiện "tạo mới"
-- Hồ sơ đã qua ≥ 2 mốc: có sự kiện "cập nhật tiến độ" cho mỗi mốc đã qua
-- 3 hồ sơ CỐ Ý thiếu sự kiện cập nhật cho 1 mốc đã qua — để KPI b (cập nhật tiến độ đầy đủ) không ra 100%
+- Every case: at least 1 "created" event
+- Cases that have passed ≥ 2 milestones: a "progress update" event for each milestone passed
+- 3 cases INTENTIONALLY missing an update event for 1 passed milestone — so KPI b (complete progress updates) doesn't show 100%
 
-## Dư nợ và tài sản bảo đảm (chỉ để hiển thị, không tính KPI)
+## Outstanding debt and collateral (display only, not used in KPI calc)
 
-- Dư nợ: random 500 triệu đến 15 tỷ VND, lệch theo `nhóm vụ việc` (doanh nghiệp cao hơn cá nhân)
-- Tài sản bảo đảm: mô tả ngắn kiểu có sẵn trong `curated-data.ts` (bất động sản, ô tô, sổ tiết kiệm...)
+- Outstanding debt: random 500 million to 15 billion VND, skewed by case category (corporate higher than individual)
+- Collateral: short descriptions in the style already used in `curated-data.ts` (real estate, cars, savings books...)
 
-## Việc cần làm khi seed (GĐ1)
+## Seeding tasks (GĐ1)
 
-- [ ] Viết hàm sinh 30 `LitigationCase` theo bảng trên trong `mocks/db.ts`, seed bằng `faker.seed(42)` giống các entity khác
-- [ ] Sinh `CaseMilestone` con cho mỗi hồ sơ theo giai đoạn hiện tại
-- [ ] Sinh `LegalDeadline` theo mục "Cảnh báo đỏ" ở trên
-- [ ] Sinh `CaseEvent` theo mục "Lịch sử thao tác"
-- [ ] Gắn `fileIds` cho 20 hồ sơ đủ tài liệu, để trống hoặc thiếu cho 10 hồ sơ còn lại
+- [ ] Write a function to generate 30 `LitigationCase` records per the table above in `mocks/db.ts`, seeded with `faker.seed(42)` like other entities
+- [ ] Generate child `CaseMilestone` records for each case based on its current stage
+- [ ] Generate `LegalDeadline` records per the "Red Flag" section above
+- [ ] Generate `CaseEvent` records per the "Activity history" section
+- [ ] Attach `fileIds` for the 20 fully-documented cases, leave empty/partial for the remaining 10
