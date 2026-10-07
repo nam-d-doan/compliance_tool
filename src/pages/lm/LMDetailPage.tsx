@@ -116,6 +116,7 @@ export default function LMDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
 
   const detail = useLMCaseDetail(id);
   const milestones = useLMCaseMilestones(id);
@@ -288,7 +289,7 @@ export default function LMDetailPage() {
         </span>
       </div>
 
-      <Tabs defaultValue="profile">
+      <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="profile">Case Profile</TabsTrigger>
           <TabsTrigger value="deadlines">Work Calendar</TabsTrigger>
@@ -445,11 +446,23 @@ export default function LMDetailPage() {
             <CardHeader>
               <CardTitle>Attached Documents</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Nam review R4 (docs/lm/02-review-changes.md mục 5) — "link
+                  to add documents into the Case Profile sub-tab": jumps to
+                  the tab where per-milestone linking already lives (built
+                  in R2), instead of duplicating that picker here. */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                className="text-sm text-primary hover:underline"
+              >
+                Attach a document to a specific workflow step → Case Profile
+              </button>
               <FileUploadComponent
                 files={filesQuery.data?.items ?? []}
                 caseId={item.id}
                 disabled={!canUpdate}
+                showFolders
               />
             </CardContent>
           </Card>

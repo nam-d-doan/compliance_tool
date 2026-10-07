@@ -45,6 +45,10 @@ export interface FileUploadComponentProps {
   disabled?: boolean;
   /** Hide the dropzone; show only the file list. */
   listOnly?: boolean;
+  /** Nam review R4 (docs/lm/02-review-changes.md mục 5) — opt-in folder
+   * organization: adds a folder input above the dropzone and groups the
+   * file list by `folderPath`. Default off, so CAP/NCC usage is unchanged. */
+  showFolders?: boolean;
   className?: string;
 }
 
@@ -67,12 +71,14 @@ export function FileUploadComponent({
   maxFiles = DEFAULT_MAX_FILES,
   disabled = false,
   listOnly = false,
+  showFolders = false,
   className,
 }: FileUploadComponentProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [pending, setPending] = useState<PendingFile[]>([]);
+  const [folderInput, setFolderInput] = useState("");
 
   // Source-of-truth list for the session. Resyncs when the parent passes a
   // new `files` reference (e.g. after a server refetch). Between prop changes
@@ -151,7 +157,15 @@ export function FileUploadComponent({
         }, 180);
 
         upload.mutate(
-          { file, capId, nccId, caseId, uploadedBy, uploadedById },
+          {
+            file,
+            capId,
+            nccId,
+            caseId,
+            uploadedBy,
+            uploadedById,
+            folderPath: showFolders ? folderInput.trim() || undefined : undefined,
+          },
           {
             onSuccess: (attachment) => {
               clearInterval(interval);
@@ -193,6 +207,8 @@ export function FileUploadComponent({
       uploadedBy,
       uploadedById,
       commit,
+      showFolders,
+      folderInput,
     ],
   );
 
@@ -220,6 +236,22 @@ export function FileUploadComponent({
 
   return (
     <div className={cn("space-y-3", className)}>
+      {!listOnly && showFolders && (
+        <div>
+          <label htmlFor={`${inputId}-folder`} className="text-xs font-medium text-muted-foreground">
+            Folder (optional — e.g. "Contracts")
+          </label>
+          <input
+            id={`${inputId}-folder`}
+            type="text"
+            value={folderInput}
+            onChange={(e) => setFolderInput(e.target.value)}
+            placeholder="Unfiled"
+            disabled={disabled}
+            className="mt-1 h-8 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30"
+          />
+        </div>
+      )}
       {!listOnly && (
         <div
           role="button"
@@ -325,14 +357,22 @@ export function FileUploadComponent({
           ))}
         </AnimatePresence>
 
-        {committed.map((file) => (
-          <FileRow
-            key={file.id}
-            file={file}
+        {showFolders ? (
+          <FoldedFileList
+            files={committed}
             onRemove={disabled ? undefined : handleRemove}
             removing={remove.isPending}
           />
-        ))}
+        ) : (
+          committed.map((file) => (
+            <FileRow
+              key={file.id}
+              file={file}
+              onRemove={disabled ? undefined : handleRemove}
+              removing={remove.isPending}
+            />
+          ))
+        )}
 
         {listOnly && committed.length === 0 && pending.length === 0 && (
           <p className="py-2 text-center text-sm text-muted-foreground">
@@ -341,6 +381,40 @@ export function FileUploadComponent({
         )}
       </div>
     </div>
+  );
+}
+
+/** Nam review R4 — groups files by `folderPath`, "Unfiled" bucket last for
+ * files with none, so pre-existing files (no folder yet) don't disappear. */
+function FoldedFileList({
+  files,
+  onRemove,
+  removing,
+}: {
+  files: FileAttachment[];
+  onRemove?: (id: string) => void;
+  removing?: boolean;
+}) {
+  const groups = new Map<string, FileAttachment[]>();
+  for (const f of files) {
+    const key = f.folderPath?.trim() || "Unfiled";
+    groups.set(key, [...(groups.get(key) ?? []), f]);
+  }
+  const sortedKeys = Array.from(groups.keys()).sort((a, b) =>
+    a === "Unfiled" ? 1 : b === "Unfiled" ? -1 : a.localeCompare(b),
+  );
+
+  return (
+    <>
+      {sortedKeys.map((folder) => (
+        <div key={folder} className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">{folder}</p>
+          {groups.get(folder)!.map((file) => (
+            <FileRow key={file.id} file={file} onRemove={onRemove} removing={removing} />
+          ))}
+        </div>
+      ))}
+    </>
   );
 }
 

@@ -13,6 +13,7 @@ export function useUploadFile() {
       caseId,
       uploadedBy,
       uploadedById,
+      folderPath,
     }: {
       file: File;
       capId?: string;
@@ -20,6 +21,7 @@ export function useUploadFile() {
       caseId?: string;
       uploadedBy?: string;
       uploadedById?: string;
+      folderPath?: string;
     }) =>
       FileService.upload(file, {
         capId,
@@ -27,6 +29,7 @@ export function useUploadFile() {
         caseId,
         uploadedBy,
         uploadedById,
+        folderPath,
       }),
     onSuccess: (_data, variables) => {
       // Invalidate the whole files namespace so list/byCap/byIds queries all

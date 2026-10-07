@@ -34,6 +34,7 @@ export const FileService = {
       caseId?: string;
       uploadedBy?: string;
       uploadedById?: string;
+      folderPath?: string;
     } = {},
   ) {
     const form = new FormData();
@@ -43,6 +44,7 @@ export const FileService = {
     if (meta.caseId) form.append("caseId", meta.caseId);
     if (meta.uploadedBy) form.append("uploadedBy", meta.uploadedBy);
     if (meta.uploadedById) form.append("uploadedById", meta.uploadedById);
+    if (meta.folderPath) form.append("folderPath", meta.folderPath);
     return apiUpload<FileAttachment>(API_ENDPOINTS.FILE_UPLOAD, form);
   },
 

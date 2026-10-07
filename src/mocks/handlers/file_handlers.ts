@@ -70,6 +70,7 @@ export async function handleUploadFile({ request }: { request: Request }) {
   const capId = (form.get("capId") as string | null) ?? undefined;
   const nccId = (form.get("nccId") as string | null) ?? undefined;
   const caseId = (form.get("caseId") as string | null) ?? undefined;
+  const folderPath = (form.get("folderPath") as string | null) || undefined;
 
   if (!(file instanceof File)) {
     return badRequest("No file attached (field must be named 'file')");
@@ -104,6 +105,7 @@ export async function handleUploadFile({ request }: { request: Request }) {
     capId,
     nccId,
     caseId,
+    folderPath,
     createdAt: now,
     updatedAt: now,
   };
