@@ -79,6 +79,10 @@ export type {
   UpdateLMMilestoneInput,
   UpdateLMDeadlineInput,
   LMDashboardSummary,
+  LMTask,
+  LMTaskStatus,
+  CreateLMTaskInput,
+  UpdateLMTaskInput,
 } from "./lm";
 export type {
   Assignment,

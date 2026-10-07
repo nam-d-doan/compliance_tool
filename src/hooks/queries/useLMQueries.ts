@@ -51,6 +51,16 @@ export function useLMCaseEvents(id: string) {
   });
 }
 
+/** Nam review R3 — task tự do của 1 hồ sơ, cho tab "Work Calendar". */
+export function useLMCaseTasks(id: string) {
+  return useQuery({
+    queryKey: lmKeys.tasks(id),
+    queryFn: () => LMService.tasks(id),
+    enabled: Boolean(id),
+    staleTime: 60 * 1000,
+  });
+}
+
 export function useLMAlertRules() {
   return useQuery({
     queryKey: lmKeys.alertRules(),

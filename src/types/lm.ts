@@ -169,6 +169,44 @@ export interface CaseEvent extends BaseEntity {
   toValue?: string;
 }
 
+/** Trạng thái 1 task tự do — Nam review R3 (docs/lm/02-review-changes.md
+ * mục 4). Chỉ 2 giá trị, không cần vòng đời phức tạp như LegalDeadline vì
+ * đây là task tự đặt, không phải cảnh báo pháp lý bắt buộc. */
+export type LMTaskStatus = "open" | "done";
+
+/**
+ * Công việc tự do gắn với hồ sơ, hiển thị cùng LegalDeadline trong tab
+ * "Work Calendar" (Nam review R3). KHÔNG thay thế LegalDeadline — 4 loại
+ * hạn pháp lý của Phụ lục 2 vẫn là enum đóng riêng, giữ nguyên logic cờ đỏ.
+ * LMTask là phần việc tự do (tên/mô tả/ưu tiên tự chọn) mà Phụ lục 2 không
+ * quy định cụ thể, theo đúng yêu cầu "tạo và quản lý công việc" của Nam.
+ */
+export interface LMTask extends BaseEntity {
+  caseId: string;
+  title: string;
+  description?: string;
+  dueDate: string;
+  priority: PriorityLevel;
+  status: LMTaskStatus;
+  createdById: string;
+  createdByName: string;
+}
+
+export interface CreateLMTaskInput {
+  caseId: string;
+  title: string;
+  description?: string;
+  dueDate: string;
+  priority: PriorityLevel;
+}
+
+export type UpdateLMTaskInput = Partial<
+  Omit<
+    LMTask,
+    "id" | "caseId" | "createdAt" | "updatedAt" | "createdById" | "createdByName"
+  >
+>;
+
 /** GĐ2 — tải công việc 1 chuyên viên, dùng cho hộp thoại phân công. */
 export interface LMWorkloadEntry {
   userId: string;

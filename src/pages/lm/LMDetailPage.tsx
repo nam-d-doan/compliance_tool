@@ -23,7 +23,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { motion } from "motion/react";
-import { Pencil, Send, Users, Check, Paperclip, X } from "lucide-react";
+import { Pencil, Send, Users, Check, Paperclip, X, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,7 @@ import {
   useLMCaseMilestones,
   useLMCaseDeadlines,
   useLMCaseEvents,
+  useLMCaseTasks,
   useLMWorkload,
 } from "@/hooks/queries";
 import { useLmCaseFiles } from "@/hooks/queries/useFileQueries";
@@ -52,8 +53,11 @@ import {
   useUpdateLMCase,
   useUpdateLMMilestone,
   useUpdateLMDeadline,
+  useCreateLMTask,
+  useUpdateLMTask,
   useRemindLMCase,
 } from "@/hooks/mutations";
+import { PRIORITY_LEVELS, type PriorityLevel } from "@/constants/status";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import {
@@ -68,6 +72,7 @@ import type {
   CaseMilestone,
   LegalDeadline,
   FileAttachment,
+  LMTask,
 } from "@/types";
 
 const selectClass =
@@ -110,15 +115,19 @@ export default function LMDetailPage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
 
   const detail = useLMCaseDetail(id);
   const milestones = useLMCaseMilestones(id);
   const deadlines = useLMCaseDeadlines(id);
   const events = useLMCaseEvents(id);
+  const tasks = useLMCaseTasks(id);
   const filesQuery = useLmCaseFiles(id);
   const update = useUpdateLMCase(id);
   const updateMilestone = useUpdateLMMilestone(id);
   const updateDeadline = useUpdateLMDeadline(id);
+  const createTask = useCreateLMTask(id);
+  const updateTask = useUpdateLMTask(id);
   const remind = useRemindLMCase(id);
 
   const item = detail.data;
@@ -186,6 +195,44 @@ export default function LMDetailPage() {
     );
   };
 
+  const handleCreateTask = (values: {
+    title: string;
+    description: string;
+    dueDate: string;
+    priority: PriorityLevel;
+  }) => {
+    const dueIso = toValidDateIso(values.dueDate);
+    if (!dueIso) {
+      toast.error("Invalid due date");
+      return;
+    }
+    createTask.mutate(
+      {
+        caseId: item.id,
+        title: values.title,
+        description: values.description || undefined,
+        dueDate: dueIso,
+        priority: values.priority,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Task created");
+          setTaskOpen(false);
+        },
+        onError: (err) => toast.error(err.message || "Failed to create task"),
+      },
+    );
+  };
+
+  const handleToggleTask = (task: LMTask) => {
+    updateTask.mutate(
+      { id: task.id, data: { status: task.status === "open" ? "done" : "open" } },
+      {
+        onError: (err) => toast.error(err.message || "Failed to update task"),
+      },
+    );
+  };
+
   const handleAssign = (ownerId: string, ownerName: string) => {
     update.mutate(
       { ownerId },
@@ -244,7 +291,7 @@ export default function LMDetailPage() {
       <Tabs defaultValue="profile">
         <TabsList>
           <TabsTrigger value="profile">Case Profile</TabsTrigger>
-          <TabsTrigger value="deadlines">Deadlines & Alerts</TabsTrigger>
+          <TabsTrigger value="deadlines">Work Calendar</TabsTrigger>
           <TabsTrigger value="files">Documents</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
@@ -337,25 +384,56 @@ export default function LMDetailPage() {
 
         <TabsContent value="deadlines">
           <Card>
-            <CardHeader>
-              <CardTitle>Legal Deadlines & Alerts</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Work Calendar</CardTitle>
+              {canUpdate && (
+                <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
+                  <PlusCircle className="size-4" aria-hidden="true" />
+                  New Task
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
-              {deadlines.isPending ? (
+              {deadlines.isPending || tasks.isPending ? (
                 <DetailSkeleton />
-              ) : (deadlines.data ?? []).length === 0 ? (
-                <EmptyState title="No open legal deadlines" />
+              ) : (deadlines.data ?? []).length === 0 && (tasks.data ?? []).length === 0 ? (
+                <EmptyState title="Nothing on the calendar" />
               ) : (
                 <ul className="space-y-3">
-                  {(deadlines.data ?? []).map((d) => (
-                    <DeadlineRow
-                      key={d.id}
-                      deadline={d}
-                      canEdit={canUpdate}
-                      isSaving={updateDeadline.isPending}
-                      onAction={handleDeadlineAction}
-                    />
-                  ))}
+                  {[
+                    ...(deadlines.data ?? []).map((d) => ({
+                      kind: "deadline" as const,
+                      dueDate: d.dueDate,
+                      deadline: d,
+                    })),
+                    ...(tasks.data ?? []).map((t) => ({
+                      kind: "task" as const,
+                      dueDate: t.dueDate,
+                      task: t,
+                    })),
+                  ]
+                    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                    .map((w) =>
+                      w.kind === "deadline" ? (
+                        <DeadlineRow
+                          key={w.deadline.id}
+                          deadline={w.deadline}
+                          canEdit={canUpdate}
+                          isSaving={updateDeadline.isPending}
+                          onAction={handleDeadlineAction}
+                        />
+                      ) : (
+                        <TaskRow
+                          key={w.task.id}
+                          task={w.task}
+                          canEdit={canUpdate}
+                          isSaving={
+                            updateTask.isPending && updateTask.variables?.id === w.task.id
+                          }
+                          onToggleDone={() => handleToggleTask(w.task)}
+                        />
+                      ),
+                    )}
                 </ul>
               )}
             </CardContent>
@@ -446,6 +524,17 @@ export default function LMDetailPage() {
               isSaving={update.isPending}
               onPick={handleAssign}
             />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={taskOpen} onOpenChange={setTaskOpen}>
+        <SheetContent className="overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>New Task — {item.code}</SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-4">
+            <TaskForm onSubmit={handleCreateTask} isSubmitting={createTask.isPending} />
           </div>
         </SheetContent>
       </Sheet>
@@ -703,6 +792,53 @@ function DeadlineRow({
   );
 }
 
+/**
+ * 1 dòng task tự do (Nam review R3) trong "Work Calendar", chung danh sách
+ * với DeadlineRow, sort theo hạn. Khác LegalDeadline — không có severity
+ * đỏ/vàng do server tính, chỉ 1 nút toggle open/done.
+ */
+function TaskRow({
+  task: t,
+  canEdit,
+  isSaving,
+  onToggleDone,
+}: {
+  task: LMTask;
+  canEdit: boolean;
+  isSaving: boolean;
+  onToggleDone: () => void;
+}) {
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
+      <span className="flex min-w-0 flex-col">
+        <span
+          className={cn(
+            "flex items-center gap-2 font-medium",
+            t.status === "done" && "text-muted-foreground line-through",
+          )}
+        >
+          <span
+            className="size-2 shrink-0 rounded-full bg-primary/40"
+            aria-hidden="true"
+          />
+          {t.title}
+        </span>
+        {t.description && (
+          <span className="text-xs text-muted-foreground">{t.description}</span>
+        )}
+      </span>
+      <PriorityBadge priority={t.priority} />
+      <DueDateCell dueDate={t.dueDate} completed={t.status === "done"} />
+      {canEdit && (
+        <Button size="sm" variant="outline" disabled={isSaving} onClick={onToggleDone}>
+          <Check className="size-4" aria-hidden="true" />
+          {t.status === "done" ? "Reopen" : "Mark Done"}
+        </Button>
+      )}
+    </li>
+  );
+}
+
 /** Danh sách chuyên viên theo tải công việc — người đầu tiên (tải thấp nhất) là gợi ý. */
 function AssignList({
   currentOwnerId,
@@ -758,5 +894,101 @@ function AssignList({
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * Nam review R3 — form nhẹ tạo task tự do (title/description/dueDate/
+ * priority). Không dùng react-hook-form+zod như LMForm vì chỉ 4 field đơn
+ * giản, validate tay (title + dueDate bắt buộc) là đủ cho demo.
+ */
+function TaskForm({
+  onSubmit,
+  isSubmitting,
+}: {
+  onSubmit: (values: {
+    title: string;
+    description: string;
+    dueDate: string;
+    priority: PriorityLevel;
+  }) => void;
+  isSubmitting: boolean;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [priority, setPriority] = useState<PriorityLevel>("medium");
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!title.trim() || !dueDate) {
+          toast.error("Title and due date are required");
+          return;
+        }
+        onSubmit({ title: title.trim(), description, dueDate, priority });
+      }}
+    >
+      <div>
+        <label htmlFor="task-title" className="text-sm font-medium">
+          Title
+        </label>
+        <Input
+          id="task-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Follow up with court clerk"
+          className="mt-1"
+        />
+      </div>
+      <div>
+        <label htmlFor="task-description" className="text-sm font-medium">
+          Description
+        </label>
+        <textarea
+          id="task-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          className="mt-1 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="task-due" className="text-sm font-medium">
+            Due Date
+          </label>
+          <Input
+            id="task-due"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <label htmlFor="task-priority" className="text-sm font-medium">
+            Priority
+          </label>
+          <select
+            id="task-priority"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value as PriorityLevel)}
+            className={cn(selectClass, "mt-1")}
+          >
+            {PRIORITY_LEVELS.map((p) => (
+              <option key={p} value={p}>
+                {p[0].toUpperCase() + p.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <Button type="submit" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? "Creating…" : "Create Task"}
+      </Button>
+    </form>
   );
 }

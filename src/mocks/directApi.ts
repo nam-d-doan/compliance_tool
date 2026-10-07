@@ -107,6 +107,9 @@ import {
   handleGetLMCaseMilestones,
   handleGetLMCaseDeadlines,
   handleGetLMCaseEvents,
+  handleGetLMCaseTasks,
+  handleCreateLMTask,
+  handleUpdateLMTask,
   handleGetLMAlertRules,
   handleUpdateLMMilestone,
   handleUpdateLMDeadline,
@@ -191,6 +194,17 @@ const routes: Route[] = [
     methods: ["GET"],
     pattern: "/api/lm/cases/:id/events",
     handler: handleGetLMCaseEvents,
+  },
+  {
+    methods: ["GET"],
+    pattern: "/api/lm/cases/:id/tasks",
+    handler: handleGetLMCaseTasks,
+  },
+  { methods: ["POST"], pattern: "/api/lm/tasks", handler: handleCreateLMTask },
+  {
+    methods: ["PUT"],
+    pattern: "/api/lm/tasks/:id",
+    handler: handleUpdateLMTask,
   },
   {
     methods: ["GET"],

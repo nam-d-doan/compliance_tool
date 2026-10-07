@@ -13,6 +13,9 @@ import type {
   AlertRule,
   LMWorkloadEntry,
   LMDashboardSummary,
+  LMTask,
+  CreateLMTaskInput,
+  UpdateLMTaskInput,
   Paginated,
 } from "@/types";
 
@@ -57,6 +60,15 @@ export const LMService = {
   },
   events(id: string) {
     return apiGet<CaseEvent[]>(API_ENDPOINTS.LM_CASE_EVENTS(id));
+  },
+  tasks(id: string) {
+    return apiGet<LMTask[]>(API_ENDPOINTS.LM_CASE_TASKS(id));
+  },
+  createTask(data: CreateLMTaskInput) {
+    return apiPost<LMTask>(API_ENDPOINTS.LM_TASK_CREATE, data);
+  },
+  updateTask(id: string, data: UpdateLMTaskInput) {
+    return apiPut<LMTask>(API_ENDPOINTS.LM_TASK_UPDATE(id), data);
   },
   alertRules() {
     return apiGet<AlertRule[]>(API_ENDPOINTS.LM_ALERT_RULES);

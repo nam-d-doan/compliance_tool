@@ -7,6 +7,8 @@ import type {
   UpdateLMCaseInput,
   UpdateLMMilestoneInput,
   UpdateLMDeadlineInput,
+  CreateLMTaskInput,
+  UpdateLMTaskInput,
 } from "@/types";
 
 export function useCreateLMCase(filters: LMCaseFilter = {}) {
@@ -82,6 +84,34 @@ export function useUpdateLMDeadline(caseId: string) {
       queryClient.invalidateQueries({ queryKey: lmKeys.detail(caseId) });
       queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
       queryClient.invalidateQueries({ queryKey: lmKeys.lists() });
+    },
+  });
+}
+
+/** Nam review R3 — tạo task tự do mới cho "Work Calendar". */
+export function useCreateLMTask(caseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateLMTaskInput) => LMService.createTask(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lmKeys.tasks(caseId) });
+    },
+  });
+}
+
+/** Nam review R3 — sửa task (đổi hạn/ưu tiên hoặc đánh dấu done). */
+export function useUpdateLMTask(caseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: UpdateLMTaskInput;
+    }) => LMService.updateTask(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: lmKeys.tasks(caseId) });
     },
   });
 }

@@ -29,6 +29,8 @@ import type {
   CaseMilestone,
   LegalDeadline,
   CaseEvent,
+  LMTask,
+  LMTaskStatus,
   AlertRule,
 } from "@/types";
 import {
@@ -1061,6 +1063,46 @@ function generateLitigationCases(
   return { cases, milestones, deadlines, events };
 }
 
+/**
+ * Nam review R3 (docs/lm/02-review-changes.md mục 4) — vài task tự do mẫu
+ * cho tab "Work Calendar", trải đủ 2 trạng thái (open/done) và việc đã trễ,
+ * để tab không trống khi demo lần đầu. KHÔNG đụng `cases` (hồ sơ dùng
+ * chung với generateLitigationCases ở trên).
+ */
+function generateLMTasks(cases: LitigationCase[]): LMTask[] {
+  if (cases.length === 0) return [];
+  const pick = (i: number) => cases[i % cases.length];
+  const specs: {
+    offsetDays: number;
+    priority: PriorityLevel;
+    status: LMTaskStatus;
+    title: string;
+  }[] = [
+    { offsetDays: -3, priority: "high", status: "open", title: "Follow up with court clerk on filing receipt" },
+    { offsetDays: 2, priority: "medium", status: "open", title: "Prepare collateral valuation summary" },
+    { offsetDays: 10, priority: "low", status: "open", title: "Schedule client update call" },
+    { offsetDays: -10, priority: "medium", status: "done", title: "Collect notarized contract copies" },
+    { offsetDays: -20, priority: "critical", status: "done", title: "File response to counterparty motion" },
+  ];
+
+  return specs.map((s, i) => {
+    const lmCase = pick(i);
+    const createdAt = iso(subDays(today, 15));
+    return {
+      id: uid("task"),
+      caseId: lmCase.id,
+      title: s.title,
+      dueDate: iso(addDays(today, s.offsetDays)),
+      priority: s.priority,
+      status: s.status,
+      createdById: lmCase.ownerId,
+      createdByName: lmCase.ownerName,
+      createdAt,
+      updatedAt: createdAt,
+    };
+  });
+}
+
 /** File đính kèm cho 20/30 hồ sơ (i % 3 !== 2). Mượn preset của CAP. */
 function generateLitigationFiles(cases: LitigationCase[]): FileAttachment[] {
   const files: FileAttachment[] = [];
@@ -1485,6 +1527,7 @@ export interface MockDb {
   caseMilestones: CaseMilestone[];
   legalDeadlines: LegalDeadline[];
   caseEvents: CaseEvent[];
+  lmTasks: LMTask[];
   alertRules: AlertRule[];
   roles: RoleEntity[];
   organizations: Organization[];
@@ -1506,6 +1549,7 @@ export function getDb(): MockDb {
   const organizationSettings = generateOrganizationSettings();
   const nccs = generateNCCs(organizationSettings, users);
   const lm = generateLitigationCases(organizationSettings, users);
+  const lmTasks = generateLMTasks(lm.cases);
   const lmFiles = generateLitigationFiles(lm.cases);
   const alertRules = generateDefaultAlertRules();
   const assignments = generateAssignments(
@@ -1546,6 +1590,7 @@ export function getDb(): MockDb {
     caseMilestones: lm.milestones,
     legalDeadlines: lm.deadlines,
     caseEvents: lm.events,
+    lmTasks,
     alertRules,
     generateTimelineFor,
     generateCommentsFor,
@@ -1569,6 +1614,7 @@ export function getDb(): MockDb {
       caseMilestones: lm.milestones.length,
       legalDeadlines: lm.deadlines.length,
       caseEvents: lm.events.length,
+      lmTasks: lmTasks.length,
     });
   }
 

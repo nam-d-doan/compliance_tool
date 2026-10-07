@@ -86,6 +86,7 @@ export const lmKeys = {
   milestones: (id: string) => [...lmKeys.detail(id), "milestones"] as const,
   deadlines: (id: string) => [...lmKeys.detail(id), "deadlines"] as const,
   events: (id: string) => [...lmKeys.detail(id), "events"] as const,
+  tasks: (id: string) => [...lmKeys.detail(id), "tasks"] as const,
   alertRules: () => [...lmKeys.all, "alert-rules"] as const,
   workload: () => [...lmKeys.all, "workload"] as const,
   dashboard: (ownerId?: string) =>

@@ -40,6 +40,9 @@ import type {
   UpdateLMDeadlineInput,
   LMWorkloadEntry,
   LMDashboardSummary,
+  LMTask,
+  CreateLMTaskInput,
+  UpdateLMTaskInput,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 import { DEMO_TODAY } from "@/mocks/db";
@@ -479,6 +482,62 @@ export async function handleGetLMCaseEvents({
 }
 
 /**
+ * Nam review R3 (docs/lm/02-review-changes.md mục 4) — task tự do của 1 hồ
+ * sơ, hiển thị cùng LegalDeadline trong tab "Work Calendar". Sort theo hạn
+ * gần nhất trước, giống cách Deadlines đang sort ở FE.
+ */
+export async function handleGetLMCaseTasks({ params }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const items = db.lmTasks
+    .filter((t) => t.caseId === params.id)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  return jsonResponse(items);
+}
+
+export async function handleCreateLMTask({ request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const body = (await request.json()) as CreateLMTaskInput;
+  if (!body.caseId || !body.title || !body.dueDate || !body.priority) {
+    return badRequest("caseId, title, dueDate and priority are required");
+  }
+  const lmCase = findById(db.litigationCases, body.caseId);
+  if (!lmCase) return notFound("Case not found");
+
+  const now = new Date().toISOString();
+  const task: LMTask = {
+    id: `task-${crypto.randomUUID()}`,
+    caseId: body.caseId,
+    title: body.title,
+    description: body.description,
+    dueDate: body.dueDate,
+    priority: body.priority,
+    status: "open",
+    createdById: lmCase.ownerId,
+    createdByName: lmCase.ownerName,
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.lmTasks.unshift(task);
+  return jsonResponse(task, 201);
+}
+
+export async function handleUpdateLMTask({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const task = findById(db.lmTasks, params.id as string);
+  if (!task) return notFound("Task not found");
+
+  const body = (await request.json()) as UpdateLMTaskInput;
+  Object.assign(task, body, { updatedAt: new Date().toISOString() });
+  return jsonResponse(task);
+}
+
+/**
  * PSEUDO CODE (GĐ2 — sửa mốc)
  * 1. Đổi currentPlannedDate (chưa hoàn thành) → ghi event dời ngày.
  * 2. Set actualDate (đánh dấu xong) → ghi event hoàn thành mốc.
@@ -802,6 +861,9 @@ export const lmHandlers = [
   http.get("/api/lm/cases/:id/deadlines", handleGetLMCaseDeadlines),
   http.put("/api/lm/deadlines/:id", handleUpdateLMDeadline),
   http.get("/api/lm/cases/:id/events", handleGetLMCaseEvents),
+  http.get("/api/lm/cases/:id/tasks", handleGetLMCaseTasks),
+  http.post("/api/lm/tasks", handleCreateLMTask),
+  http.put("/api/lm/tasks/:id", handleUpdateLMTask),
   http.get("/api/lm/cases/:id", handleGetLMCaseDetail),
   http.put("/api/lm/cases/:id", handleUpdateLMCase),
   http.delete("/api/lm/cases/:id", handleDeleteLMCase),
