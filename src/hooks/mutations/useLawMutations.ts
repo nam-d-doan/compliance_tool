@@ -7,7 +7,52 @@ import type {
   UpdateAdviceRequestInput,
   UpdateLawAlertInput,
   CreateKnowledgeBaseEntryInput,
+  AssessLawRequestInput,
+  CreateLawMessageInput,
+  SubmitAdvisoryOpinionInput,
+  ReviewAdvisoryOpinionInput,
 } from "@/types";
+
+/** Mọi bước của flow tư vấn đổi status/ghi lịch sử — làm mới đủ các nơi hiển thị. */
+function invalidateFlow(queryClient: ReturnType<typeof useQueryClient>, requestId: string) {
+  queryClient.invalidateQueries({ queryKey: lawKeys.detail(requestId) });
+  queryClient.invalidateQueries({ queryKey: lawKeys.lists() });
+  queryClient.invalidateQueries({ queryKey: lawKeys.dashboard() });
+  queryClient.invalidateQueries({ queryKey: lawKeys.workload() });
+}
+
+export function useAssessLawRequest(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AssessLawRequestInput) => LawService.assess(requestId, data),
+    onSuccess: () => invalidateFlow(queryClient, requestId),
+  });
+}
+
+export function usePostLawMessage(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateLawMessageInput) => LawService.postMessage(requestId, data),
+    onSuccess: () => invalidateFlow(queryClient, requestId),
+  });
+}
+
+export function useSubmitLawOpinion(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SubmitAdvisoryOpinionInput) => LawService.submitOpinion(requestId, data),
+    onSuccess: () => invalidateFlow(queryClient, requestId),
+  });
+}
+
+export function useReviewLawOpinion(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ opinionId, data }: { opinionId: string; data: ReviewAdvisoryOpinionInput }) =>
+      LawService.reviewOpinion(opinionId, data),
+    onSuccess: () => invalidateFlow(queryClient, requestId),
+  });
+}
 
 export function useCreateLawRequest(filters: LawRequestFilter = {}) {
   const queryClient = useQueryClient();

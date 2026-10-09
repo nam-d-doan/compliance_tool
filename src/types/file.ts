@@ -26,6 +26,8 @@ export interface FileAttachment extends BaseEntity {
   nccId?: string;
   /** Linked LM litigation case ID, when the file belongs to an LM case. */
   caseId?: string;
+  /** Linked LAW advice request ID (message/opinion attachments). */
+  requestId?: string;
   /** Nam review R4 (docs/lm/02-review-changes.md mục 5) — free-text folder
    * path (e.g. "Contracts/Collateral") for grouping in the Documents tab.
    * Optional — files without one render under an "Unfiled" bucket. */

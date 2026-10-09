@@ -1,6 +1,12 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/api";
 import type {
+  AdvisoryOpinion,
+  LawMessage,
+  AssessLawRequestInput,
+  CreateLawMessageInput,
+  SubmitAdvisoryOpinionInput,
+  ReviewAdvisoryOpinionInput,
   AdviceRequest,
   LawRequestFilter,
   CreateAdviceRequestInput,
@@ -53,6 +59,24 @@ export const LawService = {
   },
   workload() {
     return apiGet<LawWorkloadEntry[]>(API_ENDPOINTS.LAW_WORKLOAD);
+  },
+  assess(id: string, data: AssessLawRequestInput) {
+    return apiPost<AdviceRequest>(API_ENDPOINTS.LAW_REQUEST_ASSESS(id), data);
+  },
+  messages(id: string) {
+    return apiGet<LawMessage[]>(API_ENDPOINTS.LAW_REQUEST_MESSAGES(id));
+  },
+  postMessage(id: string, data: CreateLawMessageInput) {
+    return apiPost<LawMessage>(API_ENDPOINTS.LAW_REQUEST_MESSAGES(id), data);
+  },
+  opinions(id: string) {
+    return apiGet<AdvisoryOpinion[]>(API_ENDPOINTS.LAW_REQUEST_OPINIONS(id));
+  },
+  submitOpinion(id: string, data: SubmitAdvisoryOpinionInput) {
+    return apiPost<AdvisoryOpinion>(API_ENDPOINTS.LAW_REQUEST_OPINIONS(id), data);
+  },
+  reviewOpinion(opinionId: string, data: ReviewAdvisoryOpinionInput) {
+    return apiPost<AdvisoryOpinion>(API_ENDPOINTS.LAW_OPINION_REVIEW(opinionId), data);
   },
   remind(id: string, fromUserId?: string, fromUserName?: string) {
     return apiPost<{ success: boolean }>(API_ENDPOINTS.LAW_REQUEST_REMIND(id), {

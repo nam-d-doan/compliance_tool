@@ -89,6 +89,12 @@ export type {
 export type {
   AdviceRequest,
   AdvisoryOpinion,
+  AdvisoryOpinionStatus,
+  LawMessage,
+  AssessLawRequestInput,
+  CreateLawMessageInput,
+  SubmitAdvisoryOpinionInput,
+  ReviewAdvisoryOpinionInput,
   LawEvent,
   SlaRule,
   LawWorkloadEntry,

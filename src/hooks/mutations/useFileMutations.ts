@@ -11,6 +11,7 @@ export function useUploadFile() {
       capId,
       nccId,
       caseId,
+      requestId,
       uploadedBy,
       uploadedById,
       folderPath,
@@ -19,6 +20,7 @@ export function useUploadFile() {
       capId?: string;
       nccId?: string;
       caseId?: string;
+      requestId?: string;
       uploadedBy?: string;
       uploadedById?: string;
       folderPath?: string;
@@ -27,6 +29,7 @@ export function useUploadFile() {
         capId,
         nccId,
         caseId,
+        requestId,
         uploadedBy,
         uploadedById,
         folderPath,

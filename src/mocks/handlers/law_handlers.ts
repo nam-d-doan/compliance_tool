@@ -25,8 +25,11 @@ import {
   parseQuery,
   parseNumber,
   normalizeArrayParam,
+  actorFromRequest,
+  forbidden,
   type MockResolverContext,
 } from "./utils";
+import { hasPermission } from "@/constants/rbac";
 import {
   LAW_PRIORITY_SLA_DAYS,
   LAW_PRIORITY_WORKLOAD_WEIGHT,
@@ -45,6 +48,13 @@ import type {
   LawDashboardSummary,
   KnowledgeBaseEntry,
   CreateKnowledgeBaseEntryInput,
+  AdvisoryOpinion,
+  LawMessage,
+  AssessLawRequestInput,
+  CreateLawMessageInput,
+  SubmitAdvisoryOpinionInput,
+  ReviewAdvisoryOpinionInput,
+  UserProfile,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 
@@ -57,6 +67,7 @@ function recordEvent(
   description: string,
   fromValue?: string,
   toValue?: string,
+  subject?: string,
 ): void {
   const now = new Date().toISOString();
   db.lawEvents.unshift({
@@ -68,6 +79,7 @@ function recordEvent(
     description,
     fromValue,
     toValue,
+    subject,
     createdAt: now,
     updatedAt: now,
   });
@@ -245,6 +257,7 @@ export async function handleCreateLawRequest({
     title: body.title,
     description: body.description,
     priorityTier,
+    initialPriorityTier: priorityTier,
     status: "new",
     requestingUnitId: body.requestingUnitId,
     requestingUnitName: hoDept?.name ?? branch?.name ?? "",
@@ -265,13 +278,20 @@ export async function handleCreateLawRequest({
   };
 
   db.adviceRequests.unshift(newRequest);
+  const creator = actorFromRequest(request, db.users) ?? {
+    id: newRequest.ownerId,
+    name: newRequest.ownerName,
+  };
   recordEvent(
     db,
     newRequest.id,
     "created",
-    newRequest.ownerId,
-    newRequest.ownerName,
+    creator.id,
+    creator.name,
     `Created request ${newRequest.code}`,
+    undefined,
+    undefined,
+    newRequest.code,
   );
 
   return jsonResponse(newRequest, 201);
@@ -366,6 +386,8 @@ export async function handleDeleteLawRequest({ params }: MockResolverContext) {
   if (index === -1) return notFound("Request not found");
   db.adviceRequests.splice(index, 1);
   db.lawEvents = db.lawEvents.filter((e) => e.requestId !== id);
+  db.lawMessages = db.lawMessages.filter((m) => m.requestId !== id);
+  db.advisoryOpinions = db.advisoryOpinions.filter((o) => o.requestId !== id);
   return jsonResponse({ success: true });
 }
 
@@ -667,10 +689,216 @@ export async function handleGetLawDashboard() {
   return jsonResponse(summary);
 }
 
+/**
+ * PSEUDO CODE — review GĐ1: flow tư vấn 4 bước
+ * 1. Đánh giá ưu tiên (Manager = quyền law:approve): chỉ khi status "new".
+ *    Chốt mức ưu tiên → hạn SLA tính lại 1 lần từ submittedAt → "in_progress".
+ * 2. Trao đổi: tin nhắn khi "in_progress"/"pending_approval". Bên "legal" =
+ *    người đăng nhập; bên "requester" là MÔ PHỎNG (demo chưa có vai trò đơn
+ *    vị nghiệp vụ) — ghi tên đơn vị, audit vẫn ghi người thật đã bấm gửi.
+ * 3. Nộp ý kiến: chuyên viên phụ trách (hoặc Admin), khi "in_progress" →
+ *    "pending_approval". Mỗi lần nộp 1 version mới, không sửa bản cũ.
+ * 4. Duyệt: Manager. approve → "completed" + tự xử lý cảnh báo treo;
+ *    return → "in_progress", revisedCount++ (KPI b chất lượng).
+ * Người thực hiện luôn lấy từ token — không tin actor client gửi lên.
+ */
+function currentUser(db: MockDb, request: Request): UserProfile | undefined {
+  const actor = actorFromRequest(request, db.users);
+  return actor ? findById(db.users, actor.id) : undefined;
+}
+
+export async function handleAssessLawRequest({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  const user = currentUser(db, request);
+  if (!user || !hasPermission(user.role, "law:approve")) {
+    return forbidden("Only a manager can assess priority");
+  }
+  if (item.status !== "new") return badRequest("Priority has already been assessed");
+
+  const body = (await request.json()) as AssessLawRequestInput;
+  if (!LAW_PRIORITY_TIERS.includes(body.priorityTier)) {
+    return badRequest("priorityTier is invalid");
+  }
+  const now = new Date().toISOString();
+  const rule = db.slaRules.find((r) => r.priorityTier === body.priorityTier);
+  const slaDays = rule?.slaDays ?? LAW_PRIORITY_SLA_DAYS[body.priorityTier];
+  const prevTier = item.priorityTier;
+
+  item.priorityTier = body.priorityTier;
+  item.dueDate = new Date(new Date(item.submittedAt).getTime() + slaDays * 86_400_000).toISOString();
+  item.assessedAt = now;
+  item.assessedById = user.id;
+  item.assessedByName = user.name;
+  item.assessmentNote = body.note?.trim() || undefined;
+  item.status = "in_progress";
+  item.updatedAt = now;
+  // Hạn mới có thể chưa tới ngưỡng cảnh báo — cho engine đánh giá lại.
+  if (item.alertStatus === "flagged") item.alertStatus = "pending";
+
+  recordEvent(db, item.id, "priority_assessed", user.id, user.name,
+    `Assessed priority: ${prevTier} → ${body.priorityTier}`, prevTier, body.priorityTier);
+  return jsonResponse(item);
+}
+
+export async function handleGetLawMessages({ params }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const items = db.lawMessages
+    .filter((m) => m.requestId === params.id)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return jsonResponse(items);
+}
+
+export async function handlePostLawMessage({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  const user = currentUser(db, request);
+  if (!user || !hasPermission(user.role, "law:read")) return forbidden("Not allowed");
+  if (item.status !== "in_progress" && item.status !== "pending_approval") {
+    return badRequest("Messages are only open while the request is in discussion");
+  }
+  const body = (await request.json()) as CreateLawMessageInput;
+  const content = body.content?.trim();
+  if (!content && !(body.fileIds?.length)) return badRequest("Message is empty");
+  if (body.side !== "legal" && body.side !== "requester") return badRequest("side is invalid");
+
+  const now = new Date().toISOString();
+  const message: LawMessage = {
+    id: `lmsg-${crypto.randomUUID()}`,
+    requestId: item.id,
+    side: body.side,
+    // Bên đơn vị là mô phỏng — hiển thị tên đơn vị, không mạo danh 1 người cụ thể.
+    authorId: body.side === "legal" ? user.id : `contact-${item.requestingUnitId}`,
+    authorName: body.side === "legal" ? user.name : item.requestingUnitName,
+    content: content ?? "",
+    fileIds: body.fileIds ?? [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.lawMessages.push(message);
+  item.updatedAt = now;
+  recordEvent(db, item.id, "message_posted", user.id, user.name,
+    body.side === "legal" ? "Posted a message" : `Posted a message on behalf of ${item.requestingUnitName}`,
+    undefined, undefined, body.side);
+  return jsonResponse(message, 201);
+}
+
+export async function handleGetLawOpinions({ params }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const items = db.advisoryOpinions
+    .filter((o) => o.requestId === params.id)
+    .sort((a, b) => b.version - a.version);
+  return jsonResponse(items);
+}
+
+export async function handleSubmitLawOpinion({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  const user = currentUser(db, request);
+  if (!user || (user.id !== item.ownerId && user.role !== "admin")) {
+    return forbidden("Only the assigned specialist can submit the opinion");
+  }
+  if (item.status !== "in_progress") {
+    return badRequest("An opinion can only be submitted while the request is in discussion");
+  }
+  const body = (await request.json()) as SubmitAdvisoryOpinionInput;
+  const content = body.content?.trim();
+  if (!content) return badRequest("Opinion content is required");
+
+  const now = new Date().toISOString();
+  const version =
+    Math.max(0, ...db.advisoryOpinions.filter((o) => o.requestId === item.id).map((o) => o.version)) + 1;
+  const opinion: AdvisoryOpinion = {
+    id: `op-${crypto.randomUUID()}`,
+    requestId: item.id,
+    version,
+    content,
+    fileIds: body.fileIds ?? [],
+    issuedById: user.id,
+    issuedByName: user.name,
+    issuedAt: now,
+    status: "submitted",
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.advisoryOpinions.push(opinion);
+  item.status = "pending_approval";
+  item.updatedAt = now;
+  recordEvent(db, item.id, "opinion_issued", user.id, user.name,
+    `Submitted advisory opinion v${version}`, undefined, undefined, String(version));
+  return jsonResponse(opinion, 201);
+}
+
+export async function handleReviewLawOpinion({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const opinion = findById(db.advisoryOpinions, params.id as string);
+  if (!opinion) return notFound("Opinion not found");
+  const item = findById(db.adviceRequests, opinion.requestId);
+  if (!item) return notFound("Request not found");
+  const user = currentUser(db, request);
+  if (!user || !hasPermission(user.role, "law:approve")) {
+    return forbidden("Only a manager can review the opinion");
+  }
+  if (opinion.status !== "submitted" || item.status !== "pending_approval") {
+    return badRequest("This opinion is not awaiting review");
+  }
+  const body = (await request.json()) as ReviewAdvisoryOpinionInput;
+  const note = body.note?.trim();
+  if (body.action === "return" && !note) {
+    return badRequest("Please explain what needs to be revised");
+  }
+  const now = new Date().toISOString();
+  opinion.reviewedById = user.id;
+  opinion.reviewedByName = user.name;
+  opinion.reviewedAt = now;
+  opinion.reviewNote = note || undefined;
+  opinion.updatedAt = now;
+
+  if (body.action === "approve") {
+    opinion.status = "approved";
+    item.status = "completed";
+    item.completedAt = now;
+    if (item.alertStatus !== "resolved") {
+      item.alertStatus = "resolved";
+      item.resolvedAt = now;
+      item.resolvedById = user.id;
+    }
+    recordEvent(db, item.id, "opinion_approved", user.id, user.name,
+      `Approved advisory opinion v${opinion.version}`, undefined, undefined, String(opinion.version));
+    recordEvent(db, item.id, "status_changed", user.id, user.name,
+      "Request closed", "pending_approval", "completed");
+  } else if (body.action === "return") {
+    opinion.status = "returned";
+    item.status = "in_progress";
+    item.revisedCount += 1;
+    recordEvent(db, item.id, "revision_requested", user.id, user.name,
+      `Returned advisory opinion v${opinion.version} for revision`, undefined, undefined, String(opinion.version));
+  } else {
+    return badRequest("action must be approve or return");
+  }
+  item.updatedAt = now;
+  return jsonResponse(opinion);
+}
+
 export const lawHandlers = [
   http.get("/api/law/requests", handleGetLawRequestList),
   http.post("/api/law/requests", handleCreateLawRequest),
   http.get("/api/law/requests/:id/events", handleGetLawRequestEvents),
+  http.post("/api/law/requests/:id/assess", handleAssessLawRequest),
+  http.get("/api/law/requests/:id/messages", handleGetLawMessages),
+  http.post("/api/law/requests/:id/messages", handlePostLawMessage),
+  http.get("/api/law/requests/:id/opinions", handleGetLawOpinions),
+  http.post("/api/law/requests/:id/opinions", handleSubmitLawOpinion),
+  http.post("/api/law/opinions/:id/review", handleReviewLawOpinion),
   http.put("/api/law/requests/:id/alert", handleUpdateLawAlert),
   http.get("/api/law/requests/:id", handleGetLawRequestDetail),
   http.put("/api/law/requests/:id", handleUpdateLawRequest),

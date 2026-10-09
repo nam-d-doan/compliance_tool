@@ -7,8 +7,14 @@
  *    là "bằng chứng đã đưa ra ý kiến tư vấn" (Phụ lục 3 mục 2.b) — 1 yêu
  *    cầu có thể có nhiều lần ra ý kiến (sửa đi sửa lại).
  * 3. LawEvent bất biến, giống CaseEvent của LM — audit trail mục 2.b.
- * 4. GĐ2 thêm dueDate (tính 1 lần lúc tạo theo SlaRule, không đổi sau đó —
- *    giữ mốc cam kết gốc cho KPI a).
+ * 4. GĐ2 thêm dueDate theo SlaRule. Review GĐ1 (flow 4 bước): lúc tạo là
+ *    hạn TẠM theo mức ưu tiên đơn vị đề xuất; bước "Đánh giá ưu tiên"
+ *    Manager chốt mức ưu tiên → hạn tính lại 1 lần (submittedAt + slaDays
+ *    của mức đã chốt), sau đó không đổi nữa — mốc cam kết cho KPI a.
+ * 6. Review GĐ1 — flow tư vấn: Tiếp nhận → Đánh giá ưu tiên (status new →
+ *    in_progress) → Trao đổi (LawMessage 2 chiều) → Đóng (AdvisoryOpinion
+ *    nộp → pending_approval → Manager duyệt = completed / trả lại =
+ *    in_progress + revisedCount++).
  * 5. GĐ3 — cảnh báo đỏ: AdviceRequest không có sub-entity "deadline" riêng
  *    như LM (1 yêu cầu chỉ có đúng 1 dueDate) nên field vòng đời cảnh báo
  *    (alertStatus/flaggedAt/...) nằm thẳng trên AdviceRequest thay vì tách
@@ -47,6 +53,14 @@ export interface AdviceRequest extends BaseEntity {
   /** Số lần bị trả lại yêu cầu sửa — proxy cho KPI b "chất lượng hồ sơ". */
   revisedCount: number;
 
+  /** Mức ưu tiên đơn vị đề xuất lúc gửi — giữ lại để thấy Manager có đổi không. */
+  initialPriorityTier: LawPriorityTier;
+  /** Bước 2 "Đánh giá ưu tiên" — có khi Manager đã chốt mức ưu tiên. */
+  assessedAt?: string;
+  assessedById?: string;
+  assessedByName?: string;
+  assessmentNote?: string;
+
   /** GĐ3 — vòng đời cảnh báo đỏ, tính tự động (xem lib/deadline-alerts.ts). */
   alertStatus: AlertLifecycleStatus;
   flaggedAt?: string;
@@ -61,15 +75,34 @@ export interface AdviceRequest extends BaseEntity {
   tags: string[];
 }
 
-/** Ý kiến tư vấn — bằng chứng đã xử lý (Phụ lục 3 mục 2.b). Có thể nhiều
- * lần/1 yêu cầu nếu bị yêu cầu sửa lại. */
+/** Ý kiến tư vấn — bằng chứng đã xử lý (Phụ lục 3 mục 2.b). Mỗi lần nộp là
+ * 1 bản (version tăng dần); bị trả lại thì nộp bản mới, không sửa bản cũ. */
 export interface AdvisoryOpinion extends BaseEntity {
   requestId: string;
+  version: number;
   content: string;
   fileIds: string[];
   issuedById: string;
   issuedByName: string;
   issuedAt: string;
+  status: AdvisoryOpinionStatus;
+  reviewNote?: string;
+  reviewedById?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+}
+
+export type AdvisoryOpinionStatus = "submitted" | "approved" | "returned";
+
+/** Bước 3 "Trao đổi hai chiều": tin nhắn giữa đơn vị yêu cầu và pháp chế. */
+export interface LawMessage extends BaseEntity {
+  requestId: string;
+  /** "requester" = đơn vị yêu cầu; "legal" = chuyên viên/quản lý pháp chế. */
+  side: "requester" | "legal";
+  authorId: string;
+  authorName: string;
+  content: string;
+  fileIds: string[];
 }
 
 /** GĐ2 — cấu hình SLA theo mức ưu tiên (giống AlertRule của LM). */
@@ -100,12 +133,40 @@ export interface LawEvent extends BaseEntity {
     | "reminded"
     | "alert_flagged"
     | "alert_acknowledged"
-    | "alert_resolved";
+    | "alert_resolved"
+    | "priority_assessed"
+    | "message_posted"
+    | "opinion_approved";
   userId: string;
   userName: string;
   description: string;
   fromValue?: string;
   toValue?: string;
+  /** Đối tượng của thao tác (mức ưu tiên, phiên bản ý kiến...) — để UI dựng
+   * câu song ngữ, giống CaseEvent.subject của LM. */
+  subject?: string;
+}
+
+/** Bước 2 — Manager chốt mức ưu tiên. */
+export interface AssessLawRequestInput {
+  priorityTier: LawPriorityTier;
+  note?: string;
+}
+
+export interface CreateLawMessageInput {
+  side: LawMessage["side"];
+  content: string;
+  fileIds?: string[];
+}
+
+export interface SubmitAdvisoryOpinionInput {
+  content: string;
+  fileIds?: string[];
+}
+
+export interface ReviewAdvisoryOpinionInput {
+  action: "approve" | "return";
+  note?: string;
 }
 
 /** GĐ3 — tiếp nhận hoặc xử lý xong cảnh báo đỏ của 1 yêu cầu. */

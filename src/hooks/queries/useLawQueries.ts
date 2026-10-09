@@ -33,6 +33,24 @@ export function useLawRequestEvents(id: string) {
   });
 }
 
+/** Review GĐ1 — bước "Trao đổi": tin nhắn 2 chiều, cũ → mới. */
+export function useLawMessages(id: string) {
+  return useQuery({
+    queryKey: lawKeys.messages(id),
+    queryFn: () => LawService.messages(id),
+    enabled: Boolean(id),
+  });
+}
+
+/** Review GĐ1 — bước "Đóng": các phiên bản ý kiến tư vấn, mới → cũ. */
+export function useLawOpinions(id: string) {
+  return useQuery({
+    queryKey: lawKeys.opinions(id),
+    queryFn: () => LawService.opinions(id),
+    enabled: Boolean(id),
+  });
+}
+
 /** GĐ2 — tải công việc từng chuyên viên, cho hộp thoại phân công. */
 export function useLawWorkload() {
   return useQuery({

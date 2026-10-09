@@ -34,6 +34,8 @@ import type {
   AlertRule,
   AdviceRequest,
   LawEvent,
+  LawMessage,
+  AdvisoryOpinion,
   SlaRule,
   KnowledgeBaseEntry,
 } from "@/types";
@@ -1224,16 +1226,40 @@ const LAW_REQUEST_TOPICS = [
   "Clarify issues on debt assignment/transfer",
 ] as const;
 
+const LAW_REQUESTER_CONTACTS = [
+  "Nguyễn Thu Trang",
+  "Trần Minh Quân",
+  "Lê Hải Yến",
+  "Phạm Đức Anh",
+] as const;
+
+/** Thời điểm nằm giữa a và b theo tỉ lệ frac (0..1). */
+function between(a: Date, b: Date, frac: number): Date {
+  return new Date(a.getTime() + (b.getTime() - a.getTime()) * frac);
+}
+
 /**
- * PSEUDO CODE (ngắn gọn) — GĐ1 LAW: ~24 yêu cầu tư vấn, trải đều 3 mức ưu
- * tiên và 3 trạng thái. Đơn vị gửi yêu cầu lấy từ hoDepartments sẵn có
- * (không phải 5 đơn vị đã dùng cho LM — rải rộng hơn cho khác biệt demo).
- * Chuyên viên/quản lý tái dùng đúng pool role owner/executive như LM.
+ * PSEUDO CODE (ngắn gọn) — LAW: 24 yêu cầu, trải đều 3 mức ưu tiên và 4
+ * trạng thái của flow tư vấn (review GĐ1). Mỗi yêu cầu có đúng dữ liệu của
+ * các bước đã qua:
+ * 1. new: chỉ tiếp nhận, hạn SLA tạm theo mức đơn vị đề xuất.
+ * 2. Từ in_progress: Manager đã đánh giá ưu tiên (1/6 yêu cầu bị Manager
+ *    nâng mức so với đề xuất), hạn tính lại theo mức chốt.
+ * 3. Trao đổi: 2-3 tin nhắn 2 chiều, tin của đơn vị kèm file.
+ * 4. pending_approval: có 1 bản ý kiến chờ duyệt. completed: bản cuối đã
+ *    duyệt; 1/5 yêu cầu có 1 bản bị trả lại trước đó (revisedCount=1, KPI b
+ *    tính từ dữ liệu thật). 1 vài in_progress cũng vừa bị trả lại.
  */
 function generateAdviceRequests(
   organizationSettings: OrganizationSettings,
   users: UserProfile[],
-): { requests: AdviceRequest[]; events: LawEvent[] } {
+): {
+  requests: AdviceRequest[];
+  events: LawEvent[];
+  messages: LawMessage[];
+  opinions: AdvisoryOpinion[];
+  files: FileAttachment[];
+} {
   const REQUESTING_DEPT_IDS = [
     "dept-retail",
     "dept-corporate",
@@ -1256,6 +1282,48 @@ function generateAdviceRequests(
 
   const requests: AdviceRequest[] = [];
   const events: LawEvent[] = [];
+  const messages: LawMessage[] = [];
+  const opinions: AdvisoryOpinion[] = [];
+  const files: FileAttachment[] = [];
+
+  const event = (
+    requestId: string,
+    type: LawEvent["type"],
+    who: { id: string; name: string },
+    at: Date,
+    description: string,
+    extra: Partial<Pick<LawEvent, "fromValue" | "toValue" | "subject">> = {},
+  ) =>
+    events.push({
+      id: uid("le"),
+      requestId,
+      type,
+      userId: who.id,
+      userName: who.name,
+      description,
+      ...extra,
+      createdAt: iso(at),
+      updatedAt: iso(at),
+    });
+
+  const attach = (requestId: string, name: string, folder: string, by: { id: string; name: string }, at: Date) => {
+    const id = uid("file");
+    files.push({
+      id,
+      name,
+      size: faker.number.int({ min: 120_000, max: 900_000 }),
+      type: "application/pdf",
+      url: `https://mock-files.example.com/law/${requestId}/${name}`,
+      uploadedAt: iso(at),
+      uploadedBy: by.name,
+      uploadedById: by.id,
+      requestId,
+      folderPath: folder,
+      createdAt: iso(at),
+      updatedAt: iso(at),
+    });
+    return id;
+  };
 
   const COUNT = 24;
   for (let i = 0; i < COUNT; i++) {
@@ -1263,23 +1331,130 @@ function generateAdviceRequests(
     const status = LAW_REQUEST_STATUSES[i % LAW_REQUEST_STATUSES.length];
     const dept = requestingDepts[i % requestingDepts.length];
     const owner = ownerPool[i % ownerPool.length];
-    const topic = LAW_REQUEST_TOPICS[i % LAW_REQUEST_TOPICS.length];
-    const submittedAt = randomDate(subDays(today, 60), subDays(today, 2));
-    const requestId = uid("law");
-    const dueDate = addDays(submittedAt, LAW_PRIORITY_SLA_DAYS[priorityTier]);
-
     const manager = pickManager();
-    const completedAt =
-      status === "completed"
-        ? randomDate(submittedAt, today)
-        : undefined;
+    const topic = LAW_REQUEST_TOPICS[i % LAW_REQUEST_TOPICS.length];
+    const contact = {
+      id: `contact-${dept.id}`,
+      name: `${LAW_REQUESTER_CONTACTS[i % LAW_REQUESTER_CONTACTS.length]} — ${dept.name}`,
+    };
+    const ownerWho = { id: owner.id, name: owner.name };
+    const managerWho = { id: manager.id, name: manager.name };
+    const code = `LAW-${today.getFullYear()}-${pad(i + 1)}`;
+    const requestId = uid("law");
 
+    const submittedAt = randomDate(subDays(today, 60), subDays(today, 6));
+    // 1/6 yêu cầu: đơn vị đề xuất "Nội bộ", Manager nâng lên "Quy định NHNN".
+    const raisedByManager = status !== "new" && i % 6 === 1;
+    const initialPriorityTier = raisedByManager ? "internal" : priorityTier;
+    const dueDate = addDays(submittedAt, LAW_PRIORITY_SLA_DAYS[priorityTier]);
+    const fileIds: string[] = [];
+
+    event(requestId, "created", contact, submittedAt, `Created request ${code}`, { subject: code });
+
+    let assessedAt: Date | undefined;
+    let completedAt: Date | undefined;
+    let revisedCount = 0;
+
+    if (status !== "new") {
+      assessedAt = addDays(submittedAt, 1);
+      event(requestId, "priority_assessed", managerWho, assessedAt,
+        `Assessed priority: ${initialPriorityTier} → ${priorityTier}`,
+        { fromValue: initialPriorityTier, toValue: priorityTier });
+
+      // Mốc kết thúc của giai đoạn trao đổi — mọi tin nhắn/ý kiến nằm trước nó.
+      const discussionEnd = status === "completed"
+        ? between(assessedAt, today, 0.7)
+        : subDays(today, 1);
+
+      const m1At = between(assessedAt, discussionEnd, 0.1);
+      const m1File = attach(requestId, "De-nghi-tu-van.pdf", "02. Trao đổi", contact, m1At);
+      messages.push({
+        id: uid("lmsg"), requestId, side: "requester", authorId: contact.id, authorName: contact.name,
+        content: `Please advise on: ${topic}. Background and the draft documents are attached.`,
+        fileIds: [m1File], createdAt: iso(m1At), updatedAt: iso(m1At),
+      });
+      const m2At = between(assessedAt, discussionEnd, 0.3);
+      messages.push({
+        id: uid("lmsg"), requestId, side: "legal", authorId: owner.id, authorName: owner.name,
+        content: "Thanks — could you confirm the customer segment and the date you need this by? Please also send the latest signed version if there is one.",
+        fileIds: [], createdAt: iso(m2At), updatedAt: iso(m2At),
+      });
+      fileIds.push(m1File);
+      let msgCount = 2;
+      if (i % 3 !== 1) {
+        const m3At = between(assessedAt, discussionEnd, 0.5);
+        const m3File = attach(requestId, "Tai-lieu-bo-sung.pdf", "02. Trao đổi", contact, m3At);
+        messages.push({
+          id: uid("lmsg"), requestId, side: "requester", authorId: contact.id, authorName: contact.name,
+          content: "Segment is corporate clients, we need this before month-end. Signed version attached.",
+          fileIds: [m3File], createdAt: iso(m3At), updatedAt: iso(m3At),
+        });
+        fileIds.push(m3File);
+        msgCount = 3;
+      }
+      event(requestId, "message_posted", contact, m1At, "Posted a message", { subject: "requester" });
+      event(requestId, "message_posted", ownerWho, m2At, "Posted a message", { subject: "legal" });
+      if (msgCount === 3) {
+        event(requestId, "message_posted", contact, between(assessedAt, discussionEnd, 0.5), "Posted a message", { subject: "requester" });
+      }
+
+      // Ý kiến tư vấn
+      const returnedFirst = (status === "completed" && i % 5 === 0) || (status === "in_progress" && i % 8 === 1);
+      const opinionText = (v: number) =>
+        `Legal opinion on "${topic}" (v${v}): (1) applicable regulations reviewed; ` +
+        `(2) the proposed approach is permissible subject to the conditions listed; ` +
+        `(3) recommended clause amendments are in the attachment.`;
+      let version = 0;
+      const submit = (at: Date) => {
+        version += 1;
+        const fid = attach(requestId, `Y-kien-tu-van-v${version}.pdf`, "03. Ý kiến tư vấn", ownerWho, at);
+        fileIds.push(fid);
+        const op: AdvisoryOpinion = {
+          id: uid("op"), requestId, version, content: opinionText(version), fileIds: [fid],
+          issuedById: owner.id, issuedByName: owner.name, issuedAt: iso(at), status: "submitted",
+          createdAt: iso(at), updatedAt: iso(at),
+        };
+        opinions.push(op);
+        event(requestId, "opinion_issued", ownerWho, at, `Submitted advisory opinion v${version}`, { subject: String(version) });
+        return op;
+      };
+      const review = (op: AdvisoryOpinion, action: "approved" | "returned", at: Date) => {
+        op.status = action;
+        op.reviewedById = manager.id;
+        op.reviewedByName = manager.name;
+        op.reviewedAt = iso(at);
+        op.updatedAt = iso(at);
+        if (action === "returned") {
+          op.reviewNote = "Please cite the specific SBV circular and add a short risk section.";
+          revisedCount += 1;
+          event(requestId, "revision_requested", managerWho, at, `Returned advisory opinion v${op.version} for revision`, { subject: String(op.version) });
+        } else {
+          event(requestId, "opinion_approved", managerWho, at, `Approved advisory opinion v${op.version}`, { subject: String(op.version) });
+        }
+      };
+
+      if (returnedFirst) {
+        const v1 = submit(between(assessedAt, discussionEnd, 0.65));
+        review(v1, "returned", between(assessedAt, discussionEnd, 0.75));
+      }
+      if (status === "pending_approval") {
+        submit(between(assessedAt, discussionEnd, 0.85));
+      } else if (status === "completed") {
+        const last = submit(between(assessedAt, discussionEnd, 0.85));
+        completedAt = discussionEnd;
+        review(last, "approved", completedAt);
+        event(requestId, "status_changed", managerWho, completedAt, "Request closed", { fromValue: "pending_approval", toValue: "completed" });
+      }
+    }
+
+    const updatedAt = completedAt ?? assessedAt ?? submittedAt;
     requests.push({
       id: requestId,
-      code: `LAW-${today.getFullYear()}-${pad(i + 1)}`,
+      code,
       title: topic,
       description: undefined,
       priorityTier,
+      initialPriorityTier,
       status,
       requestingUnitId: dept.id,
       requestingUnitName: dept.name,
@@ -1291,47 +1466,28 @@ function generateAdviceRequests(
       submittedAt: iso(submittedAt),
       dueDate: iso(dueDate),
       completedAt: completedAt ? iso(completedAt) : undefined,
-      revisedCount: i % 5 === 0 ? 1 : 0,
-      // GĐ3 — hoàn thành coi như cảnh báo (nếu có) đã xử lý xong; còn lại
-      // để "pending", engine evaluateLawAlerts tự bật cờ theo SlaRule khi
-      // load (đa số đã quá hạn vì submittedAt rải xa trong 60 ngày qua).
+      revisedCount,
+      assessedAt: assessedAt ? iso(assessedAt) : undefined,
+      assessedById: assessedAt ? manager.id : undefined,
+      assessedByName: assessedAt ? manager.name : undefined,
+      assessmentNote: assessedAt
+        ? raisedByManager
+          ? "Touches SBV reporting obligations — raised to Priority 2."
+          : "Priority confirmed as proposed."
+        : undefined,
+      // Đã đóng thì coi cảnh báo (nếu có) đã xử lý xong; còn lại để
+      // "pending", evaluateLawAlerts tự bật cờ theo SlaRule khi load.
       alertStatus: status === "completed" ? "resolved" : "pending",
-      resolvedAt: status === "completed" && completedAt ? iso(completedAt) : undefined,
-      resolvedById: status === "completed" ? owner.id : undefined,
-      fileIds: [],
+      resolvedAt: completedAt ? iso(completedAt) : undefined,
+      resolvedById: completedAt ? manager.id : undefined,
+      fileIds,
       tags: [],
       createdAt: iso(submittedAt),
-      updatedAt: iso(completedAt ?? submittedAt),
+      updatedAt: iso(updatedAt),
     });
-
-    events.push({
-      id: uid("le"),
-      requestId,
-      type: "created",
-      userId: owner.id,
-      userName: owner.name,
-      description: `Created request ${`LAW-${today.getFullYear()}-${pad(i + 1)}`}`,
-      createdAt: iso(submittedAt),
-      updatedAt: iso(submittedAt),
-    });
-
-    if (status === "completed") {
-      events.push({
-        id: uid("le"),
-        requestId,
-        type: "status_changed",
-        userId: owner.id,
-        userName: owner.name,
-        description: "Status changed: In Progress → Completed",
-        fromValue: "in_progress",
-        toValue: "completed",
-        createdAt: iso(completedAt!),
-        updatedAt: iso(completedAt!),
-      });
-    }
   }
 
-  return { requests, events };
+  return { requests, events, messages, opinions, files };
 }
 
 /** GĐ2 — cấu hình SLA mặc định, đọc được từ db (không hardcode ở handler),
@@ -1821,6 +1977,8 @@ export interface MockDb {
   alertRules: AlertRule[];
   adviceRequests: AdviceRequest[];
   lawEvents: LawEvent[];
+  lawMessages: LawMessage[];
+  advisoryOpinions: AdvisoryOpinion[];
   slaRules: SlaRule[];
   knowledgeBase: KnowledgeBaseEntry[];
   roles: RoleEntity[];
@@ -1861,7 +2019,7 @@ export function getDb(): MockDb {
     relatedRegs,
   );
   const caps = generateCAPs(obligations, users, relatedRegs);
-  const files = [...generateFiles(caps), ...lmFiles];
+  const files = [...generateFiles(caps), ...lmFiles, ...law.files];
   const notifications = generateNotifications(users);
   const auditLogs = generateAuditLogs(users);
   const roles = generateRoles();
@@ -1891,6 +2049,8 @@ export function getDb(): MockDb {
     alertRules,
     adviceRequests: law.requests,
     lawEvents: law.events,
+    lawMessages: law.messages,
+    advisoryOpinions: law.opinions,
     slaRules,
     knowledgeBase,
     generateTimelineFor,

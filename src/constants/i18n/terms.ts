@@ -79,6 +79,8 @@ export const VI_TERMS: Record<string, string> = {
   "Priority 2 — SBV Regulation": "Ưu tiên 2 — Quy định NHNN",
   "Priority 3 — Internal": "Ưu tiên 3 — Nội bộ",
   New: "Mới",
+  "Awaiting Assessment": "Chờ đánh giá",
+  "In Discussion": "Đang trao đổi",
 
   // Thông báo validate form (zod) — LawForm, LMForm
   "Title must be at least 3 characters": "Tiêu đề phải có ít nhất 3 ký tự",

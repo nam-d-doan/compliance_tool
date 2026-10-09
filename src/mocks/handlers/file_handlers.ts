@@ -72,6 +72,7 @@ export async function handleUploadFile({ request }: { request: Request }) {
   const capId = (form.get("capId") as string | null) ?? undefined;
   const nccId = (form.get("nccId") as string | null) ?? undefined;
   const caseId = (form.get("caseId") as string | null) ?? undefined;
+  const requestId = (form.get("requestId") as string | null) ?? undefined;
   const folderPath = (form.get("folderPath") as string | null) || undefined;
 
   if (!(file instanceof File)) {
@@ -109,6 +110,7 @@ export async function handleUploadFile({ request }: { request: Request }) {
     capId,
     nccId,
     caseId,
+    requestId,
     folderPath,
     createdAt: now,
     updatedAt: now,
@@ -137,6 +139,14 @@ export async function handleUploadFile({ request }: { request: Request }) {
       lmCase.fileIds = [...lmCase.fileIds, attachment.id];
       recordEvent(db, caseId, "file_attached", uploadedById, uploadedBy,
         `Uploaded "${attachment.name}"`, undefined, folderPath, attachment.name);
+    }
+  }
+
+  // Đính kèm tin nhắn / ý kiến tư vấn của LAW.
+  if (requestId) {
+    const adviceRequest = findById(db.adviceRequests, requestId);
+    if (adviceRequest && !adviceRequest.fileIds.includes(attachment.id)) {
+      adviceRequest.fileIds = [...adviceRequest.fileIds, attachment.id];
     }
   }
 

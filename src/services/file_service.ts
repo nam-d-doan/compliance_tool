@@ -32,6 +32,7 @@ export const FileService = {
       capId?: string;
       nccId?: string;
       caseId?: string;
+      requestId?: string;
       uploadedBy?: string;
       uploadedById?: string;
       folderPath?: string;
@@ -42,6 +43,7 @@ export const FileService = {
     if (meta.capId) form.append("capId", meta.capId);
     if (meta.nccId) form.append("nccId", meta.nccId);
     if (meta.caseId) form.append("caseId", meta.caseId);
+    if (meta.requestId) form.append("requestId", meta.requestId);
     if (meta.uploadedBy) form.append("uploadedBy", meta.uploadedBy);
     if (meta.uploadedById) form.append("uploadedById", meta.uploadedById);
     if (meta.folderPath) form.append("folderPath", meta.folderPath);

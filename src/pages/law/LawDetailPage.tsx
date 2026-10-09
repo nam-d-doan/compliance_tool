@@ -1,10 +1,9 @@
 /**
  * PSEUDO CODE (ngắn gọn)
- * 1. 2 tab — Tổng quan / Lịch sử. Tab "Ý kiến tư vấn" và cảnh báo đỏ để
- *    GĐ3 theo đúng kế hoạch (docs/law/00-decisions.md).
- * 2. GĐ2 — đổi trạng thái: nút "Start Processing" (new→in_progress) và
- *    "Mark Completed" (in_progress→completed) qua useUpdateLawRequest co
- *    sẵn (không cần mutation riêng, giống cách LM đổi stage).
+ * 1. 3 tab — Flow tư vấn (mặc định) / Thông tin & SLA / Lịch sử.
+ * 2. Review GĐ1 — trạng thái chỉ đổi qua flow 4 bước (components/law/
+ *    LawWorkflow.tsx): đánh giá ưu tiên → trao đổi → nộp & duyệt ý kiến.
+ *    Bỏ 2 nút đổi trạng thái thủ công cũ (Start Processing/Mark Completed).
  * 3. Phân công (GĐ2): sheet riêng, đọc useLawWorkload() (server đã sort
  *    tăng dần theo tải), chọn xong PUT request.ownerId qua
  *    useUpdateLawRequest. Đôn đốc: 1 nút gọi useRemindLawRequest.
@@ -16,7 +15,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { motion } from "motion/react";
-import { Pencil, Send, Users, Check } from "lucide-react";
+import { Pencil, Send, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -29,6 +28,7 @@ import {
   DetailSkeleton,
 } from "@/components/common";
 import { LawForm, type LawFormValues } from "@/components/law/LawForm";
+import { LawWorkflow } from "@/components/law/LawWorkflow";
 import {
   useLawRequestDetail,
   useLawRequestEvents,
@@ -114,22 +114,6 @@ export default function LawDetailPage() {
     });
   };
 
-  const handleStatusChange = (
-    status: UpdateAdviceRequestInput["status"],
-  ) => {
-    update.mutate(
-      { status },
-      {
-        onSuccess: () =>
-          toast.success(
-            term(LAW_STATUS_LABELS[status!]) + L(" — status updated", " — đã cập nhật trạng thái"),
-          ),
-        onError: (err) =>
-          toast.error(err.message || L("Status update failed", "Cập nhật trạng thái thất bại")),
-      },
-    );
-  };
-
   const handleRemind = () => {
     remind.mutate(
       { fromUserId: user?.id, fromUserName: user?.name },
@@ -193,24 +177,6 @@ export default function LawDetailPage() {
               {L("Assign", "Phân công")}
             </Button>
           )}
-          {canUpdate && item.status === "new" && (
-            <Button
-              variant="outline"
-              disabled={update.isPending}
-              onClick={() => handleStatusChange("in_progress")}
-            >
-              {L("Start Processing", "Bắt đầu xử lý")}
-            </Button>
-          )}
-          {canUpdate && item.status === "in_progress" && (
-            <Button
-              disabled={update.isPending}
-              onClick={() => handleStatusChange("completed")}
-            >
-              <Check className="size-4" aria-hidden="true" />
-              {L("Mark Completed", "Đánh dấu hoàn thành")}
-            </Button>
-          )}
           {canUpdate && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden="true" />
@@ -229,11 +195,16 @@ export default function LawDetailPage() {
         </span>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="flow">
         <TabsList>
-          <TabsTrigger value="overview">{L("Overview", "Tổng quan")}</TabsTrigger>
+          <TabsTrigger value="flow">{L("Advisory Flow", "Flow tư vấn")}</TabsTrigger>
+          <TabsTrigger value="overview">{L("Details & SLA", "Thông tin & SLA")}</TabsTrigger>
           <TabsTrigger value="history">{L("History", "Lịch sử")}</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="flow">
+          <LawWorkflow request={item} />
+        </TabsContent>
 
         <TabsContent value="overview">
           <Card>
