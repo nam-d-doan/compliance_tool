@@ -26,6 +26,7 @@ import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
 import type { CreateKnowledgeBaseEntryInput } from "@/types";
+import { useL, useDateLocale } from "@/lib/i18n";
 
 interface KbFormValues {
   title: string;
@@ -38,6 +39,8 @@ interface KbFormValues {
 export default function LawKnowledgeBasePage() {
   const { role, user } = useAuthStore();
   const canCreate = hasPermission(role, "law:create");
+  const L = useL();
+  const dateLocale = useDateLocale();
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -75,11 +78,11 @@ export default function LawKnowledgeBasePage() {
     };
     create.mutate(payload, {
       onSuccess: () => {
-        toast.success("Entry added to Knowledge Base");
+        toast.success(L("Entry added to Knowledge Base", "Đã thêm vào Kho tri thức"));
         setCreateOpen(false);
         reset();
       },
-      onError: (err) => toast.error(err.message || "Failed to add entry"),
+      onError: (err) => toast.error(err.message || L("Failed to add entry", "Thêm mục thất bại")),
     });
   };
 
@@ -91,33 +94,36 @@ export default function LawKnowledgeBasePage() {
       className="space-y-6"
     >
       <PageHero
-        title="Knowledge Base"
-        subtitle="Sample advisory opinions and internal precedents — search before writing a new opinion to avoid duplication."
+        title={L("Knowledge Base", "Kho tri thức")}
+        subtitle={L(
+          "Sample advisory opinions and internal precedents — search before writing a new opinion to avoid duplication.",
+          "Ý kiến tư vấn mẫu và tiền lệ nội bộ — tìm trước khi viết ý kiến mới để tránh trùng lặp.",
+        )}
       >
         <Button variant="outline" asChild>
           <Link to="/law/list">
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to Requests
+            {L("Back to Requests", "Về danh sách yêu cầu")}
           </Link>
         </Button>
         {canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" aria-hidden="true" />
-            New Entry
+            {L("New Entry", "Thêm mục mới")}
           </Button>
         )}
       </PageHero>
 
       <form onSubmit={applySearch} className="flex items-center gap-3">
         <Input
-          placeholder="Search by title, summary, or tag..."
+          placeholder={L("Search by title, summary, or tag...", "Tìm theo tiêu đề, tóm tắt hoặc thẻ...")}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="max-w-md"
         />
         <Button type="submit" variant="outline">
           <Search className="size-4" aria-hidden="true" />
-          Search
+          {L("Search", "Tìm")}
         </Button>
       </form>
 
@@ -127,8 +133,8 @@ export default function LawKnowledgeBasePage() {
         <ErrorState onRetry={() => refetch()} />
       ) : (data ?? []).length === 0 ? (
         <EmptyState
-          title="No entries found"
-          description="Try a different keyword or add the first entry."
+          title={L("No entries found", "Không tìm thấy mục nào")}
+          description={L("Try a different keyword or add the first entry.", "Thử từ khoá khác hoặc thêm mục đầu tiên.")}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -153,7 +159,7 @@ export default function LawKnowledgeBasePage() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {entry.authorName} · {format(parseISO(entry.createdAt), "MMM d, yyyy")}
+                  {entry.authorName} · {format(parseISO(entry.createdAt), "MMM d, yyyy", { locale: dateLocale })}
                 </p>
               </CardContent>
             </Card>
@@ -164,14 +170,14 @@ export default function LawKnowledgeBasePage() {
       <Sheet open={createOpen} onOpenChange={setCreateOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>New Knowledge Base Entry</SheetTitle>
+            <SheetTitle>{L("New Knowledge Base Entry", "Thêm mục vào Kho tri thức")}</SheetTitle>
           </SheetHeader>
           <form onSubmit={handleSubmit(onCreate)} className="space-y-4 px-4 pb-4">
             <div className="space-y-2">
-              <Label htmlFor="kb-title">Title</Label>
+              <Label htmlFor="kb-title">{L("Title", "Tiêu đề")}</Label>
               <Input
                 id="kb-title"
-                {...register("title", { required: "Title is required" })}
+                {...register("title", { required: L("Title is required", "Vui lòng nhập tiêu đề") })}
                 aria-invalid={errors.title ? "true" : "false"}
               />
               {errors.title && (
@@ -179,18 +185,18 @@ export default function LawKnowledgeBasePage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kb-category">Category</Label>
-              <Input id="kb-category" {...register("category")} placeholder="e.g. Collateral" />
+              <Label htmlFor="kb-category">{L("Category", "Danh mục")}</Label>
+              <Input id="kb-category" {...register("category")} placeholder={L("e.g. Collateral", "VD: Tài sản bảo đảm")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kb-tags">Tags (comma separated)</Label>
+              <Label htmlFor="kb-tags">{L("Tags (comma separated)", "Thẻ (cách nhau bằng dấu phẩy)")}</Label>
               <Input id="kb-tags" {...register("tags")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kb-summary">Summary</Label>
+              <Label htmlFor="kb-summary">{L("Summary", "Tóm tắt")}</Label>
               <Textarea
                 id="kb-summary"
-                {...register("summary", { required: "Summary is required" })}
+                {...register("summary", { required: L("Summary is required", "Vui lòng nhập tóm tắt") })}
                 className="min-h-[4rem]"
                 aria-invalid={errors.summary ? "true" : "false"}
               />
@@ -199,10 +205,10 @@ export default function LawKnowledgeBasePage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kb-content">Full Content</Label>
+              <Label htmlFor="kb-content">{L("Full Content", "Nội dung đầy đủ")}</Label>
               <Textarea
                 id="kb-content"
-                {...register("content", { required: "Content is required" })}
+                {...register("content", { required: L("Content is required", "Vui lòng nhập nội dung") })}
                 className="min-h-[8rem]"
                 aria-invalid={errors.content ? "true" : "false"}
               />
@@ -217,10 +223,10 @@ export default function LawKnowledgeBasePage() {
                 onClick={() => setCreateOpen(false)}
                 disabled={create.isPending}
               >
-                Cancel
+                {L("Cancel", "Huỷ")}
               </Button>
               <Button type="submit" disabled={create.isPending}>
-                Add Entry
+                {L("Add Entry", "Thêm mục")}
               </Button>
             </div>
           </form>

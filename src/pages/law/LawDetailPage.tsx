@@ -45,16 +45,18 @@ import { LAW_PRIORITY_STYLES, LAW_STATUS_LABELS } from "@/constants/law";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { UpdateAdviceRequestInput } from "@/types";
+import { useL, useTerm, useDateLocale, type Bi } from "@/lib/i18n";
+import type { Locale } from "date-fns";
 
-function fmt(date?: string): string {
-  return date ? format(parseISO(date), "MMM d, yyyy") : "—";
+function fmt(date: string | undefined, locale?: Locale): string {
+  return date ? format(parseISO(date), "MMM d, yyyy", { locale }) : "—";
 }
 
-const ALERT_STATUS_LABEL: Record<string, string> = {
-  pending: "Not flagged",
-  flagged: "Flagged",
-  acknowledged: "Acknowledged",
-  resolved: "Resolved",
+const ALERT_STATUS_LABEL: Record<string, Bi> = {
+  pending: ["Not flagged", "Chưa gắn cờ"],
+  flagged: ["Flagged", "Đã gắn cờ"],
+  acknowledged: ["Acknowledged", "Đã tiếp nhận"],
+  resolved: ["Resolved", "Đã xử lý"],
 };
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -68,6 +70,10 @@ export default function LawDetailPage() {
   const { role, user } = useAuthStore();
   const canUpdate = hasPermission(role, "law:update");
   const canApprove = hasPermission(role, "law:approve");
+  const L = useL();
+  const term = useTerm();
+  const dateLocale = useDateLocale();
+  const fmtD = (date?: string) => fmt(date, dateLocale);
 
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -101,10 +107,10 @@ export default function LawDetailPage() {
     };
     update.mutate(payload, {
       onSuccess: () => {
-        toast.success("Request updated");
+        toast.success(L("Request updated", "Đã cập nhật yêu cầu"));
         setEditOpen(false);
       },
-      onError: (err) => toast.error(err.message || "Update failed"),
+      onError: (err) => toast.error(err.message || L("Update failed", "Cập nhật thất bại")),
     });
   };
 
@@ -114,8 +120,12 @@ export default function LawDetailPage() {
     update.mutate(
       { status },
       {
-        onSuccess: () => toast.success(LAW_STATUS_LABELS[status!] + " — status updated"),
-        onError: (err) => toast.error(err.message || "Status update failed"),
+        onSuccess: () =>
+          toast.success(
+            term(LAW_STATUS_LABELS[status!]) + L(" — status updated", " — đã cập nhật trạng thái"),
+          ),
+        onError: (err) =>
+          toast.error(err.message || L("Status update failed", "Cập nhật trạng thái thất bại")),
       },
     );
   };
@@ -124,8 +134,8 @@ export default function LawDetailPage() {
     remind.mutate(
       { fromUserId: user?.id, fromUserName: user?.name },
       {
-        onSuccess: () => toast.success("Reminder sent"),
-        onError: (err) => toast.error(err.message || "Failed to send reminder"),
+        onSuccess: () => toast.success(L("Reminder sent", "Đã gửi nhắc nhở")),
+        onError: (err) => toast.error(err.message || L("Failed to send reminder", "Gửi nhắc nhở thất bại")),
       },
     );
   };
@@ -136,9 +146,11 @@ export default function LawDetailPage() {
       {
         onSuccess: () =>
           toast.success(
-            action === "acknowledge" ? "Alert acknowledged" : "Alert resolved",
+            action === "acknowledge"
+              ? L("Alert acknowledged", "Đã tiếp nhận cảnh báo")
+              : L("Alert resolved", "Đã xử lý cảnh báo"),
           ),
-        onError: (err) => toast.error(err.message || "Action failed"),
+        onError: (err) => toast.error(err.message || L("Action failed", "Thao tác thất bại")),
       },
     );
   };
@@ -148,10 +160,10 @@ export default function LawDetailPage() {
       { ownerId },
       {
         onSuccess: () => {
-          toast.success(`Assigned to ${ownerName}`);
+          toast.success(L(`Assigned to ${ownerName}`, `Đã phân công cho ${ownerName}`));
           setAssignOpen(false);
         },
-        onError: (err) => toast.error(err.message || "Assignment failed"),
+        onError: (err) => toast.error(err.message || L("Assignment failed", "Phân công thất bại")),
       },
     );
   };
@@ -172,13 +184,13 @@ export default function LawDetailPage() {
               disabled={remind.isPending}
             >
               <Send className="size-4" aria-hidden="true" />
-              Remind
+              {L("Remind", "Đôn đốc")}
             </Button>
           )}
           {canApprove && (
             <Button variant="outline" onClick={() => setAssignOpen(true)}>
               <Users className="size-4" aria-hidden="true" />
-              Assign
+              {L("Assign", "Phân công")}
             </Button>
           )}
           {canUpdate && item.status === "new" && (
@@ -187,7 +199,7 @@ export default function LawDetailPage() {
               disabled={update.isPending}
               onClick={() => handleStatusChange("in_progress")}
             >
-              Start Processing
+              {L("Start Processing", "Bắt đầu xử lý")}
             </Button>
           )}
           {canUpdate && item.status === "in_progress" && (
@@ -196,13 +208,13 @@ export default function LawDetailPage() {
               onClick={() => handleStatusChange("completed")}
             >
               <Check className="size-4" aria-hidden="true" />
-              Mark Completed
+              {L("Mark Completed", "Đánh dấu hoàn thành")}
             </Button>
           )}
           {canUpdate && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden="true" />
-              Edit Request
+              {L("Edit Request", "Sửa yêu cầu")}
             </Button>
           )}
         </div>
@@ -210,47 +222,47 @@ export default function LawDetailPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-          {LAW_STATUS_LABELS[item.status]}
+          {term(LAW_STATUS_LABELS[item.status])}
         </span>
         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-          {LAW_PRIORITY_STYLES[item.priorityTier].label}
+          {term(LAW_PRIORITY_STYLES[item.priorityTier].label)}
         </span>
       </div>
 
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="overview">{L("Overview", "Tổng quan")}</TabsTrigger>
+          <TabsTrigger value="history">{L("History", "Lịch sử")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <Card>
             <CardHeader>
-              <CardTitle>Request Information</CardTitle>
+              <CardTitle>{L("Request Information", "Thông tin yêu cầu")}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field label="Description" value={item.description || "—"} />
-              <Field label="Requesting Unit" value={item.requestingUnitName} />
-              <Field label="Assigned Specialist" value={item.ownerName} />
-              <Field label="Manager" value={item.managerName || "—"} />
-              <Field label="Submitted" value={fmt(item.submittedAt)} />
+              <Field label={L("Description", "Mô tả")} value={item.description || "—"} />
+              <Field label={L("Requesting Unit", "Đơn vị yêu cầu")} value={item.requestingUnitName} />
+              <Field label={L("Assigned Specialist", "Chuyên viên phụ trách")} value={item.ownerName} />
+              <Field label={L("Manager", "Quản lý")} value={item.managerName || "—"} />
+              <Field label={L("Submitted", "Ngày gửi")} value={fmtD(item.submittedAt)} />
               <div>
                 <p className="text-xs font-medium text-muted-foreground">
-                  SLA Due Date
+                  {L("SLA Due Date", "Hạn SLA")}
                 </p>
                 <DueDateCell
                   dueDate={item.dueDate}
                   completed={item.status === "completed"}
                 />
               </div>
-              <Field label="Completed" value={fmt(item.completedAt)} />
-              <Field label="Last Updated" value={fmt(item.updatedAt)} />
+              <Field label={L("Completed", "Ngày hoàn thành")} value={fmtD(item.completedAt)} />
+              <Field label={L("Last Updated", "Cập nhật lần cuối")} value={fmtD(item.updatedAt)} />
             </CardContent>
           </Card>
 
           <Card className="mt-4">
             <CardHeader>
-              <CardTitle>SLA Alert</CardTitle>
+              <CardTitle>{L("SLA Alert", "Cảnh báo SLA")}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center justify-between gap-3">
               <span className="flex items-center gap-2 text-sm">
@@ -261,7 +273,9 @@ export default function LawDetailPage() {
                   )}
                   aria-hidden="true"
                 />
-                {ALERT_STATUS_LABEL[item.alertStatus] ?? item.alertStatus}
+                {ALERT_STATUS_LABEL[item.alertStatus]
+                  ? L(...ALERT_STATUS_LABEL[item.alertStatus])
+                  : item.alertStatus}
               </span>
               {canUpdate && (
                 <div className="flex gap-2">
@@ -272,7 +286,7 @@ export default function LawDetailPage() {
                       disabled={updateAlert.isPending}
                       onClick={() => handleAlertAction("acknowledge")}
                     >
-                      Acknowledge
+                      {L("Acknowledge", "Tiếp nhận")}
                     </Button>
                   )}
                   {(item.alertStatus === "flagged" ||
@@ -282,7 +296,7 @@ export default function LawDetailPage() {
                       disabled={updateAlert.isPending}
                       onClick={() => handleAlertAction("resolve")}
                     >
-                      Resolve
+                      {L("Resolve", "Đã xử lý")}
                     </Button>
                   )}
                 </div>
@@ -294,20 +308,20 @@ export default function LawDetailPage() {
         <TabsContent value="history">
           <Card>
             <CardHeader>
-              <CardTitle>Activity History</CardTitle>
+              <CardTitle>{L("Activity History", "Lịch sử thao tác")}</CardTitle>
             </CardHeader>
             <CardContent>
               {events.isPending ? (
                 <DetailSkeleton />
               ) : (events.data ?? []).length === 0 ? (
-                <EmptyState title="No history yet" />
+                <EmptyState title={L("No history yet", "Chưa có lịch sử")} />
               ) : (
                 <ul className="space-y-3">
                   {(events.data ?? []).map((e) => (
                     <li key={e.id} className="border-l-2 border-border pl-3">
                       <p className="text-sm">{e.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        {e.userName} · {fmt(e.createdAt)}
+                        {e.userName} · {fmtD(e.createdAt)}
                       </p>
                     </li>
                   ))}
@@ -321,7 +335,9 @@ export default function LawDetailPage() {
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>Edit Request {item.code}</SheetTitle>
+            <SheetTitle>
+              {L("Edit Request", "Sửa yêu cầu")} {item.code}
+            </SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">
             <LawForm
@@ -337,7 +353,7 @@ export default function LawDetailPage() {
               onSubmit={handleEditSubmit}
               onCancel={() => setEditOpen(false)}
               isSubmitting={update.isPending}
-              submitLabel="Save Changes"
+              submitLabel={L("Save Changes", "Lưu thay đổi")}
             />
           </div>
         </SheetContent>
@@ -346,7 +362,9 @@ export default function LawDetailPage() {
       <Sheet open={assignOpen} onOpenChange={setAssignOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Reassign {item.code}</SheetTitle>
+            <SheetTitle>
+              {L("Reassign", "Phân công lại")} {item.code}
+            </SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">
             <AssignList
@@ -381,6 +399,7 @@ function AssignList({
   onPick: (ownerId: string, ownerName: string) => void;
 }) {
   const workload = useLawWorkload();
+  const L = useL();
 
   if (workload.isPending) return <DetailSkeleton />;
   if (workload.isError || !workload.data) {
@@ -408,17 +427,20 @@ function AssignList({
                 <span className="font-medium">{w.userName}</span>
                 {i === 0 && !isCurrent && (
                   <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs text-success">
-                    Suggested — lowest load
+                    {L("Suggested — lowest load", "Gợi ý — tải thấp nhất")}
                   </span>
                 )}
                 {isCurrent && (
                   <span className="rounded-full bg-muted-foreground/10 px-2 py-0.5 text-xs text-muted-foreground">
-                    Current owner
+                    {L("Current owner", "Đang phụ trách")}
                   </span>
                 )}
               </span>
               <span className="text-muted-foreground">
-                {w.openRequestCount} open requests · load {w.weightedLoad}
+                {L(
+                  `${w.openRequestCount} open requests · load ${w.weightedLoad}`,
+                  `${w.openRequestCount} yêu cầu đang mở · tải ${w.weightedLoad}`,
+                )}
               </span>
             </button>
           </li>

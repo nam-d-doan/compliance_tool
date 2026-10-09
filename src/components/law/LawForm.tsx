@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrgUnits, useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { LAW_PRIORITY_TIERS, LAW_PRIORITY_STYLES } from "@/constants/law";
+import { useL, useTerm } from "@/lib/i18n";
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
@@ -44,8 +45,11 @@ export function LawForm({
   onSubmit,
   onCancel,
   isSubmitting,
-  submitLabel = "Create Request",
+  submitLabel,
 }: LawFormProps) {
+  const L = useL();
+  const term = useTerm();
+  submitLabel ??= L("Create Request", "Tạo yêu cầu");
   const orgUnitsQuery = useOrgUnits();
   // Không lọc status: "Active" — xem comment cùng chỗ ở LMForm.tsx.
   const ownersQuery = useAdminUsers(1, 200, { role: "owner" });
@@ -73,29 +77,29 @@ export function LawForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="law-title">Title</Label>
+          <Label htmlFor="law-title">{L("Title", "Tiêu đề")}</Label>
           <Input
             id="law-title"
             {...register("title")}
             aria-invalid={errors.title ? "true" : "false"}
           />
           {errors.title && (
-            <p className="text-xs text-destructive">{errors.title.message}</p>
+            <p className="text-xs text-destructive">{term(errors.title.message ?? "")}</p>
           )}
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="law-description">Description</Label>
+          <Label htmlFor="law-description">{L("Description", "Mô tả")}</Label>
           <Textarea
             id="law-description"
             {...register("description")}
             className="min-h-[5rem]"
-            placeholder="What legal advice is being requested?"
+            placeholder={L("What legal advice is being requested?", "Cần tư vấn pháp lý về vấn đề gì?")}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="law-priorityTier">Priority</Label>
+          <Label htmlFor="law-priorityTier">{L("Priority", "Mức ưu tiên")}</Label>
           <Controller
             name="priorityTier"
             control={control}
@@ -103,7 +107,7 @@ export function LawForm({
               <select id="law-priorityTier" {...field} className={selectClass}>
                 {LAW_PRIORITY_TIERS.map((t) => (
                   <option key={t} value={t}>
-                    {LAW_PRIORITY_STYLES[t].label}
+                    {term(LAW_PRIORITY_STYLES[t].label)}
                   </option>
                 ))}
               </select>
@@ -112,7 +116,7 @@ export function LawForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="law-requestingUnitId">Requesting Unit</Label>
+          <Label htmlFor="law-requestingUnitId">{L("Requesting Unit", "Đơn vị yêu cầu")}</Label>
           <Controller
             name="requestingUnitId"
             control={control}
@@ -123,7 +127,7 @@ export function LawForm({
                 disabled={orgUnitsQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Select unit</option>
+                <option value="">{L("Select unit", "Chọn đơn vị")}</option>
                 {hoDepartments.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -134,13 +138,13 @@ export function LawForm({
           />
           {errors.requestingUnitId && (
             <p className="text-xs text-destructive">
-              {errors.requestingUnitId.message}
+              {term(errors.requestingUnitId.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="law-ownerId">Assigned Specialist</Label>
+          <Label htmlFor="law-ownerId">{L("Assigned Specialist", "Chuyên viên phụ trách")}</Label>
           <Controller
             name="ownerId"
             control={control}
@@ -151,7 +155,7 @@ export function LawForm({
                 disabled={ownersQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Select specialist</option>
+                <option value="">{L("Select specialist", "Chọn chuyên viên")}</option>
                 {owners.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -161,12 +165,12 @@ export function LawForm({
             )}
           />
           {errors.ownerId && (
-            <p className="text-xs text-destructive">{errors.ownerId.message}</p>
+            <p className="text-xs text-destructive">{term(errors.ownerId.message ?? "")}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="law-managerId">Manager</Label>
+          <Label htmlFor="law-managerId">{L("Manager", "Quản lý")}</Label>
           <Controller
             name="managerId"
             control={control}
@@ -177,7 +181,7 @@ export function LawForm({
                 disabled={managersQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Select manager</option>
+                <option value="">{L("Select manager", "Chọn quản lý")}</option>
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -188,13 +192,13 @@ export function LawForm({
           />
           {errors.managerId && (
             <p className="text-xs text-destructive">
-              {errors.managerId.message}
+              {term(errors.managerId.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="law-tags">Tags (comma separated)</Label>
+          <Label htmlFor="law-tags">{L("Tags (comma separated)", "Thẻ (cách nhau bằng dấu phẩy)")}</Label>
           <Textarea id="law-tags" {...register("tags")} className="min-h-[3rem]" />
         </div>
       </div>
@@ -207,7 +211,7 @@ export function LawForm({
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {L("Cancel", "Huỷ")}
           </Button>
         )}
         <Button type="submit" disabled={isSubmitting}>

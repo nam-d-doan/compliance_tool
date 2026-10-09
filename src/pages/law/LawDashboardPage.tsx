@@ -33,17 +33,22 @@ import { useLawDashboard } from "@/hooks/queries";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
 import { LAW_PRIORITY_STYLES, LAW_STATUS_LABELS } from "@/constants/law";
+import { useL, useTerm } from "@/lib/i18n";
 
 export default function LawDashboardPage() {
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "law:create");
   const dashboard = useLawDashboard();
   const data = dashboard.data;
+  const L = useL();
+  const term = useTerm();
+  const heroTitle = L("Legal Advisory Workflow", "Quy trình tư vấn pháp lý");
+  const heroSubtitle = L("Overview & KPIs.", "Tổng quan & chỉ số KPI.");
 
   if (dashboard.isPending) {
     return (
       <div className="space-y-6">
-        <PageHero title="Legal Advisory Workflow" subtitle="Overview & KPIs." />
+        <PageHero title={heroTitle} subtitle={heroSubtitle} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <CardSkeleton key={i} />
@@ -61,19 +66,19 @@ export default function LawDashboardPage() {
   if (dashboard.isError || !data) {
     return (
       <div className="space-y-6">
-        <PageHero title="Legal Advisory Workflow" subtitle="Overview & KPIs." />
+        <PageHero title={heroTitle} subtitle={heroSubtitle} />
         <ErrorState onRetry={() => dashboard.refetch()} />
       </div>
     );
   }
 
   const statusData = data.statusDistribution.map((d) => ({
-    name: LAW_STATUS_LABELS[d.status],
+    name: term(LAW_STATUS_LABELS[d.status]),
     value: d.count,
   }));
   const priorityData = data.priorityDistribution
     .filter((d) => d.count > 0)
-    .map((d) => ({ name: LAW_PRIORITY_STYLES[d.priorityTier].label, value: d.count }));
+    .map((d) => ({ name: term(LAW_PRIORITY_STYLES[d.priorityTier].label), value: d.count }));
   const workloadData = data.ownerWorkload.map((w) => ({
     name: w.userName,
     value: w.openRequestCount,
@@ -90,55 +95,59 @@ export default function LawDashboardPage() {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      <PageHero title="Legal Advisory Workflow" subtitle="Overview & KPIs.">
+      <PageHero title={heroTitle} subtitle={heroSubtitle}>
         <Button variant="outline" asChild>
           <Link to={ROUTES.LAW.LIST}>
             <List className="size-4" aria-hidden="true" />
-            View List
+            {L("View List", "Xem danh sách")}
           </Link>
         </Button>
         {canCreate && (
           <Button asChild>
             <Link to={ROUTES.LAW.CREATE}>
               <PlusCircle className="size-4" aria-hidden="true" />
-              New Request
+              {L("New Request", "Tạo yêu cầu")}
             </Link>
           </Button>
         )}
       </PageHero>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KPICard label="Open Requests" value={data.totalOpen} icon={Briefcase} />
+        <KPICard label={L("Open Requests", "Yêu cầu đang mở")} value={data.totalOpen} icon={Briefcase} />
         <KPICard
-          label="Requests with Alerts"
+          label={L("Requests with Alerts", "Yêu cầu có cảnh báo")}
           value={data.totalRedFlagRequests}
           icon={AlertTriangle}
           iconClassName="bg-destructive/10 text-destructive"
         />
-        <KPICard label="Completed Requests" value={data.totalCompleted} icon={CheckCircle2} />
         <KPICard
-          label="On-Time Completion"
+          label={L("Completed Requests", "Yêu cầu đã hoàn thành")}
+          value={data.totalCompleted}
+          icon={CheckCircle2}
+        />
+        <KPICard
+          label={L("On-Time Completion", "Hoàn thành đúng hạn")}
           value={`${data.onTimeCompletionRate}%`}
           icon={Clock}
-          subtitle="Completed within the SLA due date"
+          subtitle={L("Completed within the SLA due date", "Hoàn thành trong hạn SLA")}
         />
         <KPICard
-          label="Quality Rate"
+          label={L("Quality Rate", "Tỷ lệ chất lượng")}
           value={`${data.qualityRate}%`}
           icon={ShieldCheck}
-          subtitle="Completed without being sent back for revision"
+          subtitle={L("Completed without being sent back for revision", "Hoàn thành không bị trả lại sửa")}
         />
         <KPICard
-          label="Alert Resolution"
+          label={L("Alert Resolution", "Xử lý cảnh báo")}
           value={`${data.alertResolutionRate}%`}
           icon={AlertTriangle}
-          subtitle="Flagged requests already resolved"
+          subtitle={L("Flagged requests already resolved", "Yêu cầu gắn cờ đã xử lý xong")}
         />
       </div>
 
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         <PieChartCard
-          title="By Status"
+          title={L("By Status", "Theo trạng thái")}
           data={statusData}
           nameKey="name"
           valueKey="value"
@@ -146,27 +155,27 @@ export default function LawDashboardPage() {
           className="h-full"
         />
         <BarChartCard
-          title="By Priority"
+          title={L("By Priority", "Theo mức ưu tiên")}
           data={priorityData}
           xKey="name"
-          yKeys={[{ key: "value", name: "Requests" }]}
+          yKeys={[{ key: "value", name: L("Requests", "Yêu cầu") }]}
           height={240}
           className="h-full"
         />
         <BarChartCard
-          title="Specialist Workload"
-          subtitle="Number of open requests"
+          title={L("Specialist Workload", "Tải công việc chuyên viên")}
+          subtitle={L("Number of open requests", "Số yêu cầu đang mở")}
           data={workloadData}
           xKey="name"
-          yKeys={[{ key: "value", name: "Open requests" }]}
+          yKeys={[{ key: "value", name: L("Open requests", "Yêu cầu đang mở") }]}
           height={240}
           className="h-full"
         />
         <BarChartCard
-          title="By Requesting Unit"
+          title={L("By Requesting Unit", "Theo đơn vị gửi yêu cầu")}
           data={unitData}
           xKey="name"
-          yKeys={[{ key: "value", name: "Requests" }]}
+          yKeys={[{ key: "value", name: L("Requests", "Yêu cầu") }]}
           height={240}
           className="h-full"
         />
@@ -182,6 +191,7 @@ function TopRedFlagCard({
 }: {
   items: { id: string; code: string; title: string; ownerName: string }[];
 }) {
+  const L = useL();
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -192,7 +202,7 @@ function TopRedFlagCard({
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-destructive" aria-hidden="true" />
-            <h3 className="text-sm font-medium">Flagged Requests</h3>
+            <h3 className="text-sm font-medium">{L("Flagged Requests", "Yêu cầu bị gắn cờ")}</h3>
           </div>
           <Badge variant="secondary" className="h-5">
             {items.length}
@@ -200,7 +210,7 @@ function TopRedFlagCard({
         </div>
         {items.length === 0 ? (
           <EmptyState
-            title="No requests currently flagged"
+            title={L("No requests currently flagged", "Hiện không có yêu cầu bị gắn cờ")}
             className="h-40 border-0 bg-transparent"
           />
         ) : (

@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { LawRequestFilter } from "@/types";
+import { useL, useTerm, useDateLocale } from "@/lib/i18n";
 
 const SEVERITY_DOT: Record<string, string> = {
   red: "bg-destructive",
@@ -50,6 +51,9 @@ export default function LawListPage() {
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "law:create");
   const canDelete = hasPermission(role, "law:delete");
+  const L = useL();
+  const term = useTerm();
+  const dateLocale = useDateLocale();
 
   const [filters, setFilters] = useState<LawRequestFilter>({});
   const [searchInput, setSearchInput] = useState("");
@@ -74,32 +78,39 @@ export default function LawListPage() {
   };
 
   const handleDelete = (id: string, code: string) => {
-    if (!window.confirm(`Delete request ${code}? This action cannot be undone.`)) {
+    if (
+      !window.confirm(
+        L(
+          `Delete request ${code}? This action cannot be undone.`,
+          `Xoá yêu cầu ${code}? Không thể hoàn tác.`,
+        ),
+      )
+    ) {
       return;
     }
     remove.mutate(id, {
-      onSuccess: () => toast.success(`Request ${code} deleted`),
-      onError: (err) => toast.error(err.message || "Delete failed"),
+      onSuccess: () => toast.success(L(`Request ${code} deleted`, `Đã xoá yêu cầu ${code}`)),
+      onError: (err) => toast.error(err.message || L("Delete failed", "Xoá thất bại")),
     });
   };
 
   return (
     <div className="space-y-6">
       <PageHero
-        title="Legal Advisory Requests"
-        subtitle="Manage legal advisory requests from business units."
+        title={L("Legal Advisory Requests", "Yêu cầu tư vấn pháp lý")}
+        subtitle={L("Manage legal advisory requests from business units.", "Quản lý yêu cầu tư vấn pháp lý từ các đơn vị.")}
       >
         <Button variant="outline" asChild>
           <Link to="/law/knowledge-base">
             <BookOpen className="size-4" aria-hidden="true" />
-            Knowledge Base
+            {L("Knowledge Base", "Kho tri thức")}
           </Link>
         </Button>
         {canCreate && (
           <Button asChild>
             <Link to="/law/create">
               <Plus className="size-4" aria-hidden="true" />
-              New Request
+              {L("New Request", "Tạo yêu cầu")}
             </Link>
           </Button>
         )}
@@ -110,7 +121,7 @@ export default function LawListPage() {
         className="flex flex-wrap items-center gap-3"
       >
         <Input
-          placeholder="Search by code or title..."
+          placeholder={L("Search by code or title...", "Tìm theo mã hoặc tiêu đề...")}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="max-w-xs"
@@ -127,10 +138,10 @@ export default function LawListPage() {
             }));
           }}
         >
-          <option value="">All priorities</option>
+          <option value="">{L("All priorities", "Tất cả mức ưu tiên")}</option>
           {LAW_PRIORITY_TIERS.map((t) => (
             <option key={t} value={t}>
-              {LAW_PRIORITY_STYLES[t].label}
+              {term(LAW_PRIORITY_STYLES[t].label)}
             </option>
           ))}
         </select>
@@ -145,15 +156,15 @@ export default function LawListPage() {
             }));
           }}
         >
-          <option value="">All statuses</option>
+          <option value="">{L("All statuses", "Tất cả trạng thái")}</option>
           {LAW_REQUEST_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {LAW_STATUS_LABELS[s]}
+              {term(LAW_STATUS_LABELS[s])}
             </option>
           ))}
         </select>
         <Button type="submit" variant="outline">
-          Filter
+          {L("Filter", "Lọc")}
         </Button>
       </form>
 
@@ -163,23 +174,23 @@ export default function LawListPage() {
         <ErrorState onRetry={() => refetch()} />
       ) : items.length === 0 ? (
         <EmptyState
-          title="No requests yet"
-          description="Create the first request or clear some filters."
+          title={L("No requests yet", "Chưa có yêu cầu")}
+          description={L("Create the first request or clear some filters.", "Tạo yêu cầu đầu tiên hoặc bỏ bớt bộ lọc.")}
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">Request Code</th>
-                <th className="px-3 py-2">Title</th>
-                <th className="px-3 py-2">Alert</th>
-                <th className="px-3 py-2">Priority</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Requesting Unit</th>
-                <th className="px-3 py-2">Specialist</th>
-                <th className="px-3 py-2">Submitted</th>
-                <th className="px-3 py-2">Due Date</th>
+                <th className="px-3 py-2">{L("Request Code", "Mã yêu cầu")}</th>
+                <th className="px-3 py-2">{L("Title", "Tiêu đề")}</th>
+                <th className="px-3 py-2">{L("Alert", "Cảnh báo")}</th>
+                <th className="px-3 py-2">{L("Priority", "Ưu tiên")}</th>
+                <th className="px-3 py-2">{L("Status", "Trạng thái")}</th>
+                <th className="px-3 py-2">{L("Requesting Unit", "Đơn vị yêu cầu")}</th>
+                <th className="px-3 py-2">{L("Specialist", "Chuyên viên")}</th>
+                <th className="px-3 py-2">{L("Submitted", "Ngày gửi")}</th>
+                <th className="px-3 py-2">{L("Due Date", "Hạn xử lý")}</th>
                 {canDelete && <th className="px-3 py-2" />}
               </tr>
             </thead>
@@ -202,15 +213,15 @@ export default function LawListPage() {
                     />
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {LAW_PRIORITY_STYLES[r.priorityTier].label}
+                    {term(LAW_PRIORITY_STYLES[r.priorityTier].label)}
                   </td>
-                  <td className="px-3 py-2">{LAW_STATUS_LABELS[r.status]}</td>
+                  <td className="px-3 py-2">{term(LAW_STATUS_LABELS[r.status])}</td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {r.requestingUnitName}
                   </td>
                   <td className="px-3 py-2">{r.ownerName}</td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {format(parseISO(r.submittedAt), "MMM d, yyyy")}
+                    {format(parseISO(r.submittedAt), "MMM d, yyyy", { locale: dateLocale })}
                   </td>
                   <td className="px-3 py-2">
                     <DueDateCell
@@ -227,7 +238,7 @@ export default function LawListPage() {
                           e.stopPropagation();
                           handleDelete(r.id, r.code);
                         }}
-                        aria-label={`Delete request ${r.code}`}
+                        aria-label={L(`Delete request ${r.code}`, `Xoá yêu cầu ${r.code}`)}
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -248,10 +259,10 @@ export default function LawListPage() {
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
-            Previous
+            {L("Previous", "Trước")}
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {page}/{totalPages}
+            {L("Page", "Trang")} {page}/{totalPages}
           </span>
           <Button
             variant="outline"
@@ -259,7 +270,7 @@ export default function LawListPage() {
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next
+            {L("Next", "Sau")}
           </Button>
         </div>
       )}
