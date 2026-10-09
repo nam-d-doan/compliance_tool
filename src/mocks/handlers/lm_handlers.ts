@@ -16,9 +16,11 @@ import {
   jsonResponse,
   badRequest,
   notFound,
+  forbidden,
   parseQuery,
   parseNumber,
   normalizeArrayParam,
+  actorFromRequest,
   type MockResolverContext,
 } from "./utils";
 import {
@@ -29,6 +31,7 @@ import {
   DEADLINE_TYPE_LABELS,
   DEADLINE_TYPE_DEFAULT_DAYS_BEFORE,
   REQUIRED_DOCS_BY_STAGE,
+  LM_DEFAULT_FOLDERS,
 } from "@/constants/lm";
 import { nextDeadlineStatus, deadlineSeverity } from "@/lib/lm-alerts";
 import type {
@@ -41,13 +44,93 @@ import type {
   LMWorkloadEntry,
   LMDashboardSummary,
   LMTask,
+  LMTaskAlertState,
+  LMDashboardTask,
   CreateLMTaskInput,
   UpdateLMTaskInput,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 import { DEMO_TODAY } from "@/mocks/db";
+import { differenceInCalendarDays, format, parseISO, subMonths } from "date-fns";
+import type { PriorityLevel } from "@/constants/status";
 
-function recordEvent(
+const PRIORITY_RANK: Record<PriorityLevel, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
+
+const ALERT_RANK: Record<LMTaskAlertState, number> = {
+  overdue: 0,
+  due_soon: 1,
+  upcoming: 2,
+  done: 3,
+};
+
+/** Tính theo DEMO_TODAY (không dùng ngày máy) cho khớp dữ liệu mẫu, giống alertSeverity của hạn pháp lý. */
+function taskAlertState(task: LMTask): LMTaskAlertState {
+  if (task.status === "done") return "done";
+  const days = differenceInCalendarDays(parseISO(task.dueDate), DEMO_TODAY);
+  if (days < 0) return "overdue";
+  if (days <= task.remindDaysBefore) return "due_soon";
+  return "upcoming";
+}
+
+function withAlert(task: LMTask): LMTask {
+  return { ...task, alertState: taskAlertState(task) };
+}
+
+/** Độ khẩn trước, rồi ưu tiên, rồi hạn gần trước. */
+function compareTaskUrgency(
+  a: { alertState: LMTaskAlertState; priority: PriorityLevel; dueDate: string },
+  b: { alertState: LMTaskAlertState; priority: PriorityLevel; dueDate: string },
+): number {
+  return (
+    ALERT_RANK[a.alertState] - ALERT_RANK[b.alertState] ||
+    PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] ||
+    a.dueDate.localeCompare(b.dueDate)
+  );
+}
+
+function isValidRemindDays(value: unknown): boolean {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 90;
+}
+
+/**
+ * Người thực hiện cho audit trail: ưu tiên user đang đăng nhập (token), rồi
+ * actor client gửi trong body, cuối cùng mới tới `fallback` (chỉ còn dùng
+ * khi request không có token, vd gọi từ seed/test).
+ */
+/**
+ * Nam review: chuyên viên thụ lý chỉ thấy hồ sơ mình phụ trách — chặn cả
+ * khi gõ thẳng URL /lm/:id. Manager/Admin/Approver xem được mọi hồ sơ.
+ * Request không có token (seed/test) không bị chặn.
+ */
+function assertCaseAccess(db: MockDb, request: Request, caseId: string): Response | null {
+  const actor = actorFromRequest(request, db.users);
+  const user = actor ? findById(db.users, actor.id) : undefined;
+  if (!user || user.role !== "owner") return null;
+  const lmCase = findById(db.litigationCases, caseId);
+  if (lmCase && lmCase.ownerId !== user.id) {
+    return forbidden("You can only view cases assigned to you");
+  }
+  return null;
+}
+
+function resolveActor(
+  db: MockDb,
+  request: Request,
+  fallback: { id: string; name: string },
+  bodyActor?: { id?: string; name?: string },
+): { id: string; name: string } {
+  const fromToken = actorFromRequest(request, db.users);
+  if (fromToken) return fromToken;
+  if (bodyActor?.id) return { id: bodyActor.id, name: bodyActor.name ?? "" };
+  return fallback;
+}
+
+export function recordEvent(
   db: MockDb,
   caseId: string,
   type: CaseEvent["type"],
@@ -56,6 +139,7 @@ function recordEvent(
   description: string,
   fromValue?: string,
   toValue?: string,
+  subject?: string,
 ): void {
   const now = new Date().toISOString();
   db.caseEvents.unshift({
@@ -67,6 +151,7 @@ function recordEvent(
     description,
     fromValue,
     toValue,
+    subject,
     createdAt: now,
     updatedAt: now,
   });
@@ -110,9 +195,12 @@ function evaluateDeadlines(db: MockDb): void {
         db,
         d.caseId,
         "deadline_flagged",
-        lmCase.ownerId,
-        lmCase.ownerName,
+        "system",
+        "System",
         `System flagged deadline "${label}"`,
+        undefined,
+        undefined,
+        d.type,
       );
       db.notifications.unshift({
         id: `ntf-${crypto.randomUUID()}`,
@@ -225,9 +313,11 @@ export async function handleGetLMCaseList({
   });
 }
 
-export async function handleGetLMCaseDetail({ params }: MockResolverContext) {
+export async function handleGetLMCaseDetail({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertCaseAccess(db, request, params.id as string);
+  if (denied) return denied;
   evaluateDeadlines(db);
   const item = findById(db.litigationCases, params.id as string);
   if (!item) return notFound("Case not found");
@@ -281,6 +371,7 @@ export async function handleCreateLMCase({
     managerId: body.managerId ?? "",
     managerName: manager?.name ?? "",
     fileIds: [],
+    folders: [...LM_DEFAULT_FOLDERS],
     tags: body.tags ?? [],
     createdAt: now,
     updatedAt: now,
@@ -288,13 +379,17 @@ export async function handleCreateLMCase({
 
   db.litigationCases.unshift(newCase);
   seedMilestones(db, newCase.id, now);
+  const creator = resolveActor(db, request, { id: newCase.ownerId, name: newCase.ownerName });
   recordEvent(
     db,
     newCase.id,
     "created",
-    newCase.ownerId,
-    newCase.ownerName,
+    creator.id,
+    creator.name,
     `Created case ${newCase.code}`,
+    undefined,
+    undefined,
+    newCase.code,
   );
 
   return jsonResponse(newCase, 201);
@@ -321,8 +416,9 @@ export async function handleUpdateLMCase({
     next.ownerName = findById(db.users, body.ownerId)?.name ?? next.ownerName;
   }
 
-  const actorId = next.ownerId || prev.ownerId;
-  const actorName = next.ownerName || prev.ownerName;
+  const actor = resolveActor(db, request, { id: prev.ownerId, name: prev.ownerName });
+  const actorId = actor.id;
+  const actorName = actor.name;
 
   if (body.stage && body.stage !== prev.stage) {
     recordEvent(
@@ -351,11 +447,23 @@ export async function handleUpdateLMCase({
       next.ownerName,
     );
   }
+  // Folder mới (tab Tài liệu) ghi event riêng, không gộp vào "updated".
+  if (body.folders) {
+    body.folders
+      .filter((f) => !(prev.folders ?? []).includes(f))
+      .forEach((f) =>
+        recordEvent(db, prev.id, "folder_created", actorId, actorName, `Created folder "${f}"`, undefined, undefined, f),
+      );
+  }
   const changedKeys = Object.keys(body).filter(
     (k) =>
       k !== "stage" &&
       k !== "ownerId" &&
-      (body as Record<string, unknown>)[k] !== undefined,
+      k !== "folders" &&
+      (body as Record<string, unknown>)[k] !== undefined &&
+      // Form sửa gửi lại MỌI field — chỉ ghi field giá trị thật sự đổi.
+      JSON.stringify((body as Record<string, unknown>)[k]) !==
+        JSON.stringify((prev as unknown as Record<string, unknown>)[k]),
   );
   if (changedKeys.length > 0) {
     recordEvent(
@@ -365,6 +473,9 @@ export async function handleUpdateLMCase({
       actorId,
       actorName,
       `Updated: ${changedKeys.join(", ")}`,
+      undefined,
+      undefined,
+      changedKeys.join(", "),
     );
   }
 
@@ -381,26 +492,27 @@ export async function handleDeleteLMCase({ params }: MockResolverContext) {
   db.litigationCases.splice(index, 1);
   db.caseMilestones = db.caseMilestones.filter((m) => m.caseId !== id);
   db.legalDeadlines = db.legalDeadlines.filter((d) => d.caseId !== id);
-  db.caseEvents = db.caseEvents.filter((e) => e.caseId !== id);
+  // Audit trail KHÔNG xoá theo hồ sơ — vẫn tra lại được sau khi xoá.
+  db.lmTasks = db.lmTasks.filter((t) => t.caseId !== id);
   return jsonResponse({ success: true });
 }
 
-export async function handleGetLMCaseMilestones({
-  params,
-}: MockResolverContext) {
+export async function handleGetLMCaseMilestones({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertCaseAccess(db, request, params.id as string);
+  if (denied) return denied;
   const items = db.caseMilestones
     .filter((m) => m.caseId === params.id)
     .sort((a, b) => a.originalPlannedDate.localeCompare(b.originalPlannedDate));
   return jsonResponse(items);
 }
 
-export async function handleGetLMCaseDeadlines({
-  params,
-}: MockResolverContext) {
+export async function handleGetLMCaseDeadlines({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertCaseAccess(db, request, params.id as string);
+  if (denied) return denied;
   evaluateDeadlines(db);
   const items = db.legalDeadlines
     .filter((d) => d.caseId === params.id)
@@ -427,8 +539,12 @@ export async function handleUpdateLMDeadline({
   if (!lmCase) return notFound("Case not found");
 
   const body = (await request.json()) as UpdateLMDeadlineInput;
-  const actorId = body.actorId || lmCase.ownerId;
-  const actorName = body.actorName || lmCase.ownerName;
+  const { id: actorId, name: actorName } = resolveActor(
+    db,
+    request,
+    { id: lmCase.ownerId, name: lmCase.ownerName },
+    { id: body.actorId, name: body.actorName },
+  );
   const now = new Date().toISOString();
   const label = DEADLINE_TYPE_LABELS[deadline.type];
 
@@ -446,6 +562,9 @@ export async function handleUpdateLMDeadline({
       actorId,
       actorName,
       `Acknowledged alert for deadline "${label}"`,
+      undefined,
+      undefined,
+      deadline.type,
     );
   } else if (body.action === "resolve") {
     if (deadline.status !== "flagged" && deadline.status !== "acknowledged") {
@@ -461,6 +580,9 @@ export async function handleUpdateLMDeadline({
       actorId,
       actorName,
       `Resolved alert for deadline "${label}"`,
+      undefined,
+      undefined,
+      deadline.type,
     );
   } else {
     return badRequest("action must be acknowledge or resolve");
@@ -470,11 +592,11 @@ export async function handleUpdateLMDeadline({
   return jsonResponse(deadline);
 }
 
-export async function handleGetLMCaseEvents({
-  params,
-}: MockResolverContext) {
+export async function handleGetLMCaseEvents({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertCaseAccess(db, request, params.id as string);
+  if (denied) return denied;
   const items = db.caseEvents
     .filter((e) => e.caseId === params.id)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -486,12 +608,15 @@ export async function handleGetLMCaseEvents({
  * sơ, hiển thị cùng LegalDeadline trong tab "Work Calendar". Sort theo hạn
  * gần nhất trước, giống cách Deadlines đang sort ở FE.
  */
-export async function handleGetLMCaseTasks({ params }: MockResolverContext) {
+export async function handleGetLMCaseTasks({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertCaseAccess(db, request, params.id as string);
+  if (denied) return denied;
   const items = db.lmTasks
     .filter((t) => t.caseId === params.id)
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .map(withAlert);
   return jsonResponse(items);
 }
 
@@ -502,13 +627,20 @@ export async function handleCreateLMTask({ request }: MockResolverContext) {
   if (!body.caseId || !body.title || !body.dueDate || !body.priority) {
     return badRequest("caseId, title, dueDate and priority are required");
   }
+  if (body.remindDaysBefore !== undefined && !isValidRemindDays(body.remindDaysBefore)) {
+    return badRequest("remindDaysBefore must be an integer between 0 and 90");
+  }
   const lmCase = findById(db.litigationCases, body.caseId);
   if (!lmCase) return notFound("Case not found");
 
   // Review fix (sau Nam review R3): actor THẬT (người đang bấm nút), không
   // mặc định là chủ hồ sơ — trước đó hardcode sai nếu Manager tạo hộ.
-  const actorId = body.actorId || lmCase.ownerId;
-  const actorName = body.actorName || lmCase.ownerName;
+  const { id: actorId, name: actorName } = resolveActor(
+    db,
+    request,
+    { id: lmCase.ownerId, name: lmCase.ownerName },
+    { id: body.actorId, name: body.actorName },
+  );
   const now = new Date().toISOString();
   const task: LMTask = {
     id: `task-${crypto.randomUUID()}`,
@@ -518,6 +650,7 @@ export async function handleCreateLMTask({ request }: MockResolverContext) {
     dueDate: body.dueDate,
     priority: body.priority,
     status: "open",
+    remindDaysBefore: body.remindDaysBefore ?? 3,
     createdById: actorId,
     createdByName: actorName,
     createdAt: now,
@@ -531,8 +664,11 @@ export async function handleCreateLMTask({ request }: MockResolverContext) {
     actorId,
     actorName,
     `Created task "${task.title}"`,
+    undefined,
+    undefined,
+    task.title,
   );
-  return jsonResponse(task, 201);
+  return jsonResponse(withAlert(task), 201);
 }
 
 export async function handleUpdateLMTask({
@@ -545,8 +681,37 @@ export async function handleUpdateLMTask({
   if (!task) return notFound("Task not found");
 
   const { actorId, actorName, ...fields } = (await request.json()) as UpdateLMTaskInput;
+  if (fields.remindDaysBefore !== undefined && !isValidRemindDays(fields.remindDaysBefore)) {
+    return badRequest("remindDaysBefore must be an integer between 0 and 90");
+  }
+  if (fields.title !== undefined && !fields.title.trim()) {
+    return badRequest("title cannot be empty");
+  }
+  const actor = resolveActor(
+    db,
+    request,
+    { id: task.createdById, name: task.createdByName },
+    { id: actorId, name: actorName },
+  );
   const prevStatus = task.status;
+  const changedFields = (Object.keys(fields) as (keyof typeof fields)[]).filter(
+    (k) => k !== "status" && fields[k] !== task[k],
+  );
   Object.assign(task, fields, { updatedAt: new Date().toISOString() });
+
+  if (changedFields.length > 0) {
+    recordEvent(
+      db,
+      task.caseId,
+      "task_updated",
+      actor.id,
+      actor.name,
+      `Updated task "${task.title}" (${changedFields.join(", ")})`,
+      undefined,
+      undefined,
+      task.title,
+    );
+  }
 
   // Review fix — Work Calendar không ghi vết gì vào History trước đây.
   // Chỉ ghi khi status đổi thật (không ghi lúc sửa title/priority vặt).
@@ -555,14 +720,44 @@ export async function handleUpdateLMTask({
       db,
       task.caseId,
       "task_status_changed",
-      actorId || task.createdById,
-      actorName || task.createdByName,
+      actor.id,
+      actor.name,
       `Task "${task.title}" marked ${fields.status}`,
       prevStatus,
       fields.status,
+      task.title,
     );
   }
-  return jsonResponse(task);
+  return jsonResponse(withAlert(task));
+}
+
+export async function handleDeleteLMTask({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const index = db.lmTasks.findIndex((t) => t.id === params.id);
+  if (index === -1) return notFound("Task not found");
+  const [task] = db.lmTasks.splice(index, 1);
+
+  // DELETE không có body — actor client gửi qua query string (fallback sau token).
+  const url = new URL(request.url);
+  const actor = resolveActor(
+    db,
+    request,
+    { id: task.createdById, name: task.createdByName },
+    { id: url.searchParams.get("actorId") ?? undefined, name: url.searchParams.get("actorName") ?? undefined },
+  );
+  recordEvent(
+    db,
+    task.caseId,
+    "task_deleted",
+    actor.id,
+    actor.name,
+    `Deleted task "${task.title}"`,
+    undefined,
+    undefined,
+    task.title,
+  );
+  return jsonResponse({ success: true });
 }
 
 /**
@@ -601,6 +796,10 @@ export async function handleUpdateLMMilestone({
 
   const now = new Date().toISOString();
   const stageLabel = STAGE_STYLES[milestone.stage].label;
+  const { id: actorId, name: actorName } = resolveActor(db, request, {
+    id: lmCase.ownerId,
+    name: lmCase.ownerName,
+  });
 
   if (
     body.currentPlannedDate &&
@@ -610,11 +809,12 @@ export async function handleUpdateLMMilestone({
       db,
       lmCase.id,
       "milestone_date_changed",
-      lmCase.ownerId,
-      lmCase.ownerName,
+      actorId,
+      actorName,
       `Rescheduled milestone "${stageLabel}"`,
       milestone.currentPlannedDate,
       body.currentPlannedDate,
+      milestone.stage,
     );
     milestone.currentPlannedDate = body.currentPlannedDate;
   }
@@ -625,9 +825,12 @@ export async function handleUpdateLMMilestone({
       db,
       lmCase.id,
       "milestone_completed",
-      lmCase.ownerId,
-      lmCase.ownerName,
+      actorId,
+      actorName,
       `Completed milestone "${stageLabel}"`,
+      undefined,
+      body.actualDate,
+      milestone.stage,
     );
 
     // Chỉ tự chuyển giai đoạn khi hoàn thành ĐÚNG mốc đang là giai đoạn
@@ -640,8 +843,8 @@ export async function handleUpdateLMMilestone({
           db,
           lmCase.id,
           "stage_changed",
-          lmCase.ownerId,
-          lmCase.ownerName,
+          actorId,
+          actorName,
           `Stage changed: ${stageLabel} → ${STAGE_STYLES[nextStage].label}`,
           lmCase.stage,
           nextStage,
@@ -653,9 +856,9 @@ export async function handleUpdateLMMilestone({
         recordEvent(
           db,
           lmCase.id,
-          "updated",
-          lmCase.ownerId,
-          lmCase.ownerName,
+          "case_closed",
+          actorId,
+          actorName,
           "Case closed — enforcement completed",
         );
       }
@@ -664,6 +867,20 @@ export async function handleUpdateLMMilestone({
   }
 
   if (body.linkedFileIds) {
+    const before = milestone.linkedFileIds ?? [];
+    const fileName = (fid: string) => findById(db.files, fid)?.name ?? fid;
+    body.linkedFileIds
+      .filter((fid) => !before.includes(fid))
+      .forEach((fid) =>
+        recordEvent(db, lmCase.id, "milestone_file_linked", actorId, actorName,
+          `Linked "${fileName(fid)}" to milestone "${stageLabel}"`, undefined, milestone.stage, fileName(fid)),
+      );
+    before
+      .filter((fid) => !body.linkedFileIds!.includes(fid))
+      .forEach((fid) =>
+        recordEvent(db, lmCase.id, "milestone_file_unlinked", actorId, actorName,
+          `Unlinked "${fileName(fid)}" from milestone "${stageLabel}"`, milestone.stage, undefined, fileName(fid)),
+      );
     milestone.linkedFileIds = body.linkedFileIds;
   }
 
@@ -716,9 +933,12 @@ export async function handleRemindLMCase({
     fromUserId?: string;
     fromUserName?: string;
   };
-  const fromUserId = body.fromUserId || lmCase.managerId || lmCase.ownerId;
-  const fromUserName =
-    body.fromUserName || lmCase.managerName || lmCase.ownerName;
+  const { id: fromUserId, name: fromUserName } = resolveActor(
+    db,
+    request,
+    { id: lmCase.managerId || lmCase.ownerId, name: lmCase.managerName || lmCase.ownerName },
+    { id: body.fromUserId, name: body.fromUserName },
+  );
 
   const now = new Date().toISOString();
   db.notifications.unshift({
@@ -742,6 +962,9 @@ export async function handleRemindLMCase({
     fromUserId,
     fromUserName,
     `Reminder sent to ${lmCase.ownerName}`,
+    undefined,
+    undefined,
+    lmCase.ownerName,
   );
 
   return jsonResponse({ success: true });
@@ -861,9 +1084,89 @@ export async function handleGetLMDashboard({ request }: { request: Request }) {
       title: c.title,
       ownerName: c.ownerName,
       redFlagCount: countRedFlags(db, c.id),
+      priority: c.priority,
     }))
-    .sort((a, b) => b.redFlagCount - a.redFlagCount)
+    .sort(
+      (a, b) =>
+        b.redFlagCount - a.redFlagCount ||
+        PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority],
+    )
     .slice(0, 5);
+
+  const caseById = new Map(scopedCases.map((c) => [c.id, c]));
+  const openTaskRows: LMDashboardTask[] = db.lmTasks
+    .filter((t) => t.status === "open" && caseById.has(t.caseId))
+    .map((t) => {
+      const c = caseById.get(t.caseId)!;
+      return {
+        id: t.id,
+        caseId: t.caseId,
+        caseCode: c.code,
+        title: t.title,
+        ownerName: c.ownerName,
+        dueDate: t.dueDate,
+        priority: t.priority,
+        alertState: taskAlertState(t),
+      };
+    })
+    .sort(compareTaskUrgency);
+  const taskCounts = {
+    overdue: openTaskRows.filter((t) => t.alertState === "overdue").length,
+    dueSoon: openTaskRows.filter((t) => t.alertState === "due_soon").length,
+    upcoming: openTaskRows.filter((t) => t.alertState === "upcoming").length,
+  };
+
+  // SLA mốc theo tháng hoàn thành — cùng định nghĩa "đúng hạn" với KPI a.
+  const slaTrend = Array.from({ length: 6 }, (_, i) => {
+    const month = format(subMonths(DEMO_TODAY, 5 - i), "yyyy-MM");
+    const inMonth = completedMilestones.filter((m) => m.actualDate!.startsWith(month));
+    const onTime = inMonth.filter((m) => m.actualDate! <= m.currentPlannedDate).length;
+    return { month, onTime, late: inMonth.length - onTime };
+  });
+
+  const todayIso = DEMO_TODAY.toISOString();
+  const deadlineSla = {
+    resolved: scopedDeadlines.filter((d) => d.status === "resolved").length,
+    withinSla: scopedDeadlines.filter(
+      (d) => d.status !== "resolved" && d.dueDate >= todayIso,
+    ).length,
+    breached: scopedDeadlines.filter(
+      (d) => d.status !== "resolved" && d.dueDate < todayIso,
+    ).length,
+  };
+
+  const ownerKpi = ownerId
+    ? []
+    : db.users
+        .filter((u) => u.role === "owner")
+        .map((u) => ({
+          userName: u.name,
+          ids: new Set(scopedCases.filter((c) => c.ownerId === u.id).map((c) => c.id)),
+        }))
+        .filter(({ ids }) => ids.size > 0)
+        .map(({ userName, ids }) => {
+          const done = completedMilestones.filter((m) => ids.has(m.caseId));
+          const flagged = everFlagged.filter((d) => ids.has(d.caseId));
+          return {
+            userName,
+            onTimeRate:
+              done.length > 0
+                ? Math.round(
+                    (done.filter((m) => m.actualDate! <= m.currentPlannedDate).length /
+                      done.length) *
+                      100,
+                  )
+                : 0,
+            alertResolutionRate:
+              flagged.length > 0
+                ? Math.round(
+                    (flagged.filter((d) => d.status === "resolved").length /
+                      flagged.length) *
+                      100,
+                  )
+                : 0,
+          };
+        });
 
   const summary: LMDashboardSummary = {
     totalOpen: openCases.length,
@@ -878,6 +1181,11 @@ export async function handleGetLMDashboard({ request }: { request: Request }) {
     unitDistribution,
     ownerWorkload: ownerId ? [] : computeOwnerWorkload(db),
     topRedFlagCases,
+    openTasks: openTaskRows.slice(0, 10),
+    taskCounts,
+    slaTrend,
+    deadlineSla,
+    ownerKpi,
   };
   return jsonResponse(summary);
 }
@@ -892,6 +1200,7 @@ export const lmHandlers = [
   http.get("/api/lm/cases/:id/tasks", handleGetLMCaseTasks),
   http.post("/api/lm/tasks", handleCreateLMTask),
   http.put("/api/lm/tasks/:id", handleUpdateLMTask),
+  http.delete("/api/lm/tasks/:id", handleDeleteLMTask),
   http.get("/api/lm/cases/:id", handleGetLMCaseDetail),
   http.put("/api/lm/cases/:id", handleUpdateLMCase),
   http.delete("/api/lm/cases/:id", handleDeleteLMCase),

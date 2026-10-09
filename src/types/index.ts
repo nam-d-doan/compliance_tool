@@ -81,6 +81,8 @@ export type {
   LMDashboardSummary,
   LMTask,
   LMTaskStatus,
+  LMTaskAlertState,
+  LMDashboardTask,
   CreateLMTaskInput,
   UpdateLMTaskInput,
 } from "./lm";

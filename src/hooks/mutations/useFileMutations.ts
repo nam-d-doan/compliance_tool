@@ -55,6 +55,19 @@ export function useUploadFile() {
   });
 }
 
+export function useMoveFileToFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, folderPath }: { id: string; folderPath: string | null }) =>
+      FileService.moveToFolder(id, folderPath),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fileKeys.all });
+      // Chuyển folder ghi CaseEvent — tab Lịch sử phải tải lại.
+      queryClient.invalidateQueries({ queryKey: lmKeys.all });
+    },
+  });
+}
+
 export function useDeleteFile() {
   const queryClient = useQueryClient();
   return useMutation({

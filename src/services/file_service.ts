@@ -1,4 +1,4 @@
-import { apiGet, apiUpload, apiDelete } from "@/lib/api";
+import { apiGet, apiUpload, apiDelete, apiPut } from "@/lib/api";
 import { API_ENDPOINTS } from "@/constants/api";
 import type { FileAttachment, FileFilter, Paginated } from "@/types";
 
@@ -46,6 +46,10 @@ export const FileService = {
     if (meta.uploadedById) form.append("uploadedById", meta.uploadedById);
     if (meta.folderPath) form.append("folderPath", meta.folderPath);
     return apiUpload<FileAttachment>(API_ENDPOINTS.FILE_UPLOAD, form);
+  },
+
+  moveToFolder(id: string, folderPath: string | null) {
+    return apiPut<FileAttachment>(API_ENDPOINTS.FILE_UPDATE(id), { folderPath });
   },
 
   remove(id: string) {

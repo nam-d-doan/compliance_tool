@@ -41,6 +41,8 @@ import {
   DEADLINE_TYPES,
   DEADLINE_TYPE_DEFAULT_DAYS_BEFORE,
   DEADLINE_TYPE_LABELS,
+  LM_DEFAULT_FOLDERS,
+  type CaseStage,
 } from "@/constants/lm";
 import {
   CURATED_REGULATIONS,
@@ -888,7 +890,11 @@ function generateLitigationCases(
       ? faker.number.int({ min: 3_000_000_000, max: 15_000_000_000 })
       : faker.number.int({ min: 500_000_000, max: 5_000_000_000 });
 
-    const createdAt = randomDate(subDays(today, 300), subDays(today, 30));
+    // Hồ sơ ở giai đoạn k đã hoàn thành k mốc, mốc cuối ~ createdAt + 45k (+≤10
+    // ngày) — createdAt phải đủ xa để mọi mốc "đã xong" nằm TRƯỚC hôm nay,
+    // không thì Lịch sử hiện ngày hoàn thành ở tương lai.
+    const minAgeDays = Math.max(30, 45 * stageIdxCurrent + 15);
+    const createdAt = randomDate(subDays(today, 300), subDays(today, minAgeDays));
     const caseId = uid("lm");
 
     cases.push({
@@ -914,6 +920,7 @@ function generateLitigationCases(
       managerId: pickManager().id,
       managerName: "", // điền lại ngay dưới sau khi biết managerId
       fileIds: [],
+      folders: [...LM_DEFAULT_FOLDERS],
       tags: [],
       createdAt: iso(createdAt),
       updatedAt: iso(randomDate(createdAt, today)),
@@ -930,6 +937,7 @@ function generateLitigationCases(
       userId: owner.id,
       userName: owner.name,
       description: `Created case ${created.code}`,
+      subject: created.code,
       createdAt: iso(createdAt),
       updatedAt: iso(createdAt),
     });
@@ -967,6 +975,7 @@ function generateLitigationCases(
           userId: owner.id,
           userName: owner.name,
           description: `Rescheduled milestone "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
+          subject: CASE_STAGES[si],
           fromValue: iso(planned),
           toValue: iso(currentPlanned),
           createdAt: iso(subDays(today, faker.number.int({ min: 1, max: 20 }))),
@@ -981,6 +990,7 @@ function generateLitigationCases(
           userId: owner.id,
           userName: owner.name,
           description: `Completed milestone "${STAGE_STYLES[CASE_STAGES[si]].label}"`,
+          subject: CASE_STAGES[si],
           createdAt: iso(actualDate!),
           updatedAt: iso(actualDate!),
         });
@@ -1040,6 +1050,7 @@ function generateLitigationCases(
         userId: owner.id,
         userName: owner.name,
         description: `Resolved alert for deadline "${DEADLINE_TYPE_LABELS[deadlineType]}"`,
+        subject: deadlineType,
         createdAt: iso(resolvedAt),
         updatedAt: iso(resolvedAt),
       });
@@ -1069,67 +1080,108 @@ function generateLitigationCases(
  * để tab không trống khi demo lần đầu. KHÔNG đụng `cases` (hồ sơ dùng
  * chung với generateLitigationCases ở trên).
  */
+// Xoay vòng tiêu đề task critical — tránh Dashboard đầu danh sách lặp 1 tên.
+const CRITICAL_TASK_TITLES = [
+  "Pay court fee before filing cut-off",
+  "Submit evidence bundle to court",
+  "File appeal before statutory deadline",
+  "Respond to enforcement agency summons",
+];
+
 function generateLMTasks(cases: LitigationCase[]): LMTask[] {
-  if (cases.length === 0) return [];
-  const pick = (i: number) => cases[i % cases.length];
   const specs: {
     offsetDays: number;
     priority: PriorityLevel;
     status: LMTaskStatus;
+    remindDaysBefore: number;
     title: string;
   }[] = [
-    { offsetDays: -3, priority: "high", status: "open", title: "Follow up with court clerk on filing receipt" },
-    { offsetDays: 2, priority: "medium", status: "open", title: "Prepare collateral valuation summary" },
-    { offsetDays: 10, priority: "low", status: "open", title: "Schedule client update call" },
-    { offsetDays: -10, priority: "medium", status: "done", title: "Collect notarized contract copies" },
-    { offsetDays: -20, priority: "critical", status: "done", title: "File response to counterparty motion" },
+    { offsetDays: -3, priority: "high", status: "open", remindDaysBefore: 3, title: "Follow up with court clerk on filing receipt" },
+    { offsetDays: 2, priority: "medium", status: "open", remindDaysBefore: 3, title: "Prepare collateral valuation summary" },
+    { offsetDays: 10, priority: "low", status: "open", remindDaysBefore: 2, title: "Schedule client update call" },
+    { offsetDays: -10, priority: "medium", status: "done", remindDaysBefore: 3, title: "Collect notarized contract copies" },
+    { offsetDays: 1, priority: "critical", status: "open", remindDaysBefore: 5, title: "Submit evidence bundle to court" },
+    { offsetDays: 6, priority: "high", status: "open", remindDaysBefore: 7, title: "Review draft settlement terms" },
+    { offsetDays: -20, priority: "critical", status: "done", remindDaysBefore: 5, title: "File response to counterparty motion" },
+    { offsetDays: 18, priority: "medium", status: "open", remindDaysBefore: 5, title: "Update debt recovery estimate" },
+    { offsetDays: -7, priority: "critical", status: "open", remindDaysBefore: 3, title: "Pay court fee before filing cut-off" },
+    { offsetDays: -5, priority: "medium", status: "open", remindDaysBefore: 2, title: "Chase enforcement officer on asset seizure" },
   ];
 
-  return specs.map((s, i) => {
-    const lmCase = pick(i);
-    const createdAt = iso(subDays(today, 15));
-    return {
-      id: uid("task"),
-      caseId: lmCase.id,
-      title: s.title,
-      dueDate: iso(addDays(today, s.offsetDays)),
-      priority: s.priority,
-      status: s.status,
-      createdById: lmCase.ownerId,
-      createdByName: lmCase.ownerName,
-      createdAt,
-      updatedAt: createdAt,
-    };
+  // Mỗi hồ sơ đang mở lấy 2-3 spec xoay vòng — để task trải khắp các
+  // hồ sơ, không dồn vào vài hồ sơ đầu như seed cũ.
+  const tasks: LMTask[] = [];
+  cases.forEach((lmCase, ci) => {
+    if (lmCase.status !== "Open") return;
+    const count = 2 + (ci % 2);
+    for (let k = 0; k < count; k++) {
+      const s = specs[(ci * 3 + k) % specs.length];
+      const createdAt = iso(subDays(today, 15));
+      tasks.push({
+        id: uid("task"),
+        caseId: lmCase.id,
+        title: s.priority === "critical" ? CRITICAL_TASK_TITLES[ci % CRITICAL_TASK_TITLES.length] : s.title,
+        dueDate: iso(addDays(today, s.offsetDays + (ci % 4))),
+        priority: s.priority,
+        status: s.status,
+        remindDaysBefore: s.remindDaysBefore,
+        createdById: lmCase.ownerId,
+        createdByName: lmCase.ownerName,
+        createdAt,
+        updatedAt: createdAt,
+      });
+    }
   });
+  return tasks;
 }
 
-/** File đính kèm cho 20/30 hồ sơ (i % 3 !== 2). Mượn preset của CAP. */
-function generateLitigationFiles(cases: LitigationCase[]): FileAttachment[] {
+/**
+ * Văn bản tố tụng mẫu theo giai đoạn: hồ sơ ở giai đoạn k có văn bản của
+ * mọi giai đoạn <= k, mỗi văn bản nằm đúng folder và được gắn sẵn vào mốc
+ * tương ứng (Nam review: tài liệu theo folder + link vào Hồ sơ sự vụ).
+ */
+const LM_DOC_PRESETS: { stage: CaseStage; folder: number; name: string; size: number }[] = [
+  { stage: "khoi_kien", folder: 0, name: "Don-khoi-kien.pdf", size: 412_000 },
+  { stage: "khoi_kien", folder: 1, name: "Hop-dong-tin-dung.pdf", size: 860_000 },
+  { stage: "khoi_kien", folder: 1, name: "Hop-dong-the-chap-TSBD.pdf", size: 640_000 },
+  { stage: "thu_ly", folder: 2, name: "Thong-bao-thu-ly.pdf", size: 210_000 },
+  { stage: "hoa_giai", folder: 2, name: "Bien-ban-hoa-giai.pdf", size: 330_000 },
+  { stage: "xet_xu", folder: 2, name: "Ban-an-so-tham.pdf", size: 1_150_000 },
+  { stage: "thi_hanh_an", folder: 3, name: "Quyet-dinh-thi-hanh-an.pdf", size: 280_000 },
+];
+
+/** 10/30 hồ sơ (i % 3 === 2) cố ý không có file — để KPI đủ tài liệu không tròn 100%. */
+function generateLitigationFiles(
+  cases: LitigationCase[],
+  milestones: CaseMilestone[],
+): FileAttachment[] {
   const files: FileAttachment[] = [];
   cases.forEach((c, i) => {
-    if (i % 3 === 2) return; // 10 hồ sơ cố ý không có file
-    const count = faker.number.int({ min: 1, max: 2 });
-    const chosen = faker.helpers.arrayElements(MOCK_FILE_PRESETS, count);
+    if (i % 3 === 2) return;
+    const stageIdx = CASE_STAGES.indexOf(c.stage);
     const uploader = faker.helpers.arrayElement(DEMO_USERS);
-    const uploadedAt = randomDate(subDays(today, 30), today);
     const ids: string[] = [];
-    for (const preset of chosen) {
+    LM_DOC_PRESETS.filter((p) => CASE_STAGES.indexOf(p.stage) <= stageIdx).forEach((p) => {
       const id = uid("file");
+      const uploadedAt = randomDate(subDays(today, 60), today);
       ids.push(id);
       files.push({
         id,
-        name: preset.name,
-        size: preset.size,
-        type: preset.type,
-        url: `https://mock-files.example.com/lm/${c.id}/${preset.name}`,
+        name: p.name,
+        size: p.size,
+        type: "application/pdf",
+        url: `https://mock-files.example.com/lm/${c.id}/${p.name}`,
         uploadedAt: iso(uploadedAt),
         uploadedBy: uploader.name,
         uploadedById: uploader.id,
         caseId: c.id,
+        folderPath: LM_DEFAULT_FOLDERS[p.folder],
         createdAt: iso(uploadedAt),
         updatedAt: iso(uploadedAt),
       });
-    }
+      const ms = milestones.find((m) => m.caseId === c.id && m.stage === p.stage);
+      if (ms) ms.linkedFileIds = [...(ms.linkedFileIds ?? []), id];
+    });
     c.fileIds = ids;
   });
   return files;
@@ -1550,7 +1602,7 @@ export function getDb(): MockDb {
   const nccs = generateNCCs(organizationSettings, users);
   const lm = generateLitigationCases(organizationSettings, users);
   const lmTasks = generateLMTasks(lm.cases);
-  const lmFiles = generateLitigationFiles(lm.cases);
+  const lmFiles = generateLitigationFiles(lm.cases, lm.milestones);
   const alertRules = generateDefaultAlertRules();
   const assignments = generateAssignments(
     regulations,

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { LMService } from "@/services";
 import { lmKeys } from "@/hooks/query-keys";
 import type {
@@ -93,10 +93,29 @@ export function useCreateLMTask(caseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateLMTaskInput) => LMService.createTask(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: lmKeys.tasks(caseId) });
-      queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
-    },
+    onSuccess: () => invalidateTaskQueries(queryClient, caseId),
+  });
+}
+
+function invalidateTaskQueries(queryClient: QueryClient, caseId: string) {
+  queryClient.invalidateQueries({ queryKey: lmKeys.tasks(caseId) });
+  queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
+  queryClient.invalidateQueries({ queryKey: [...lmKeys.all, "dashboard"] });
+}
+
+export function useDeleteLMTask(caseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      actorId,
+      actorName,
+    }: {
+      id: string;
+      actorId?: string;
+      actorName?: string;
+    }) => LMService.deleteTask(id, actorId, actorName),
+    onSuccess: () => invalidateTaskQueries(queryClient, caseId),
   });
 }
 
@@ -111,10 +130,7 @@ export function useUpdateLMTask(caseId: string) {
       id: string;
       data: UpdateLMTaskInput;
     }) => LMService.updateTask(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: lmKeys.tasks(caseId) });
-      queryClient.invalidateQueries({ queryKey: lmKeys.events(caseId) });
-    },
+    onSuccess: () => invalidateTaskQueries(queryClient, caseId),
   });
 }
 

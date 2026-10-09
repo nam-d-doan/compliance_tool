@@ -97,6 +97,7 @@ import {
   handleGetFileList,
   handleUploadFile,
   handleDeleteFile,
+  handleUpdateFile,
 } from "./handlers/file_handlers";
 import {
   handleGetLMCaseList,
@@ -110,6 +111,7 @@ import {
   handleGetLMCaseTasks,
   handleCreateLMTask,
   handleUpdateLMTask,
+  handleDeleteLMTask,
   handleGetLMAlertRules,
   handleUpdateLMMilestone,
   handleUpdateLMDeadline,
@@ -205,6 +207,11 @@ const routes: Route[] = [
     methods: ["PUT"],
     pattern: "/api/lm/tasks/:id",
     handler: handleUpdateLMTask,
+  },
+  {
+    methods: ["DELETE"],
+    pattern: "/api/lm/tasks/:id",
+    handler: handleDeleteLMTask,
   },
   {
     methods: ["GET"],
@@ -422,6 +429,11 @@ const routes: Route[] = [
   // File attachments (Phase 5)
   { methods: ["GET"], pattern: "/api/files", handler: handleGetFileList },
   { methods: ["POST"], pattern: "/api/files", handler: handleUploadFile },
+  {
+    methods: ["PUT"],
+    pattern: "/api/files/:id",
+    handler: handleUpdateFile,
+  },
   {
     methods: ["DELETE"],
     pattern: "/api/files/:id",

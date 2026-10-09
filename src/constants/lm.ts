@@ -157,6 +157,21 @@ export const REQUIRED_DOCS_BY_STAGE: Record<CaseStage, string[]> = {
   thi_hanh_an: ["Enforcement Decision", "Enforcement Minutes"],
 };
 
+/**
+ * Folder mặc định trên File Sharing Storage cho mỗi hồ sơ (Nam review:
+ * "tổ chức tài liệu theo folder"). Tên folder là dữ liệu (tiếng Việt), không
+ * dịch theo ngôn ngữ giao diện — giống tên file.
+ */
+export const LM_DEFAULT_FOLDERS = [
+  "01. Đơn khởi kiện",
+  "02. Hợp đồng & TSBĐ",
+  "03. Văn bản tòa án",
+  "04. Thi hành án",
+];
+
+/** Gốc thư mục mô phỏng — demo CHƯA nối storage thật (SharePoint/ổ mạng chờ Nam chốt). */
+export const LM_FILE_SHARE_ROOT = "\\\\fileshare.bank.local\\PhapChe\\LM";
+
 /** Trọng số tải công việc theo ưu tiên (00-decisions.md mục 5). */
 export const PRIORITY_WORKLOAD_WEIGHT: Record<PriorityLevel, number> = {
   low: 1,

@@ -22,40 +22,52 @@ import {
   ErrorState,
   TableSkeleton,
 } from "@/components/common";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useLanguageStore } from "@/stores";
 import { useLMCaseList } from "@/hooks/queries";
 import { useDeleteLMCase } from "@/hooks/mutations";
 import { hasPermission } from "@/constants/rbac";
 import {
   CASE_STAGES,
-  STAGE_STYLES,
-  CASE_CATEGORY_LABELS,
+  getStageLabel,
+  getCaseCategoryLabel,
   type CaseStage,
 } from "@/constants/lm";
 import { PRIORITY_LEVELS } from "@/constants/status";
 import { toast } from "sonner";
 import type { LMCaseFilter } from "@/types";
+import { useL, useTerm, useDateLocale } from "@/lib/i18n";
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 export default function LMListPage() {
   const navigate = useNavigate();
-  const { role } = useAuthStore();
+  const { role, user } = useAuthStore();
+  // Nam review: chuyên viên thụ lý chỉ thấy hồ sơ mình phụ trách — cùng
+  // quy tắc với LMDashboardPage (isSpecialistView).
+  const isSpecialistView = role === "owner";
   const canCreate = hasPermission(role, "lm:create");
   const canDelete = hasPermission(role, "lm:delete");
+  const L = useL();
+  const term = useTerm();
+  const dateLocale = useDateLocale();
+  const lang = useLanguageStore((s) => s.lang);
 
   const [filters, setFilters] = useState<LMCaseFilter>({});
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
+  const scopedFilters: LMCaseFilter = isSpecialistView
+    ? { ...filters, ownerId: user?.id }
+    : filters;
+
   const { data, isPending, isError, refetch } = useLMCaseList(
-    filters,
+    scopedFilters,
     page,
     pageSize,
   );
-  const remove = useDeleteLMCase(filters);
+  const remove = useDeleteLMCase(scopedFilters);
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -68,26 +80,44 @@ export default function LMListPage() {
   };
 
   const handleDelete = (id: string, code: string) => {
-    if (!window.confirm(`Delete case ${code}? This action cannot be undone.`)) {
+    if (
+      !window.confirm(
+        L(
+          `Delete case ${code}? This action cannot be undone.`,
+          `Xoá hồ sơ ${code}? Không thể hoàn tác.`,
+        ),
+      )
+    ) {
       return;
     }
     remove.mutate(id, {
-      onSuccess: () => toast.success(`Case ${code} deleted`),
-      onError: (err) => toast.error(err.message || "Delete failed"),
+      onSuccess: () => toast.success(L(`Case ${code} deleted`, `Đã xoá hồ sơ ${code}`)),
+      onError: (err) => toast.error(err.message || L("Delete failed", "Xoá thất bại")),
     });
   };
 
   return (
     <div className="space-y-6">
       <PageHero
-        title="Litigation & Enforcement Cases"
-        subtitle="Manage the bank's litigation and judgment enforcement cases."
+        title={
+          isSpecialistView
+            ? L("My Cases", "Hồ sơ của tôi")
+            : L("Litigation & Enforcement Cases", "Hồ sơ tố tụng & thi hành án")
+        }
+        subtitle={
+          isSpecialistView
+            ? L("Cases assigned to you.", "Các hồ sơ bạn đang phụ trách.")
+            : L(
+                "Manage the bank's litigation and judgment enforcement cases.",
+                "Quản lý hồ sơ tố tụng và thi hành án của ngân hàng.",
+              )
+        }
       >
         {canCreate && (
           <Button asChild>
             <Link to="/lm/create">
               <Plus className="size-4" aria-hidden="true" />
-              New Case
+              {L("New Case", "Tạo hồ sơ mới")}
             </Link>
           </Button>
         )}
@@ -98,7 +128,7 @@ export default function LMListPage() {
         className="flex flex-wrap items-center gap-3"
       >
         <Input
-          placeholder="Search by code, title, customer..."
+          placeholder={L("Search by code, title, customer...", "Tìm theo mã, tiêu đề, khách hàng...")}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="max-w-xs"
@@ -114,10 +144,10 @@ export default function LMListPage() {
             }));
           }}
         >
-          <option value="">All stages</option>
+          <option value="">{L("All stages", "Tất cả giai đoạn")}</option>
           {CASE_STAGES.map((s) => (
             <option key={s} value={s}>
-              {STAGE_STYLES[s].label}
+              {getStageLabel(s, lang)}
             </option>
           ))}
         </select>
@@ -133,10 +163,10 @@ export default function LMListPage() {
             }));
           }}
         >
-          <option value="">All priorities</option>
+          <option value="">{L("All priorities", "Tất cả mức ưu tiên")}</option>
           {PRIORITY_LEVELS.map((p) => (
             <option key={p} value={p}>
-              {p.charAt(0).toUpperCase() + p.slice(1)}
+              {term(p.charAt(0).toUpperCase() + p.slice(1))}
             </option>
           ))}
         </select>
@@ -152,12 +182,12 @@ export default function LMListPage() {
             }));
           }}
         >
-          <option value="">All statuses</option>
-          <option value="Open">Open</option>
-          <option value="Closed">Closed</option>
+          <option value="">{L("All statuses", "Tất cả trạng thái")}</option>
+          <option value="Open">{term("Open")}</option>
+          <option value="Closed">{term("Closed")}</option>
         </select>
         <Button type="submit" variant="outline">
-          Filter
+          {L("Filter", "Lọc")}
         </Button>
       </form>
 
@@ -167,23 +197,25 @@ export default function LMListPage() {
         <ErrorState onRetry={() => refetch()} />
       ) : items.length === 0 ? (
         <EmptyState
-          title="No cases yet"
-          description="Create the first case or clear some filters."
+          title={L("No cases yet", "Chưa có hồ sơ")}
+          description={L("Create the first case or clear some filters.", "Tạo hồ sơ đầu tiên hoặc bỏ bớt bộ lọc.")}
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs font-semibold text-muted-foreground">
               <tr>
-                <th className="px-3 py-2">Case Code</th>
-                <th className="px-3 py-2">Title</th>
-                <th className="px-3 py-2">Category</th>
-                <th className="px-3 py-2">Stage</th>
-                <th className="px-3 py-2">Alerts</th>
-                <th className="px-3 py-2">Priority</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Owner</th>
-                <th className="px-3 py-2">Updated</th>
+                <th className="px-3 py-2">{L("Case Code", "Mã hồ sơ")}</th>
+                <th className="px-3 py-2">{L("Title", "Tiêu đề")}</th>
+                <th className="px-3 py-2">{L("Category", "Nhóm vụ việc")}</th>
+                <th className="px-3 py-2">{L("Stage", "Giai đoạn")}</th>
+                <th className="px-3 py-2">{L("Alerts", "Cảnh báo")}</th>
+                <th className="px-3 py-2">{L("Priority", "Ưu tiên")}</th>
+                <th className="px-3 py-2">{L("Status", "Trạng thái")}</th>
+                {!isSpecialistView && (
+                  <th className="px-3 py-2">{L("Owner", "Chuyên viên")}</th>
+                )}
+                <th className="px-3 py-2">{L("Updated", "Cập nhật")}</th>
                 {canDelete && <th className="px-3 py-2" />}
               </tr>
             </thead>
@@ -197,9 +229,9 @@ export default function LMListPage() {
                   <td className="px-3 py-2 font-medium">{c.code}</td>
                   <td className="px-3 py-2">{c.title}</td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {CASE_CATEGORY_LABELS[c.category]}
+                    {getCaseCategoryLabel(c.category, lang)}
                   </td>
-                  <td className="px-3 py-2">{STAGE_STYLES[c.stage].label}</td>
+                  <td className="px-3 py-2">{getStageLabel(c.stage, lang)}</td>
                   <td className="px-3 py-2">
                     {c.redFlagCount ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
@@ -216,9 +248,9 @@ export default function LMListPage() {
                   <td className="px-3 py-2">
                     <StatusBadge status={c.status} />
                   </td>
-                  <td className="px-3 py-2">{c.ownerName}</td>
+                  {!isSpecialistView && <td className="px-3 py-2">{c.ownerName}</td>}
                   <td className="px-3 py-2 text-muted-foreground">
-                    {format(parseISO(c.updatedAt), "MMM d, yyyy")}
+                    {format(parseISO(c.updatedAt), "MMM d, yyyy", { locale: dateLocale })}
                   </td>
                   {canDelete && (
                     <td className="px-3 py-2">
@@ -229,7 +261,7 @@ export default function LMListPage() {
                           e.stopPropagation();
                           handleDelete(c.id, c.code);
                         }}
-                        aria-label={`Delete case ${c.code}`}
+                        aria-label={L(`Delete case ${c.code}`, `Xoá hồ sơ ${c.code}`)}
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -250,10 +282,10 @@ export default function LMListPage() {
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
-            Previous
+            {L("Previous", "Trước")}
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {page}/{totalPages}
+            {L("Page", "Trang")} {page}/{totalPages}
           </span>
           <Button
             variant="outline"
@@ -261,7 +293,7 @@ export default function LMListPage() {
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next
+            {L("Next", "Sau")}
           </Button>
         </div>
       )}

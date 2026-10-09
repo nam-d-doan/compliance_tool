@@ -57,9 +57,8 @@ class ApiClient {
     // Handle errors
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Request failed with status ${response.status}`,
-      );
+      throw Object.assign(new Error(errorData.message || `Request failed with status ${response.status}`,
+      ), { status: response.status });
     }
 
     // Parse and return response
@@ -124,9 +123,8 @@ class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Upload failed with status ${response.status}`,
-      );
+      throw Object.assign(new Error(errorData.message || `Upload failed with status ${response.status}`,
+      ), { status: response.status });
     }
 
     return response.json();

@@ -7,8 +7,10 @@ import {
   notFound,
   parseQuery,
   parseNumber,
+  actorFromRequest,
   type MockResolverContext,
 } from "./utils";
+import { recordEvent } from "./lm_handlers";
 import type {
   FileAttachment,
   CAP,
@@ -89,9 +91,11 @@ export async function handleUploadFile({ request }: { request: Request }) {
 
   // Uploader identity is passed through from the client (auth store), with
   // safe fallbacks so uploads never fail on missing identity in mock mode.
-  const uploadedBy = (form.get("uploadedBy") as string | null) ?? "Unknown";
+  const actor = actorFromRequest(request, db.users);
+  const uploadedBy =
+    actor?.name ?? (form.get("uploadedBy") as string | null) ?? "Unknown";
   const uploadedById =
-    (form.get("uploadedById") as string | null) ?? "demo-admin";
+    actor?.id ?? (form.get("uploadedById") as string | null) ?? "demo-admin";
 
   const attachment: FileAttachment = {
     id: `file-${crypto.randomUUID()}`,
@@ -131,6 +135,8 @@ export async function handleUploadFile({ request }: { request: Request }) {
     const lmCase = findById(db.litigationCases, caseId);
     if (lmCase && !lmCase.fileIds.includes(attachment.id)) {
       lmCase.fileIds = [...lmCase.fileIds, attachment.id];
+      recordEvent(db, caseId, "file_attached", uploadedById, uploadedBy,
+        `Uploaded "${attachment.name}"`, undefined, folderPath, attachment.name);
     }
   }
 
@@ -138,13 +144,36 @@ export async function handleUploadFile({ request }: { request: Request }) {
   return jsonResponse(attachment, 201);
 }
 
-export async function handleDeleteFile({ params }: MockResolverContext) {
+/** Hiện chỉ cho đổi folder (chuyển file giữa các folder của hồ sơ LM). */
+export async function handleUpdateFile({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const file = findById(db.files, params.id as string);
+  if (!file) return notFound("File not found");
+  const body = (await request.json()) as { folderPath?: string | null };
+  const prevFolder = file.folderPath;
+  file.folderPath = body.folderPath?.trim() || undefined;
+  file.updatedAt = new Date().toISOString();
+  const actor = actorFromRequest(request, db.users);
+  if (file.caseId && actor && prevFolder !== file.folderPath) {
+    recordEvent(db, file.caseId, "file_moved", actor.id, actor.name,
+      `Moved "${file.name}"`, prevFolder, file.folderPath, file.name);
+  }
+  return jsonResponse(file);
+}
+
+export async function handleDeleteFile({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
   const index = db.files.findIndex((f) => f.id === params.id);
   if (index === -1) return notFound("File not found");
 
   const [removed] = db.files.splice(index, 1);
+  const actor = actorFromRequest(request, db.users);
+  if (removed.caseId && actor) {
+    recordEvent(db, removed.caseId, "file_deleted", actor.id, actor.name,
+      `Deleted "${removed.name}"`, removed.folderPath, undefined, removed.name);
+  }
 
   // Revoke any object URL we minted to avoid leaking blob memory.
   if (removed.url.startsWith("blob:")) {
@@ -190,5 +219,6 @@ export async function handleDeleteFile({ params }: MockResolverContext) {
 export const fileHandlers = [
   http.get("/api/files", handleGetFileList),
   http.post("/api/files", handleUploadFile),
+  http.put("/api/files/:id", handleUpdateFile),
   http.delete("/api/files/:id", handleDeleteFile),
 ];

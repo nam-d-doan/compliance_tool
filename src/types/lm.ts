@@ -88,6 +88,8 @@ export interface LitigationCase extends BaseEntity {
 
   /** IDs của FileAttachment gắn với hồ sơ (dùng chung hệ thống file của CAP/NCC). */
   fileIds: string[];
+  /** Folder trên File Sharing Storage của hồ sơ — có cả folder rỗng (tạo trước, upload sau). */
+  folders: string[];
   tags: string[];
 
   /** GĐ3 — server tự tính khi trả response (list/detail), KHÔNG lưu trong
@@ -161,11 +163,23 @@ export interface CaseEvent extends BaseEntity {
     | "reassigned"
     | "reminded"
     | "task_created"
-    | "task_status_changed";
+    | "task_status_changed"
+    | "task_updated"
+    | "task_deleted"
+    | "case_closed"
+    | "file_moved"
+    | "file_deleted"
+    | "milestone_file_linked"
+    | "milestone_file_unlinked"
+    | "folder_created";
   userId: string;
   userName: string;
-  /** Mô tả ngắn, hiển thị trực tiếp trong ActivityFeed. */
+  /** Mô tả tiếng Anh cố định — fallback khi UI không dựng được câu theo type,
+   * và là nội dung chép sang AuditLog chung. */
   description: string;
+  /** Đối tượng của thao tác (mã giai đoạn, loại hạn, tên task/file/folder) —
+   * để UI dựng câu song ngữ theo `type`, không phải dịch `description`. */
+  subject?: string;
   /** Giá trị trước/sau khi đổi — chỉ điền khi có ý nghĩa (vd đổi ngày, đổi người). */
   fromValue?: string;
   toValue?: string;
@@ -190,9 +204,17 @@ export interface LMTask extends BaseEntity {
   dueDate: string;
   priority: PriorityLevel;
   status: LMTaskStatus;
+  /** Số ngày báo trước hạn do người tạo tự đặt (0 = chỉ báo khi quá hạn). */
+  remindDaysBefore: number;
   createdById: string;
   createdByName: string;
+
+  /** Server tự tính theo DEMO_TODAY khi trả response, không lưu. */
+  alertState?: LMTaskAlertState;
 }
+
+/** overdue = quá hạn, due_soon = đã vào cửa sổ nhắc, upcoming = chưa tới, done = xong. */
+export type LMTaskAlertState = "overdue" | "due_soon" | "upcoming" | "done";
 
 export interface CreateLMTaskInput {
   caseId: string;
@@ -200,6 +222,7 @@ export interface CreateLMTaskInput {
   description?: string;
   dueDate: string;
   priority: PriorityLevel;
+  remindDaysBefore?: number;
   /** Người tạo thật (user đang đăng nhập) — fallback về chủ hồ sơ nếu
    * không gửi, cùng pattern với UpdateLMDeadlineInput.actorId. Sửa theo
    * review của reviewer sau Nam review R3: trước đó hardcode luôn thành
@@ -211,7 +234,13 @@ export interface CreateLMTaskInput {
 export type UpdateLMTaskInput = Partial<
   Omit<
     LMTask,
-    "id" | "caseId" | "createdAt" | "updatedAt" | "createdById" | "createdByName"
+    | "id"
+    | "caseId"
+    | "createdAt"
+    | "updatedAt"
+    | "createdById"
+    | "createdByName"
+    | "alertState"
   >
 > & {
   /** Người thực hiện thao tác (toggle done/reopen) — để ghi CaseEvent đúng
@@ -273,7 +302,29 @@ export interface LMDashboardSummary {
     title: string;
     ownerName: string;
     redFlagCount: number;
+    priority: PriorityLevel;
   }[];
+
+  /** Task đang mở, đã sort: overdue → due_soon → upcoming, rồi ưu tiên giảm dần, rồi hạn gần trước. */
+  openTasks: LMDashboardTask[];
+  taskCounts: { overdue: number; dueSoon: number; upcoming: number };
+  /** SLA mốc tiến trình theo tháng hoàn thành (6 tháng gần nhất). */
+  slaTrend: { month: string; onTime: number; late: number }[];
+  /** SLA hạn pháp lý: đã xử lý / đang trong hạn / quá hạn chưa xử lý. */
+  deadlineSla: { resolved: number; withinSla: number; breached: number };
+  /** KPI đúng hạn theo chuyên viên — rỗng ở view chuyên viên. */
+  ownerKpi: { userName: string; onTimeRate: number; alertResolutionRate: number }[];
+}
+
+export interface LMDashboardTask {
+  id: string;
+  caseId: string;
+  caseCode: string;
+  title: string;
+  ownerName: string;
+  dueDate: string;
+  priority: PriorityLevel;
+  alertState: LMTaskAlertState;
 }
 
 export interface LMCaseFilter {

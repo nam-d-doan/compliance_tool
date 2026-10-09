@@ -70,6 +70,13 @@ export const LMService = {
   updateTask(id: string, data: UpdateLMTaskInput) {
     return apiPut<LMTask>(API_ENDPOINTS.LM_TASK_UPDATE(id), data);
   },
+  deleteTask(id: string, actorId?: string, actorName?: string) {
+    const params = new URLSearchParams();
+    if (actorId) params.set("actorId", actorId);
+    if (actorName) params.set("actorName", actorName);
+    const query = params.toString() ? `?${params}` : "";
+    return apiDelete<{ success: boolean }>(`${API_ENDPOINTS.LM_TASK_UPDATE(id)}${query}`);
+  },
   alertRules() {
     return apiGet<AlertRule[]>(API_ENDPOINTS.LM_ALERT_RULES);
   },

@@ -101,6 +101,7 @@ export const API_ENDPOINTS = {
   FILE_UPLOAD: "/api/files",
   FILE_GET: (id: string) => `/api/files/${id}`,
   FILE_DELETE: (id: string) => `/api/files/${id}`,
+  FILE_UPDATE: (id: string) => `/api/files/${id}`,
 
   // LM (Litigation Management) endpoints
   LM_CASE_LIST: "/api/lm/cases",

@@ -73,6 +73,53 @@ export const LM_I18N = {
   chartByCategory: { en: "By Case Category", vi: "Theo nhóm vụ việc" },
   chartCasesSeries: { en: "Cases", vi: "Hồ sơ" },
   chartByUnit: { en: "By Business Unit", vi: "Theo đơn vị" },
+  viewSpecialist: { en: "View: Case Specialist", vi: "Góc nhìn: Chuyên viên thụ lý" },
+  viewSpecialistScope: {
+    en: "only cases assigned to you",
+    vi: "chỉ các hồ sơ bạn đang phụ trách",
+  },
+  viewManager: { en: "View: Manager", vi: "Góc nhìn: Quản lý" },
+  viewManagerScope: {
+    en: "all cases bank-wide, with workload and per-specialist KPIs",
+    vi: "toàn bộ hồ sơ toàn ngân hàng, kèm tải công việc và KPI từng chuyên viên",
+  },
+  myTasksManager: { en: "Open Tasks", vi: "Việc đang mở" },
+  myTasksSpecialist: { en: "My Tasks", vi: "Việc của tôi" },
+  noOpenTasks: { en: "No open tasks", vi: "Không có việc nào đang mở" },
+  alertOverdue: { en: "Overdue", vi: "Quá hạn" },
+  alertDueSoon: { en: "Due soon", vi: "Sắp đến hạn" },
+  alertUpcoming: { en: "Upcoming", vi: "Chưa tới hạn" },
+  alertDone: { en: "Done", vi: "Đã xong" },
+  showingTopTasks: { en: "Showing most urgent 10", vi: "Hiển thị 10 việc gấp nhất" },
+  chartSlaTrend: { en: "Milestone SLA by Month", vi: "SLA mốc tiến trình theo tháng" },
+  chartSlaTrendSub: {
+    en: "Completed on time vs. late (vs. current planned date)",
+    vi: "Hoàn thành đúng hạn so với trễ hạn (theo ngày kế hoạch hiện tại)",
+  },
+  seriesOnTime: { en: "On time", vi: "Đúng hạn" },
+  seriesLate: { en: "Late", vi: "Trễ hạn" },
+  chartDeadlineSla: { en: "Legal Deadline SLA", vi: "SLA hạn pháp lý" },
+  slaResolved: { en: "Resolved", vi: "Đã xử lý" },
+  slaWithin: { en: "Open — within SLA", vi: "Đang mở — trong hạn" },
+  slaBreached: { en: "Open — SLA breached", vi: "Đang mở — vi phạm SLA" },
+  chartKpiVsTarget: { en: "KPI vs. Target", vi: "KPI so với mục tiêu" },
+  chartKpiVsTargetSub: {
+    en: "Target is a demo placeholder (80%)",
+    vi: "Mục tiêu là giá trị demo (80%)",
+  },
+  seriesActual: { en: "Actual %", vi: "Thực tế %" },
+  seriesTarget: { en: "Target %", vi: "Mục tiêu %" },
+  chartOwnerKpi: { en: "KPI by Specialist", vi: "KPI theo chuyên viên" },
+  seriesAlertRes: { en: "Alert resolution %", vi: "Xử lý cảnh báo %" },
+  seriesOnTimePct: { en: "On-time %", vi: "Đúng hạn %" },
+
+  // Detail — 403 (chuyên viên mở hồ sơ người khác qua URL)
+  forbiddenTitle: { en: "Not your case", vi: "Hồ sơ không thuộc quyền xem" },
+  forbiddenMessage: {
+    en: "Case specialists can only open cases assigned to them.",
+    vi: "Chuyên viên thụ lý chỉ xem được hồ sơ mình phụ trách.",
+  },
+  backToMyCases: { en: "Back to my cases", vi: "Về hồ sơ của tôi" },
 
   // Detail — header actions
   remind: { en: "Remind", vi: "Đôn đốc" },
@@ -120,13 +167,25 @@ export const LM_I18N = {
   deadlineStatusFlagged: { en: "Flagged", vi: "Đã gắn cờ" },
   deadlineStatusAcknowledged: { en: "Acknowledged", vi: "Đã tiếp nhận" },
   deadlineStatusResolved: { en: "Resolved", vi: "Đã xử lý" },
+  viewTable: { en: "Table", vi: "Bảng" },
+  viewCalendar: { en: "Calendar", vi: "Lịch" },
+  editTask: { en: "Edit", vi: "Sửa" },
+  deleteTask: { en: "Delete", vi: "Xoá" },
+  confirmDelete: { en: "Confirm delete?", vi: "Xác nhận xoá?" },
+  cancel: { en: "Cancel", vi: "Huỷ" },
+  remindBefore: { en: "Remind", vi: "Nhắc trước" },
+  legalDeadline: { en: "Legal deadline", vi: "Hạn pháp lý" },
+  taskLabel: { en: "Task", vi: "Việc" },
+  nothingThisDay: { en: "Nothing due this day", vi: "Không có việc trong ngày này" },
+  colItem: { en: "Item", vi: "Nội dung" },
+  colType: { en: "Type", vi: "Loại" },
+  colDue: { en: "Due", vi: "Hạn" },
+  colPriority: { en: "Priority", vi: "Ưu tiên" },
+  colAlert: { en: "Alert", vi: "Cảnh báo" },
+  colActions: { en: "Actions", vi: "Thao tác" },
 
   // Detail — Documents
   attachedDocuments: { en: "Attached Documents", vi: "Tài liệu đính kèm" },
-  attachToProfile: {
-    en: "Attach a document to a specific workflow step → Case Profile",
-    vi: "Đính tài liệu vào 1 mốc cụ thể → Hồ sơ sự vụ",
-  },
 
   // Detail — History
   activityHistory: { en: "Activity History", vi: "Lịch sử thao tác" },
@@ -144,8 +203,14 @@ export const LM_I18N = {
     en: "e.g. Follow up with court clerk",
     vi: "VD: Theo dõi biên lai nộp đơn tại tòa",
   },
+  taskRemindLabel: { en: "Remind me (days before due)", vi: "Nhắc trước hạn (số ngày)" },
+  taskRemindHint: {
+    en: "0 = alert only once overdue",
+    vi: "0 = chỉ cảnh báo khi đã quá hạn",
+  },
   creating: { en: "Creating…", vi: "Đang tạo…" },
   createTask: { en: "Create Task", vi: "Tạo việc" },
+  saving: { en: "Saving…", vi: "Đang lưu…" },
 
   // Toasts
   caseUpdated: { en: "Case updated", vi: "Đã cập nhật hồ sơ" },
@@ -159,6 +224,13 @@ export const LM_I18N = {
   taskCreated: { en: "Task created", vi: "Đã tạo việc" },
   taskCreateFailed: { en: "Failed to create task", vi: "Tạo việc thất bại" },
   taskUpdateFailed: { en: "Failed to update task", vi: "Cập nhật việc thất bại" },
+  taskUpdated: { en: "Task updated", vi: "Đã cập nhật việc" },
+  taskDeleted: { en: "Task deleted", vi: "Đã xoá việc" },
+  taskDeleteFailed: { en: "Failed to delete task", vi: "Xoá việc thất bại" },
+  invalidRemindDays: {
+    en: "Reminder must be 0–90 days",
+    vi: "Số ngày nhắc phải từ 0 đến 90",
+  },
   assignmentFailed: { en: "Assignment failed", vi: "Phân công thất bại" },
   plannedRescheduled: { en: "Planned date rescheduled", vi: "Đã dời ngày kế hoạch" },
   rescheduleFailed: { en: "Reschedule failed", vi: "Dời lịch thất bại" },
@@ -176,8 +248,6 @@ export const LM_I18N = {
     vi: "Cần nhập tiêu đề và hạn xử lý",
   },
 
-  // Language toggle control itself
-  langToggleLabel: { en: "VI", vi: "EN" },
 } as const;
 
 export type LMI18nKey = keyof typeof LM_I18N;

@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
 import type { CreateLMCaseInput } from "@/types";
+import { useL } from "@/lib/i18n";
 
 export default function LMCreatePage() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function LMCreatePage() {
   const canCreate = hasPermission(role, "lm:create");
 
   const create = useCreateLMCase();
+  const L = useL();
 
   if (!canCreate) {
     return <Navigate to="/unauthorized" replace />;
@@ -42,10 +44,10 @@ export default function LMCreatePage() {
     };
     create.mutate(payload, {
       onSuccess: (data) => {
-        toast.success(`Case ${data.code} created`);
+        toast.success(L(`Case ${data.code} created`, `Đã tạo hồ sơ ${data.code}`));
         navigate(`/lm/${data.id}`);
       },
-      onError: (err) => toast.error(err.message || "Failed to create case"),
+      onError: (err) => toast.error(err.message || L("Failed to create case", "Tạo hồ sơ thất bại")),
     });
   };
 
@@ -57,19 +59,19 @@ export default function LMCreatePage() {
       className="space-y-6"
     >
       <PageHero
-        title="Create Litigation Case"
-        subtitle="Open a new litigation / enforcement case."
+        title={L("Create Litigation Case", "Tạo hồ sơ tố tụng")}
+        subtitle={L("Open a new litigation / enforcement case.", "Mở hồ sơ tố tụng / thi hành án mới.")}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Case Information</CardTitle>
+          <CardTitle>{L("Case Information", "Thông tin hồ sơ")}</CardTitle>
         </CardHeader>
         <CardContent>
           <LMForm
             onSubmit={handleSubmit}
             isSubmitting={create.isPending}
-            submitLabel="Create Case"
+            submitLabel={L("Create Case", "Tạo hồ sơ")}
           />
         </CardContent>
       </Card>

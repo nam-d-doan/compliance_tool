@@ -14,13 +14,13 @@
  *    lib/deadline-alerts.ts) VÀ `LMTask` mới (việc tự do, không có
  *    severity, chỉ toggle open/done) trong 1 list sort theo dueDate. Nút
  *    "Acknowledge"/"Resolve" (deadline) gọi PUT /api/lm/deadlines/:id;
- *    "Mark Done"/"Reopen" (task) gọi PUT /api/lm/tasks/:id. Calendar-view
- *    toggle (R3b) cố ý cắt — chỉ có table view.
- * 4. Documents — R4 thêm `showFolders` (opt-in, không ảnh hưởng CAP/NCC
- *    dùng chung FileUploadComponent) để nhóm file theo folder. Link "đi
- *    tới Case Profile" thay vì làm lại UI link-file lần 2 (xem Ruling
- *    trong .superpowers/sdd/lm-nam-review/progress.md).
- * 5. History dùng list riêng (không tái dùng ActivityFeed) vì
+ *    "Mark Done"/"Reopen"/Sửa (task) gọi PUT /api/lm/tasks/:id, Xoá gọi
+ *    DELETE. Task có `remindDaysBefore` (tự đặt cảnh báo). UI bảng/lịch
+ *    tách ra components/lm/LMWorkCalendar.tsx.
+ * 4. Documents — component riêng components/lm/LMDocuments.tsx (storage
+ *    path, folder, chuyển folder, gắn file vào mốc ngay tại tab).
+ * 5. History — components/lm/LMHistory.tsx (timeline song ngữ, lọc theo
+ *    loại/người, khối trước→sau). Không tái dùng ActivityFeed vì
  *    ActivityFeed/TimelineEvent gắn cứng bộ type khác (submission/approval/
  *    ...), không khớp CaseEvent.type — tái dùng sẽ phải sửa component dùng
  *    chung, rủi ro hơn tự viết list riêng cho LM.
@@ -33,7 +33,7 @@
  *    đổi copy hiển thị, pseudo-code comment vẫn giữ tiếng Việt.
  */
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { format, parseISO, differenceInCalendarDays } from "date-fns";
 import { motion } from "motion/react";
 import { Pencil, Send, Users, Check, Paperclip, X, PlusCircle } from "lucide-react";
@@ -46,12 +46,12 @@ import {
   PageHero,
   StatusBadge,
   PriorityBadge,
-  DueDateCell,
   EmptyState,
   ErrorState,
   DetailSkeleton,
 } from "@/components/common";
-import { FileUploadComponent } from "@/components/cap/FileUploadComponent";
+import { LMDocuments } from "@/components/lm/LMDocuments";
+import { LMHistory } from "@/components/lm/LMHistory";
 import { LMForm, type LMFormValues } from "@/components/lm/LMForm";
 import {
   useLMCaseDetail,
@@ -68,20 +68,21 @@ import {
   useUpdateLMDeadline,
   useCreateLMTask,
   useUpdateLMTask,
+  useDeleteLMTask,
   useRemindLMCase,
 } from "@/hooks/mutations";
 import { PRIORITY_LEVELS, type PriorityLevel } from "@/constants/status";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
-import { getStageLabel, getCaseCategoryLabel, getDeadlineTypeLabel } from "@/constants/lm";
-import { useLMT, getPriorityOptionLabel, type LMI18nKey } from "@/constants/lm-i18n";
-import { LMLangToggle } from "@/components/lm/LMLangToggle";
+import { ROUTES } from "@/constants/routes";
+import { getStageLabel, getCaseCategoryLabel } from "@/constants/lm";
+import { useLMT, getPriorityOptionLabel } from "@/constants/lm-i18n";
+import { LMWorkCalendar } from "@/components/lm/LMWorkCalendar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type {
   UpdateLMCaseInput,
   CaseMilestone,
-  LegalDeadline,
   FileAttachment,
   LMTask,
 } from "@/types";
@@ -111,13 +112,6 @@ function toValidDateIso(input: string): string | null {
   return d.toISOString();
 }
 
-const DEADLINE_STATUS_KEY: Record<string, LMI18nKey> = {
-  pending: "deadlineStatusPending",
-  flagged: "deadlineStatusFlagged",
-  acknowledged: "deadlineStatusAcknowledged",
-  resolved: "deadlineStatusResolved",
-};
-
 export default function LMDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const { role, user } = useAuthStore();
@@ -128,6 +122,7 @@ export default function LMDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<LMTask | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
 
   const detail = useLMCaseDetail(id);
@@ -141,13 +136,30 @@ export default function LMDetailPage() {
   const updateDeadline = useUpdateLMDeadline(id);
   const createTask = useCreateLMTask(id);
   const updateTask = useUpdateLMTask(id);
+  const deleteTask = useDeleteLMTask(id);
   const remind = useRemindLMCase(id);
 
   const item = detail.data;
 
   if (detail.isPending) return <DetailSkeleton />;
   if (detail.isError || !item) {
-    return <ErrorState onRetry={() => detail.refetch()} />;
+    const isForbidden = (detail.error as { status?: number } | null)?.status === 403;
+    return (
+      <div className="space-y-4">
+        <ErrorState
+          title={isForbidden ? t("forbiddenTitle") : undefined}
+          message={isForbidden ? t("forbiddenMessage") : undefined}
+          onRetry={isForbidden ? undefined : () => detail.refetch()}
+        />
+        {isForbidden && (
+          <div className="flex justify-center">
+            <Button variant="outline" asChild>
+              <Link to={ROUTES.LM.LIST}>{t("backToMyCases")}</Link>
+            </Button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   const handleEditSubmit = (values: LMFormValues) => {
@@ -208,12 +220,7 @@ export default function LMDetailPage() {
     );
   };
 
-  const handleCreateTask = (values: {
-    title: string;
-    description: string;
-    dueDate: string;
-    priority: PriorityLevel;
-  }) => {
+  const handleCreateTask = (values: TaskFormValues) => {
     const dueIso = toValidDateIso(values.dueDate);
     if (!dueIso) {
       toast.error(t("invalidDueDate"));
@@ -226,6 +233,7 @@ export default function LMDetailPage() {
         description: values.description || undefined,
         dueDate: dueIso,
         priority: values.priority,
+        remindDaysBefore: values.remindDaysBefore,
         actorId: user?.id,
         actorName: user?.name,
       },
@@ -255,6 +263,46 @@ export default function LMDetailPage() {
     );
   };
 
+  const handleEditTask = (values: TaskFormValues) => {
+    if (!editingTask) return;
+    const dueIso = toValidDateIso(values.dueDate);
+    if (!dueIso) {
+      toast.error(t("invalidDueDate"));
+      return;
+    }
+    updateTask.mutate(
+      {
+        id: editingTask.id,
+        data: {
+          title: values.title,
+          description: values.description || undefined,
+          dueDate: dueIso,
+          priority: values.priority,
+          remindDaysBefore: values.remindDaysBefore,
+          actorId: user?.id,
+          actorName: user?.name,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success(t("taskUpdated"));
+          setEditingTask(null);
+        },
+        onError: (err) => toast.error(err.message || t("taskUpdateFailed")),
+      },
+    );
+  };
+
+  const handleDeleteTask = (task: LMTask) => {
+    deleteTask.mutate(
+      { id: task.id, actorId: user?.id, actorName: user?.name },
+      {
+        onSuccess: () => toast.success(t("taskDeleted")),
+        onError: (err) => toast.error(err.message || t("taskDeleteFailed")),
+      },
+    );
+  };
+
   const handleAssign = (ownerId: string, ownerName: string) => {
     update.mutate(
       { ownerId },
@@ -279,7 +327,6 @@ export default function LMDetailPage() {
     >
       <PageHero title={item.code} subtitle={item.title}>
         <div className="flex flex-wrap items-center gap-2">
-          <LMLangToggle />
           {canApprove && (
             <Button
               variant="outline"
@@ -431,42 +478,18 @@ export default function LMDetailPage() {
               ) : (deadlines.data ?? []).length === 0 && (tasks.data ?? []).length === 0 ? (
                 <EmptyState title={t("nothingOnCalendar")} />
               ) : (
-                <ul className="space-y-3">
-                  {[
-                    ...(deadlines.data ?? []).map((d) => ({
-                      kind: "deadline" as const,
-                      dueDate: d.dueDate,
-                      deadline: d,
-                    })),
-                    ...(tasks.data ?? []).map((t) => ({
-                      kind: "task" as const,
-                      dueDate: t.dueDate,
-                      task: t,
-                    })),
-                  ]
-                    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-                    .map((w) =>
-                      w.kind === "deadline" ? (
-                        <DeadlineRow
-                          key={w.deadline.id}
-                          deadline={w.deadline}
-                          canEdit={canUpdate}
-                          isSaving={updateDeadline.isPending}
-                          onAction={handleDeadlineAction}
-                        />
-                      ) : (
-                        <TaskRow
-                          key={w.task.id}
-                          task={w.task}
-                          canEdit={canUpdate}
-                          isSaving={
-                            updateTask.isPending && updateTask.variables?.id === w.task.id
-                          }
-                          onToggleDone={() => handleToggleTask(w.task)}
-                        />
-                      ),
-                    )}
-                </ul>
+                <LMWorkCalendar
+                  deadlines={deadlines.data ?? []}
+                  tasks={tasks.data ?? []}
+                  canEdit={canUpdate}
+                  deadlineSaving={updateDeadline.isPending}
+                  savingTaskId={updateTask.isPending ? updateTask.variables?.id : undefined}
+                  deletingTaskId={deleteTask.isPending ? deleteTask.variables?.id : undefined}
+                  onDeadlineAction={handleDeadlineAction}
+                  onToggleTask={handleToggleTask}
+                  onEditTask={setEditingTask}
+                  onDeleteTask={handleDeleteTask}
+                />
               )}
             </CardContent>
           </Card>
@@ -477,23 +500,13 @@ export default function LMDetailPage() {
             <CardHeader>
               <CardTitle>{t("attachedDocuments")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Nam review R4 (docs/lm/02-review-changes.md mục 5) — "link
-                  to add documents into the Case Profile sub-tab": jumps to
-                  the tab where per-milestone linking already lives (built
-                  in R2), instead of duplicating that picker here. */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("profile")}
-                className="text-sm text-primary hover:underline"
-              >
-                {t("attachToProfile")}
-              </button>
-              <FileUploadComponent
+            <CardContent>
+              <LMDocuments
+                lmCase={item}
                 files={filesQuery.data?.items ?? []}
-                caseId={item.id}
-                disabled={!canUpdate}
-                showFolders
+                milestones={milestones.data ?? []}
+                canEdit={canUpdate}
+                onGoToProfile={() => setActiveTab("profile")}
               />
             </CardContent>
           </Card>
@@ -510,16 +523,7 @@ export default function LMDetailPage() {
               ) : (events.data ?? []).length === 0 ? (
                 <EmptyState title={t("noHistory")} />
               ) : (
-                <ul className="space-y-3">
-                  {(events.data ?? []).map((e) => (
-                    <li key={e.id} className="border-l-2 border-border pl-3">
-                      <p className="text-sm">{e.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {e.userName} · {fmt(e.createdAt)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                <LMHistory events={events.data ?? []} />
               )}
             </CardContent>
           </Card>
@@ -585,6 +589,26 @@ export default function LMDetailPage() {
           </SheetHeader>
           <div className="px-4 pb-4">
             <TaskForm onSubmit={handleCreateTask} isSubmitting={createTask.isPending} />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={editingTask !== null} onOpenChange={(open) => !open && setEditingTask(null)}>
+        <SheetContent className="overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>
+              {t("editTask")} — {editingTask?.title}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-4">
+            {editingTask && (
+              <TaskForm
+                key={editingTask.id}
+                initial={editingTask}
+                onSubmit={handleEditTask}
+                isSubmitting={updateTask.isPending}
+              />
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -780,119 +804,6 @@ function MilestoneRow({
   );
 }
 
-const SEVERITY_DOT: Record<string, string> = {
-  red: "bg-destructive",
-  amber: "bg-warning",
-  none: "bg-muted-foreground/30",
-};
-
-/**
- * 1 dòng hạn pháp lý. `severity` do server tính sẵn (GĐ3) — đỏ/vàng/xám.
- * Nút hành động chỉ hiện khi còn việc để làm: "Acknowledge" lúc đang
- * flagged, "Resolve" lúc flagged hoặc đã tiếp nhận.
- */
-function DeadlineRow({
-  deadline: d,
-  canEdit,
-  isSaving,
-  onAction,
-}: {
-  deadline: LegalDeadline;
-  canEdit: boolean;
-  isSaving: boolean;
-  onAction: (id: string, action: "acknowledge" | "resolve") => void;
-}) {
-  const { t, lang } = useLMT();
-  const canAcknowledge = canEdit && d.status === "flagged";
-  const canResolve = canEdit && (d.status === "flagged" || d.status === "acknowledged");
-  const statusKey = DEADLINE_STATUS_KEY[d.status];
-
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
-      <span className="flex items-center gap-2 font-medium">
-        <span
-          className={cn("size-2 shrink-0 rounded-full", SEVERITY_DOT[d.severity ?? "none"])}
-          aria-hidden="true"
-        />
-        {getDeadlineTypeLabel(d.type, lang)}
-      </span>
-      <DueDateCell dueDate={d.dueDate} completed={d.status === "resolved"} />
-      <span className="text-sm">{statusKey ? t(statusKey) : d.status}</span>
-      {(canAcknowledge || canResolve) && (
-        <div className="flex gap-2">
-          {canAcknowledge && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isSaving}
-              onClick={() => onAction(d.id, "acknowledge")}
-            >
-              {t("acknowledge")}
-            </Button>
-          )}
-          {canResolve && (
-            <Button
-              size="sm"
-              disabled={isSaving}
-              onClick={() => onAction(d.id, "resolve")}
-            >
-              {t("resolve")}
-            </Button>
-          )}
-        </div>
-      )}
-    </li>
-  );
-}
-
-/**
- * 1 dòng task tự do (Nam review R3) trong "Work Calendar", chung danh sách
- * với DeadlineRow, sort theo hạn. Khác LegalDeadline — không có severity
- * đỏ/vàng do server tính, chỉ 1 nút toggle open/done.
- */
-function TaskRow({
-  task: taskItem,
-  canEdit,
-  isSaving,
-  onToggleDone,
-}: {
-  task: LMTask;
-  canEdit: boolean;
-  isSaving: boolean;
-  onToggleDone: () => void;
-}) {
-  const { t } = useLMT();
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border p-3">
-      <span className="flex min-w-0 flex-col">
-        <span
-          className={cn(
-            "flex items-center gap-2 font-medium",
-            taskItem.status === "done" && "text-muted-foreground line-through",
-          )}
-        >
-          <span
-            className="size-2 shrink-0 rounded-full bg-primary/40"
-            aria-hidden="true"
-          />
-          {taskItem.title}
-        </span>
-        {taskItem.description && (
-          <span className="text-xs text-muted-foreground">{taskItem.description}</span>
-        )}
-      </span>
-      <PriorityBadge priority={taskItem.priority} />
-      <DueDateCell dueDate={taskItem.dueDate} completed={taskItem.status === "done"} />
-      {canEdit && (
-        <Button size="sm" variant="outline" disabled={isSaving} onClick={onToggleDone}>
-          <Check className="size-4" aria-hidden="true" />
-          {t(taskItem.status === "done" ? "reopen" : "markDone")}
-        </Button>
-      )}
-    </li>
-  );
-}
-
 /** Danh sách chuyên viên theo tải công việc — người đầu tiên (tải thấp nhất) là gợi ý. */
 function AssignList({
   currentOwnerId,
@@ -955,27 +866,35 @@ function AssignList({
 }
 
 /**
- * Nam review R3 — form nhẹ tạo task tự do (title/description/dueDate/
- * priority). Không dùng react-hook-form+zod như LMForm vì chỉ 4 field đơn
- * giản, validate tay (title + dueDate bắt buộc) là đủ cho demo.
+ * Nam review R3 — form nhẹ tạo/sửa task tự do. Không dùng react-hook-form
+ * +zod như LMForm vì chỉ 5 field đơn giản, validate tay là đủ cho demo.
+ * Có `initial` = chế độ sửa (điền sẵn giá trị task hiện tại).
  */
+interface TaskFormValues {
+  title: string;
+  description: string;
+  dueDate: string;
+  priority: PriorityLevel;
+  remindDaysBefore: number;
+}
+
 function TaskForm({
+  initial,
   onSubmit,
   isSubmitting,
 }: {
-  onSubmit: (values: {
-    title: string;
-    description: string;
-    dueDate: string;
-    priority: PriorityLevel;
-  }) => void;
+  initial?: LMTask;
+  onSubmit: (values: TaskFormValues) => void;
   isSubmitting: boolean;
 }) {
   const { t, lang } = useLMT();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
-  const [priority, setPriority] = useState<PriorityLevel>("medium");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [dueDate, setDueDate] = useState(
+    initial ? format(parseISO(initial.dueDate), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+  );
+  const [priority, setPriority] = useState<PriorityLevel>(initial?.priority ?? "medium");
+  const [remindDays, setRemindDays] = useState(String(initial?.remindDaysBefore ?? 3));
 
   return (
     <form
@@ -986,7 +905,12 @@ function TaskForm({
           toast.error(t("titleDueRequired"));
           return;
         }
-        onSubmit({ title: title.trim(), description, dueDate, priority });
+        const remindDaysBefore = Number(remindDays);
+        if (!Number.isInteger(remindDaysBefore) || remindDaysBefore < 0 || remindDaysBefore > 90) {
+          toast.error(t("invalidRemindDays"));
+          return;
+        }
+        onSubmit({ title: title.trim(), description, dueDate, priority, remindDaysBefore });
       }}
     >
       <div>
@@ -1044,8 +968,29 @@ function TaskForm({
           </select>
         </div>
       </div>
+      <div>
+        <label htmlFor="task-remind" className="text-sm font-medium">
+          {t("taskRemindLabel")}
+        </label>
+        <Input
+          id="task-remind"
+          type="number"
+          min={0}
+          max={90}
+          value={remindDays}
+          onChange={(e) => setRemindDays(e.target.value)}
+          className="mt-1"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">{t("taskRemindHint")}</p>
+      </div>
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? t("creating") : t("createTask")}
+        {initial
+          ? isSubmitting
+            ? t("saving")
+            : t("saveChanges")
+          : isSubmitting
+            ? t("creating")
+            : t("createTask")}
       </Button>
     </form>
   );

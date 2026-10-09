@@ -17,7 +17,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrgUnits, useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { PRIORITY_LEVELS } from "@/constants/status";
-import { CASE_CATEGORIES, CASE_CATEGORY_LABELS } from "@/constants/lm";
+import { CASE_CATEGORIES, getCaseCategoryLabel } from "@/constants/lm";
+import { useL, useTerm } from "@/lib/i18n";
+import { useLanguageStore } from "@/stores";
 
 const selectClass =
   "h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
@@ -53,8 +55,12 @@ export function LMForm({
   onSubmit,
   onCancel,
   isSubmitting,
-  submitLabel = "Create Case",
+  submitLabel,
 }: LMFormProps) {
+  const L = useL();
+  const term = useTerm();
+  const lang = useLanguageStore((s) => s.lang);
+  submitLabel ??= L("Create Case", "Tạo hồ sơ");
   const orgUnitsQuery = useOrgUnits();
   const ownersQuery = useAdminUsers(1, 200, { status: "Active", role: "owner" });
   const managersQuery = useAdminUsers(1, 200, {
@@ -86,19 +92,19 @@ export function LMForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="lm-title">Title</Label>
+          <Label htmlFor="lm-title">{L("Title", "Tiêu đề")}</Label>
           <Input
             id="lm-title"
             {...register("title")}
             aria-invalid={errors.title ? "true" : "false"}
           />
           {errors.title && (
-            <p className="text-xs text-destructive">{errors.title.message}</p>
+            <p className="text-xs text-destructive">{term(errors.title.message ?? "")}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-category">Case Category</Label>
+          <Label htmlFor="lm-category">{L("Case Category", "Nhóm vụ việc")}</Label>
           <Controller
             name="category"
             control={control}
@@ -106,7 +112,7 @@ export function LMForm({
               <select id="lm-category" {...field} className={selectClass}>
                 {CASE_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CASE_CATEGORY_LABELS[c]}
+                    {getCaseCategoryLabel(c, lang)}
                   </option>
                 ))}
               </select>
@@ -115,7 +121,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-priority">Priority</Label>
+          <Label htmlFor="lm-priority">{L("Priority", "Mức ưu tiên")}</Label>
           <Controller
             name="priority"
             control={control}
@@ -123,7 +129,7 @@ export function LMForm({
               <select id="lm-priority" {...field} className={selectClass}>
                 {PRIORITY_LEVELS.map((p) => (
                   <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {term(p.charAt(0).toUpperCase() + p.slice(1))}
                   </option>
                 ))}
               </select>
@@ -132,7 +138,7 @@ export function LMForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-customerCif">Customer CIF</Label>
+          <Label htmlFor="lm-customerCif">{L("Customer CIF", "CIF khách hàng")}</Label>
           <Input
             id="lm-customerCif"
             {...register("customerCif")}
@@ -140,13 +146,13 @@ export function LMForm({
           />
           {errors.customerCif && (
             <p className="text-xs text-destructive">
-              {errors.customerCif.message}
+              {term(errors.customerCif.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-customerName">Customer Name</Label>
+          <Label htmlFor="lm-customerName">{L("Customer Name", "Tên khách hàng")}</Label>
           <Input
             id="lm-customerName"
             {...register("customerName")}
@@ -154,13 +160,13 @@ export function LMForm({
           />
           {errors.customerName && (
             <p className="text-xs text-destructive">
-              {errors.customerName.message}
+              {term(errors.customerName.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-outstandingDebt">Outstanding Debt (VND)</Label>
+          <Label htmlFor="lm-outstandingDebt">{L("Outstanding Debt (VND)", "Dư nợ (VND)")}</Label>
           <Input
             id="lm-outstandingDebt"
             type="number"
@@ -170,22 +176,22 @@ export function LMForm({
           />
           {errors.outstandingDebt && (
             <p className="text-xs text-destructive">
-              {errors.outstandingDebt.message}
+              {term(errors.outstandingDebt.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="lm-collateralDescription">Collateral</Label>
+          <Label htmlFor="lm-collateralDescription">{L("Collateral", "Tài sản bảo đảm")}</Label>
           <Input
             id="lm-collateralDescription"
             {...register("collateralDescription")}
-            placeholder="Describe the collateral (if any)"
+            placeholder={L("Describe the collateral (if any)", "Mô tả tài sản bảo đảm (nếu có)")}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-court">Court / Enforcement Agency</Label>
+          <Label htmlFor="lm-court">{L("Court / Enforcement Agency", "Tòa án / Cơ quan thi hành án")}</Label>
           <Input
             id="lm-court"
             {...register("courtOrEnforcementAgency")}
@@ -193,18 +199,18 @@ export function LMForm({
           />
           {errors.courtOrEnforcementAgency && (
             <p className="text-xs text-destructive">
-              {errors.courtOrEnforcementAgency.message}
+              {term(errors.courtOrEnforcementAgency.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-judgeName">Judge</Label>
+          <Label htmlFor="lm-judgeName">{L("Judge", "Thẩm phán")}</Label>
           <Input id="lm-judgeName" {...register("judgeName")} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-ownerUnitId">Owner Unit</Label>
+          <Label htmlFor="lm-ownerUnitId">{L("Owner Unit", "Đơn vị phụ trách")}</Label>
           <Controller
             name="ownerUnitId"
             control={control}
@@ -215,7 +221,7 @@ export function LMForm({
                 disabled={orgUnitsQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Select unit</option>
+                <option value="">{L("Select unit", "Chọn đơn vị")}</option>
                 {hoDepartments.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -226,13 +232,13 @@ export function LMForm({
           />
           {errors.ownerUnitId && (
             <p className="text-xs text-destructive">
-              {errors.ownerUnitId.message}
+              {term(errors.ownerUnitId.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-ownerId">Case Owner</Label>
+          <Label htmlFor="lm-ownerId">{L("Case Owner", "Chuyên viên thụ lý")}</Label>
           <Controller
             name="ownerId"
             control={control}
@@ -243,7 +249,7 @@ export function LMForm({
                 disabled={ownersQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Select owner</option>
+                <option value="">{L("Select owner", "Chọn chuyên viên")}</option>
                 {owners.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -253,12 +259,12 @@ export function LMForm({
             )}
           />
           {errors.ownerId && (
-            <p className="text-xs text-destructive">{errors.ownerId.message}</p>
+            <p className="text-xs text-destructive">{term(errors.ownerId.message ?? "")}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="lm-managerId">Manager</Label>
+          <Label htmlFor="lm-managerId">{L("Manager", "Quản lý")}</Label>
           <Controller
             name="managerId"
             control={control}
@@ -269,7 +275,7 @@ export function LMForm({
                 disabled={managersQuery.isPending}
                 className={selectClass}
               >
-                <option value="">Select manager</option>
+                <option value="">{L("Select manager", "Chọn quản lý")}</option>
                 {managers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -280,13 +286,13 @@ export function LMForm({
           />
           {errors.managerId && (
             <p className="text-xs text-destructive">
-              {errors.managerId.message}
+              {term(errors.managerId.message ?? "")}
             </p>
           )}
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="lm-tags">Tags (comma separated)</Label>
+          <Label htmlFor="lm-tags">{L("Tags (comma separated)", "Thẻ (cách nhau bằng dấu phẩy)")}</Label>
           <Textarea id="lm-tags" {...register("tags")} className="min-h-[3rem]" />
         </div>
       </div>
@@ -299,7 +305,7 @@ export function LMForm({
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {L("Cancel", "Huỷ")}
           </Button>
         )}
         <Button type="submit" disabled={isSubmitting}>
