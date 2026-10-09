@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { LawService } from "@/services";
 import { lawKeys } from "@/hooks/query-keys";
+import { useAuthStore } from "@/stores";
 import type { LawRequestFilter } from "@/types";
 
 export function useLawRequestList(
@@ -8,8 +9,10 @@ export function useLawRequestList(
   page = 1,
   pageSize = 20,
 ) {
+  const userId = useAuthStore((s) => s.user?.id);
   return useQuery({
-    queryKey: lawKeys.list({ ...filters, page, pageSize }),
+    // Server lọc theo người đăng nhập (chuyên viên chỉ thấy yêu cầu của mình).
+    queryKey: [...lawKeys.list({ ...filters, page, pageSize }), userId ?? "anon"],
     queryFn: () => LawService.list({ ...filters, page, pageSize }),
     staleTime: 5 * 60 * 1000,
   });
@@ -70,9 +73,11 @@ export function useKnowledgeBaseList(search?: string) {
 }
 
 /** GĐ4 — tổng hợp KPI/biểu đồ cho trang Dashboard. */
+/** Kết quả phụ thuộc người đăng nhập (phạm vi chuyên viên/manager) — key theo user. */
 export function useLawDashboard() {
+  const userId = useAuthStore((s) => s.user?.id);
   return useQuery({
-    queryKey: lawKeys.dashboard(),
+    queryKey: [...lawKeys.dashboard(), userId ?? "anon"],
     queryFn: () => LawService.dashboard(),
     staleTime: 60 * 1000,
   });

@@ -91,6 +91,7 @@ export type {
   AdvisoryOpinion,
   AdvisoryOpinionStatus,
   LawMessage,
+  LawQueueItem,
   AssessLawRequestInput,
   CreateLawMessageInput,
   SubmitAdvisoryOpinionInput,

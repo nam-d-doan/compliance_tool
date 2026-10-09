@@ -49,6 +49,8 @@ const selectClass =
 export default function LawListPage() {
   const navigate = useNavigate();
   const { role } = useAuthStore();
+  // Server đã lọc theo người đăng nhập — đây chỉ đổi tiêu đề/cột cho đúng góc nhìn.
+  const isSpecialist = role === "owner";
   const canCreate = hasPermission(role, "law:create");
   const canDelete = hasPermission(role, "law:delete");
   const L = useL();
@@ -97,8 +99,16 @@ export default function LawListPage() {
   return (
     <div className="space-y-6">
       <PageHero
-        title={L("Legal Advisory Requests", "Yêu cầu tư vấn pháp lý")}
-        subtitle={L("Manage legal advisory requests from business units.", "Quản lý yêu cầu tư vấn pháp lý từ các đơn vị.")}
+        title={
+          isSpecialist
+            ? L("My Advisory Requests", "Yêu cầu tư vấn của tôi")
+            : L("Legal Advisory Requests", "Yêu cầu tư vấn pháp lý")
+        }
+        subtitle={
+          isSpecialist
+            ? L("Requests assigned to you.", "Các yêu cầu bạn đang phụ trách.")
+            : L("Manage legal advisory requests from business units.", "Quản lý yêu cầu tư vấn pháp lý từ các đơn vị.")
+        }
       >
         <Button variant="outline" asChild>
           <Link to="/law/knowledge-base">
@@ -188,7 +198,7 @@ export default function LawListPage() {
                 <th className="px-3 py-2">{L("Priority", "Ưu tiên")}</th>
                 <th className="px-3 py-2">{L("Status", "Trạng thái")}</th>
                 <th className="px-3 py-2">{L("Requesting Unit", "Đơn vị yêu cầu")}</th>
-                <th className="px-3 py-2">{L("Specialist", "Chuyên viên")}</th>
+                {!isSpecialist && <th className="px-3 py-2">{L("Specialist", "Chuyên viên")}</th>}
                 <th className="px-3 py-2">{L("Submitted", "Ngày gửi")}</th>
                 <th className="px-3 py-2">{L("Due Date", "Hạn xử lý")}</th>
                 {canDelete && <th className="px-3 py-2" />}
@@ -219,7 +229,7 @@ export default function LawListPage() {
                   <td className="px-3 py-2 text-muted-foreground">
                     {r.requestingUnitName}
                   </td>
-                  <td className="px-3 py-2">{r.ownerName}</td>
+                  {!isSpecialist && <td className="px-3 py-2">{r.ownerName}</td>}
                   <td className="px-3 py-2 text-muted-foreground">
                     {format(parseISO(r.submittedAt), "MMM d, yyyy", { locale: dateLocale })}
                   </td>

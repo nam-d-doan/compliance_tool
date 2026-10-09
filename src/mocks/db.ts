@@ -1343,7 +1343,17 @@ function generateAdviceRequests(
     const code = `LAW-${today.getFullYear()}-${pad(i + 1)}`;
     const requestId = uid("law");
 
-    const submittedAt = randomDate(subDays(today, 60), subDays(today, 6));
+    // Ngày gửi bám SLA để demo có đủ trạng thái: yêu cầu đang mở phần lớn còn
+    // hạn / sắp hạn, 1/5 quá hạn; yêu cầu đã đóng gửi từ 20-60 ngày trước.
+    const slaDays = LAW_PRIORITY_SLA_DAYS[priorityTier];
+    const ageDays =
+      status === "completed"
+        ? 20 + ((i * 13) % 41)
+        : i % 5 === 0
+          ? slaDays + 3
+          : Math.min(slaDays - 1, Math.max(status === "new" ? 1 : 4, Math.round((slaDays * ((i * 37) % 100)) / 100)));
+    const submittedAt = subDays(today, ageDays);
+    submittedAt.setHours(8 + (i % 9), (i * 7) % 60, 0, 0);
     // 1/6 yêu cầu: đơn vị đề xuất "Nội bộ", Manager nâng lên "Quy định NHNN".
     const raisedByManager = status !== "new" && i % 6 === 1;
     const initialPriorityTier = raisedByManager ? "internal" : priorityTier;
@@ -1364,8 +1374,13 @@ function generateAdviceRequests(
         { fromValue: initialPriorityTier, toValue: priorityTier });
 
       // Mốc kết thúc của giai đoạn trao đổi — mọi tin nhắn/ý kiến nằm trước nó.
+      // Đã đóng: phần lớn đóng trước hạn SLA, 2/6 đóng trễ 3 ngày (KPI a có
+      // số thật, không 0% hay 100%). Đang mở: trao đổi tới hôm qua.
+      const closesLate = i % 16 === 7;
       const discussionEnd = status === "completed"
-        ? between(assessedAt, today, 0.7)
+        ? closesLate
+          ? addDays(dueDate, 3)
+          : between(assessedAt, dueDate, 0.85)
         : subDays(today, 1);
 
       const m1At = between(assessedAt, discussionEnd, 0.1);

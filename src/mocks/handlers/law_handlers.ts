@@ -56,6 +56,7 @@ import type {
   SubmitAdvisoryOpinionInput,
   ReviewAdvisoryOpinionInput,
   UserProfile,
+  LawQueueItem,
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 
@@ -145,6 +146,21 @@ function evaluateLawAlerts(db: MockDb): void {
   });
 }
 
+/**
+ * Review GĐ3 — chuyên viên tư vấn (role owner) chỉ xem yêu cầu mình phụ
+ * trách, kể cả khi gõ thẳng URL. Manager/Approver/Admin xem mọi yêu cầu.
+ * Request không có token (seed/test) không bị chặn.
+ */
+function assertRequestAccess(db: MockDb, request: Request, requestId: string): Response | null {
+  const user = currentUser(db, request);
+  if (!user || user.role !== "owner") return null;
+  const item = findById(db.adviceRequests, requestId);
+  if (item && item.ownerId !== user.id) {
+    return forbidden("You can only view requests assigned to you");
+  }
+  return null;
+}
+
 export async function handleGetLawRequestList({
   request,
 }: {
@@ -155,7 +171,11 @@ export async function handleGetLawRequestList({
   const q = parseQuery(url);
   const db = getDb();
   evaluateLawAlerts(db);
-  let items = [...db.adviceRequests];
+  const viewer = currentUser(db, request);
+  let items =
+    viewer?.role === "owner"
+      ? db.adviceRequests.filter((r) => r.ownerId === viewer.id)
+      : [...db.adviceRequests];
 
   if (q.status) {
     const statuses = normalizeArrayParam(q.status);
@@ -204,11 +224,11 @@ export async function handleGetLawRequestList({
   });
 }
 
-export async function handleGetLawRequestDetail({
-  params,
-}: MockResolverContext) {
+export async function handleGetLawRequestDetail({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertRequestAccess(db, request, params.id as string);
+  if (denied) return denied;
   evaluateLawAlerts(db);
   const item = findById(db.adviceRequests, params.id as string);
   if (!item) return notFound("Request not found");
@@ -410,11 +430,11 @@ export async function handleDeleteLawRequest({ params }: MockResolverContext) {
   return jsonResponse({ success: true });
 }
 
-export async function handleGetLawRequestEvents({
-  params,
-}: MockResolverContext) {
+export async function handleGetLawRequestEvents({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertRequestAccess(db, request, params.id as string);
+  if (denied) return denied;
   const items = db.lawEvents
     .filter((e) => e.requestId === params.id)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -629,86 +649,137 @@ export async function handleCreateKnowledgeBaseEntry({
 }
 
 /**
- * PSEUDO CODE (GĐ4 — tổng hợp dashboard)
+ * PSEUDO CODE (GĐ4 + review GĐ3 — tổng hợp dashboard)
  * 1. Chạy evaluateLawAlerts trước để KPI cảnh báo dùng trạng thái mới nhất.
- * 2. onTimeCompletionRate (KPI a): completedAt <= dueDate ÷ tổng hoàn thành.
- * 3. qualityRate (KPI b): revisedCount===0 ÷ tổng hoàn thành — proxy demo.
- * 4. alertResolutionRate (KPI c): resolved ÷ (đã từng flagged) — y hệt LM.
+ * 2. Phạm vi từ token: chuyên viên (role owner) → chỉ yêu cầu mình phụ
+ *    trách; còn lại → toàn bộ. Hàng đợi chỉ gồm yêu cầu đang mở.
+ * 3. KPI a đúng hạn: completedAt <= dueDate ÷ đã đóng. KPI b chất lượng:
+ *    revisedCount===0 ÷ đã đóng (dữ liệu thật từ flow duyệt). KPI c xử lý
+ *    cảnh báo: resolved ÷ đã từng flagged.
+ * 4. Trạng thái SLA hàng đợi theo DEMO_TODAY: quá hạn / trong ngưỡng
+ *    SlaRule.alertDaysBefore (sắp hạn) / còn hạn.
  */
-export async function handleGetLawDashboard() {
+const TIER_RANK: Record<string, number> = { law_mandatory: 0, sbv_regulation: 1, internal: 2 };
+const SLA_RANK = { overdue: 0, due_soon: 1, upcoming: 2 } as const;
+
+function slaStateOf(db: MockDb, r: AdviceRequest): LawQueueItem["slaState"] {
+  const days = (new Date(r.dueDate).getTime() - DEMO_TODAY.getTime()) / 86_400_000;
+  if (days < 0) return "overdue";
+  const rule = db.slaRules.find((sr) => sr.priorityTier === r.priorityTier);
+  return days <= (rule?.alertDaysBefore ?? 3) ? "due_soon" : "upcoming";
+}
+
+const rate = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
+const isOnTime = (r: AdviceRequest) => !!r.completedAt && new Date(r.completedAt) <= new Date(r.dueDate);
+
+export async function handleGetLawDashboard({ request }: { request: Request }) {
   await getDelay();
   const db = getDb();
   evaluateLawAlerts(db);
 
-  const openRequests = db.adviceRequests.filter((r) => r.status !== "completed");
-  const completedRequests = db.adviceRequests.filter((r) => r.status === "completed");
-  const redFlagIds = new Set(
-    db.adviceRequests.filter((r) => r.alertStatus === "flagged").map((r) => r.id),
-  );
+  const user = currentUser(db, request);
+  const scope: LawDashboardSummary["scope"] = user?.role === "owner" ? "specialist" : "manager";
+  const scoped =
+    scope === "specialist" ? db.adviceRequests.filter((r) => r.ownerId === user!.id) : db.adviceRequests;
 
-  const onTime = completedRequests.filter(
-    (r) => r.completedAt && new Date(r.completedAt) <= new Date(r.dueDate),
-  );
-  const onTimeCompletionRate =
-    completedRequests.length > 0
-      ? Math.round((onTime.length / completedRequests.length) * 100)
-      : 0;
+  const openRequests = scoped.filter((r) => r.status !== "completed");
+  const completedRequests = scoped.filter((r) => r.status === "completed");
 
-  const noRevision = completedRequests.filter((r) => r.revisedCount === 0);
-  const qualityRate =
-    completedRequests.length > 0
-      ? Math.round((noRevision.length / completedRequests.length) * 100)
-      : 0;
+  const everFlagged = scoped.filter((r) => r.alertStatus !== "pending");
+  const resolved = scoped.filter((r) => r.alertStatus === "resolved");
 
-  const everFlagged = db.adviceRequests.filter((r) => r.alertStatus !== "pending");
-  const resolved = db.adviceRequests.filter((r) => r.alertStatus === "resolved");
-  const alertResolutionRate =
-    everFlagged.length > 0
-      ? Math.round((resolved.length / everFlagged.length) * 100)
-      : 0;
+  const lastOpinion = (id: string) =>
+    db.advisoryOpinions.filter((o) => o.requestId === id).sort((x, y) => y.version - x.version)[0];
 
-  const statusDistribution = LAW_REQUEST_STATUSES.map((status) => ({
-    status,
-    count: db.adviceRequests.filter((r) => r.status === status).length,
-  }));
-  const priorityDistribution = LAW_PRIORITY_TIERS.map((priorityTier) => ({
-    priorityTier,
-    count: db.adviceRequests.filter((r) => r.priorityTier === priorityTier).length,
-  }));
-
-  const unitCounts = new Map<string, number>();
-  db.adviceRequests.forEach((r) => {
-    unitCounts.set(
-      r.requestingUnitName,
-      (unitCounts.get(r.requestingUnitName) ?? 0) + 1,
-    );
-  });
-  const unitDistribution = Array.from(unitCounts.entries())
-    .map(([unitName, count]) => ({ unitName, count }))
-    .sort((a, b) => b.count - a.count);
-
-  const topRedFlagRequests = db.adviceRequests
-    .filter((r) => redFlagIds.has(r.id))
-    .slice(0, 5)
+  const queueAll: LawQueueItem[] = openRequests
     .map((r) => ({
       id: r.id,
       code: r.code,
       title: r.title,
       ownerName: r.ownerName,
-    }));
+      status: r.status,
+      priorityTier: r.priorityTier,
+      dueDate: r.dueDate,
+      slaState: slaStateOf(db, r),
+      nextActor: (r.status === "in_progress" ? "specialist" : "manager") as LawQueueItem["nextActor"],
+      returned: r.status === "in_progress" && lastOpinion(r.id)?.status === "returned",
+    }))
+    .sort(
+      (x, y) =>
+        SLA_RANK[x.slaState] - SLA_RANK[y.slaState] ||
+        TIER_RANK[x.priorityTier] - TIER_RANK[y.priorityTier] ||
+        x.dueDate.localeCompare(y.dueDate),
+    );
+
+  const slaTrend = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(DEMO_TODAY);
+    d.setMonth(d.getMonth() - (5 - i));
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const inMonth = completedRequests.filter((r) => r.completedAt!.startsWith(month));
+    const onTime = inMonth.filter(isOnTime).length;
+    return { month, onTime, late: inMonth.length - onTime };
+  });
+
+  const unitCounts = new Map<string, number>();
+  scoped.forEach((r) => unitCounts.set(r.requestingUnitName, (unitCounts.get(r.requestingUnitName) ?? 0) + 1));
+
+  const ownerKpi =
+    scope === "specialist"
+      ? []
+      : db.users
+          .filter((u) => u.role === "owner")
+          .map((u) => {
+            const mine = db.adviceRequests.filter((r) => r.ownerId === u.id);
+            const done = mine.filter((r) => r.status === "completed");
+            return {
+              userName: u.name,
+              total: mine.length,
+              onTimeRate: rate(done.filter(isOnTime).length, done.length),
+              qualityRate: rate(done.filter((r) => r.revisedCount === 0).length, done.length),
+              openCount: mine.length - done.length,
+            };
+          })
+          .filter((k) => k.total > 0)
+          .map(({ userName, onTimeRate, qualityRate, openCount }) => ({ userName, onTimeRate, qualityRate, openCount }));
 
   const summary: LawDashboardSummary = {
+    scope,
     totalOpen: openRequests.length,
     totalCompleted: completedRequests.length,
-    totalRedFlagRequests: redFlagIds.size,
-    onTimeCompletionRate,
-    qualityRate,
-    alertResolutionRate,
-    statusDistribution,
-    priorityDistribution,
-    unitDistribution,
-    ownerWorkload: computeOwnerWorkloadForLaw(db),
-    topRedFlagRequests,
+    totalRedFlagRequests: scoped.filter((r) => r.alertStatus === "flagged").length,
+    awaitingAssessment: openRequests.filter((r) => r.status === "new").length,
+    awaitingApproval: openRequests.filter((r) => r.status === "pending_approval").length,
+    returnedForRevision: queueAll.filter((q) => q.returned).length,
+    onTimeCompletionRate: rate(completedRequests.filter(isOnTime).length, completedRequests.length),
+    qualityRate: rate(completedRequests.filter((r) => r.revisedCount === 0).length, completedRequests.length),
+    alertResolutionRate: rate(resolved.length, everFlagged.length),
+    // Chuyên viên: chỉ phân bổ của yêu cầu đang mở (comment: "chỉ thấy case đang mở").
+    statusDistribution: LAW_REQUEST_STATUSES.map((status) => ({
+      status,
+      count: (scope === "specialist" ? openRequests : scoped).filter((r) => r.status === status).length,
+    })),
+    priorityDistribution: LAW_PRIORITY_TIERS.map((priorityTier) => ({
+      priorityTier,
+      count: (scope === "specialist" ? openRequests : scoped).filter((r) => r.priorityTier === priorityTier).length,
+    })),
+    unitDistribution: Array.from(unitCounts.entries())
+      .map(([unitName, count]) => ({ unitName, count }))
+      .sort((x, y) => y.count - x.count),
+    ownerWorkload: scope === "specialist" ? [] : computeOwnerWorkloadForLaw(db),
+    queue: queueAll.slice(0, 10),
+    queueCounts: {
+      overdue: queueAll.filter((q) => q.slaState === "overdue").length,
+      dueSoon: queueAll.filter((q) => q.slaState === "due_soon").length,
+      upcoming: queueAll.filter((q) => q.slaState === "upcoming").length,
+    },
+    slaTrend,
+    slaStatus: {
+      closedOnTime: completedRequests.filter(isOnTime).length,
+      closedLate: completedRequests.filter((r) => !isOnTime(r)).length,
+      openWithinSla: queueAll.filter((q) => q.slaState !== "overdue").length,
+      openBreached: queueAll.filter((q) => q.slaState === "overdue").length,
+    },
+    ownerKpi,
   };
   return jsonResponse(summary);
 }
@@ -767,9 +838,11 @@ export async function handleAssessLawRequest({ params, request }: MockResolverCo
   return jsonResponse(item);
 }
 
-export async function handleGetLawMessages({ params }: MockResolverContext) {
+export async function handleGetLawMessages({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertRequestAccess(db, request, params.id as string);
+  if (denied) return denied;
   const items = db.lawMessages
     .filter((m) => m.requestId === params.id)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -779,6 +852,8 @@ export async function handleGetLawMessages({ params }: MockResolverContext) {
 export async function handlePostLawMessage({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertRequestAccess(db, request, params.id as string);
+  if (denied) return denied;
   const item = findById(db.adviceRequests, params.id as string);
   if (!item) return notFound("Request not found");
   const user = currentUser(db, request);
@@ -812,9 +887,11 @@ export async function handlePostLawMessage({ params, request }: MockResolverCont
   return jsonResponse(message, 201);
 }
 
-export async function handleGetLawOpinions({ params }: MockResolverContext) {
+export async function handleGetLawOpinions({ params, request }: MockResolverContext) {
   await getDelay();
   const db = getDb();
+  const denied = assertRequestAccess(db, request, params.id as string);
+  if (denied) return denied;
   const items = db.advisoryOpinions
     .filter((o) => o.requestId === params.id)
     .sort((a, b) => b.version - a.version);

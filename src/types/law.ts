@@ -239,10 +239,22 @@ export interface CreateKnowledgeBaseEntryInput {
  * c. alertResolutionRate: cảnh báo đã xử lý xong ÷ tổng cảnh báo từng bật
  *    cờ — y hệt KPI c của LM.
  */
+/**
+ * Review GĐ3 — dashboard theo góc nhìn. `scope` do server quyết từ token:
+ * "specialist" = chỉ yêu cầu chuyên viên phụ trách (hàng đợi chỉ yêu cầu đang
+ * mở), "manager" = toàn bộ. KPI a/b/c tính trên yêu cầu đã đóng trong phạm vi.
+ */
 export interface LawDashboardSummary {
+  scope: "specialist" | "manager";
   totalOpen: number;
   totalCompleted: number;
   totalRedFlagRequests: number;
+  /** Bước 2 đang chờ Manager chốt ưu tiên. */
+  awaitingAssessment: number;
+  /** Bước 4 đang chờ Manager duyệt ý kiến. */
+  awaitingApproval: number;
+  /** Đang trao đổi và ý kiến gần nhất bị trả lại — chuyên viên cần sửa. */
+  returnedForRevision: number;
   onTimeCompletionRate: number;
   qualityRate: number;
   alertResolutionRate: number;
@@ -250,12 +262,29 @@ export interface LawDashboardSummary {
   priorityDistribution: { priorityTier: LawPriorityTier; count: number }[];
   unitDistribution: { unitName: string; count: number }[];
   ownerWorkload: LawWorkloadEntry[];
-  topRedFlagRequests: {
-    id: string;
-    code: string;
-    title: string;
-    ownerName: string;
-  }[];
+  /** Yêu cầu đang mở, đã sort: quá hạn → sắp hạn → còn hạn, rồi ưu tiên, rồi hạn gần. */
+  queue: LawQueueItem[];
+  queueCounts: { overdue: number; dueSoon: number; upcoming: number };
+  /** SLA theo tháng đóng yêu cầu (6 tháng gần nhất): đóng đúng hạn / trễ. */
+  slaTrend: { month: string; onTime: number; late: number }[];
+  slaStatus: { closedOnTime: number; closedLate: number; openWithinSla: number; openBreached: number };
+  /** KPI từng chuyên viên — rỗng ở góc nhìn chuyên viên. */
+  ownerKpi: { userName: string; onTimeRate: number; qualityRate: number; openCount: number }[];
+}
+
+export interface LawQueueItem {
+  id: string;
+  code: string;
+  title: string;
+  ownerName: string;
+  status: LawRequestStatus;
+  priorityTier: LawPriorityTier;
+  dueDate: string;
+  slaState: "overdue" | "due_soon" | "upcoming";
+  /** Bước tiếp theo do ai làm: Manager (đánh giá / duyệt) hay chuyên viên (trao đổi, soạn ý kiến). */
+  nextActor: "manager" | "specialist";
+  /** Ý kiến gần nhất bị trả lại — chuyên viên cần sửa. */
+  returned: boolean;
 }
 
 export type UpdateAdviceRequestInput = Partial<

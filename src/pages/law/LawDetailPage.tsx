@@ -13,7 +13,7 @@
  *    PUT /api/law/requests/:id/alert qua useUpdateLawAlert.
  */
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { motion } from "motion/react";
 import { Pencil, Send, Users } from "lucide-react";
@@ -45,6 +45,7 @@ import {
 } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
+import { ROUTES } from "@/constants/routes";
 import { LAW_PRIORITY_STYLES, LAW_STATUS_LABELS } from "@/constants/law";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -93,6 +94,25 @@ export default function LawDetailPage() {
 
   if (detail.isPending) return <DetailSkeleton />;
   if (detail.isError || !item) {
+    const isForbidden = (detail.error as { status?: number } | null)?.status === 403;
+    if (isForbidden) {
+      return (
+        <div className="space-y-4">
+          <ErrorState
+            title={L("Not your request", "Yêu cầu không thuộc quyền xem")}
+            message={L(
+              "Advisory specialists can only open requests assigned to them.",
+              "Chuyên viên tư vấn chỉ xem được yêu cầu mình phụ trách.",
+            )}
+          />
+          <div className="flex justify-center">
+            <Button variant="outline" asChild>
+              <Link to={ROUTES.LAW.LIST}>{L("Back to my requests", "Về yêu cầu của tôi")}</Link>
+            </Button>
+          </div>
+        </div>
+      );
+    }
     return <ErrorState onRetry={() => detail.refetch()} />;
   }
 
