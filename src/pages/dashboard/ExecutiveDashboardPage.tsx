@@ -45,6 +45,9 @@ import {
   RISK_CHART_COLORS,
 } from "@/components/charts/chart-theme";
 import { DEMO_TODAY } from "@/mocks/db";
+import { useL, useTerm } from "@/lib/i18n";
+import { useLanguageStore } from "@/stores";
+import { getPriorityStyle, getStatusStyle, type PriorityLevel } from "@/constants/status";
 
 function useExecutiveData() {
   const dashboard = useDashboard("executive");
@@ -82,6 +85,9 @@ export default function ExecutiveDashboardPage() {
     isLoading,
     error,
   } = useExecutiveData();
+  const L = useL();
+  const term = useTerm();
+  const lang = useLanguageStore((s) => s.lang);
 
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
@@ -103,11 +109,11 @@ export default function ExecutiveDashboardPage() {
       counts.set(item.riskLevel, (counts.get(item.riskLevel) ?? 0) + 1);
     });
     return Array.from(counts.entries()).map(([name, value]) => ({
-      name,
+      name: term(getPriorityStyle(name as PriorityLevel).label),
       value,
       color: RISK_CHART_COLORS[name] ?? "#94a3b8",
     }));
-  }, [complianceItems]);
+  }, [complianceItems, term]);
 
   const capStatusData = useMemo(() => {
     const counts = new Map<string, number>();
@@ -115,10 +121,10 @@ export default function ExecutiveDashboardPage() {
       counts.set(item.status, (counts.get(item.status) ?? 0) + 1);
     });
     return Array.from(counts.entries()).map(([name, value]) => ({
-      name,
+      name: term(getStatusStyle(name).label),
       value,
     }));
-  }, [capItems]);
+  }, [capItems, term]);
 
   const trendData = useMemo(() => {
     const months = Array.from({ length: 6 }, (_, i) => {
@@ -152,10 +158,10 @@ export default function ExecutiveDashboardPage() {
       return lastValue;
     });
     return months.map((monthDate, i) => ({
-      month: monthDate.toLocaleDateString("en-US", { month: "short" }),
+      month: monthDate.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { month: "short" }),
       value: filled[i],
     }));
-  }, [complianceItems]);
+  }, [complianceItems, lang]);
 
   if (isLoading) {
     return (
@@ -181,7 +187,7 @@ export default function ExecutiveDashboardPage() {
   if (error) {
     return (
       <ErrorState
-        title="Could not load executive dashboard"
+        title={L("Could not load executive dashboard", "Không tải được trang tổng quan lãnh đạo")}
         message={error.message}
         onRetry={() => {
           dashboard.refetch();
@@ -194,7 +200,7 @@ export default function ExecutiveDashboardPage() {
 
   return (
     <DashboardLayout
-      title="Executive Dashboard"
+      title={L("Executive Dashboard", "Tổng quan lãnh đạo")}
       subtitle={aiSummary.data?.summary}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
@@ -202,7 +208,7 @@ export default function ExecutiveDashboardPage() {
     >
       <div className="md:col-span-2">
         <DashboardAIInsightCard
-          summary={aiSummary.data?.summary ?? "Loading AI summary..."}
+          summary={aiSummary.data?.summary ?? L("Loading AI summary...", "Đang tải tóm tắt AI...")}
           explanation={aiSummary.data?.explanation}
           isLoading={aiSummary.isPending}
           delay={0.1}
@@ -214,7 +220,7 @@ export default function ExecutiveDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="Compliance Trend" delay={0.2}>
+        <DashboardChartCard title={L("Compliance Trend", "Xu hướng tuân thủ")} delay={0.2}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
@@ -263,11 +269,11 @@ export default function ExecutiveDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="Risk Distribution" delay={0.3}>
+        <DashboardChartCard title={L("Risk Distribution", "Phân bổ rủi ro")} delay={0.3}>
           <div className="h-64">
             {riskDistribution.length === 0 ? (
               <EmptyState
-                title="No data"
+                title={L("No data", "Chưa có dữ liệu")}
                 className="h-full border-0 bg-transparent"
               />
             ) : (
@@ -303,11 +309,11 @@ export default function ExecutiveDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="CAP Status Breakdown" delay={0.35}>
+        <DashboardChartCard title={L("CAP Status Breakdown", "Trạng thái kế hoạch khắc phục")} delay={0.35}>
           <div className="h-64">
             {capStatusData.length === 0 ? (
               <EmptyState
-                title="No data"
+                title={L("No data", "Chưa có dữ liệu")}
                 className="h-full border-0 bg-transparent"
               />
             ) : (
@@ -354,15 +360,15 @@ export default function ExecutiveDashboardPage() {
       <div className="md:col-span-2">
         <DashboardActivityFeed
           items={dashboard.data?.activity}
-          title="Organization Activity"
+          title={L("Organization Activity", "Hoạt động toàn tổ chức")}
           delay={0.5}
         />
       </div>
 
       <div className="md:col-span-1">
         <DashboardAssignmentsCard
-          title="Compliance Assignments"
-          description="By department, with overdue and critical counts."
+          title={L("Compliance Assignments", "Phân giao tuân thủ")}
+          description={L("By department, with overdue and critical counts.", "Theo phòng ban, kèm số quá hạn và khẩn cấp.")}
           assignments={assignmentItems}
           breakdown="department"
           delay={0.55}

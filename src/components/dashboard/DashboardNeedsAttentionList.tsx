@@ -12,6 +12,7 @@ import { isOverdueDueDate } from "@/lib/due-date";
 import { cn } from "@/lib/utils";
 import type { Obligation, CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
+import { useL, useDateLocale } from "@/lib/i18n";
 
 interface AttentionItem {
   id: string;
@@ -35,10 +36,13 @@ interface DashboardNeedsAttentionListProps {
 export function DashboardNeedsAttentionList({
   compliance = [],
   caps = [],
-  title = "Needs Attention",
+  title,
   maxItems = 8,
   delay = 0,
 }: DashboardNeedsAttentionListProps) {
+  const L = useL();
+  const dateLocale = useDateLocale();
+  title ??= L("Needs Attention", "Cần xử lý");
   const items: AttentionItem[] = [
     ...compliance
       .filter(
@@ -102,8 +106,8 @@ export function DashboardNeedsAttentionList({
         <CardContent>
           {items.length === 0 ? (
             <EmptyState
-              title="Nothing needs attention"
-              description="No overdue or critical items found."
+              title={L("Nothing needs attention", "Không có việc cần xử lý")}
+              description={L("No overdue or critical items found.", "Không có mục quá hạn hoặc khẩn cấp.")}
               className="border-0 bg-transparent"
             />
           ) : (
@@ -141,7 +145,8 @@ export function DashboardNeedsAttentionList({
                     <StatusBadge status={item.status} size="sm" />
                     <PriorityBadge priority={item.priority} size="sm" />
                     <span className="text-xs text-muted-foreground">
-                      Due {format(new Date(item.dueDate), "MMM d, yyyy")}
+                      {L("Due", "Hạn")}{" "}
+                      {format(new Date(item.dueDate), "MMM d, yyyy", { locale: dateLocale })}
                     </span>
                   </div>
                 </li>

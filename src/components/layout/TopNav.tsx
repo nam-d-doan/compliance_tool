@@ -22,6 +22,9 @@ import {
 import { NotificationDrawer } from "./NotificationDrawer";
 import { RoleSwitch } from "@/components/auth/RoleSwitch";
 import { useTabActionCounts } from "@/hooks/useTabActionCounts";
+import { LangToggle } from "./LangToggle";
+import { useCommonT } from "@/constants/i18n/common";
+import { useTerm } from "@/lib/i18n";
 import {
   Search,
   Bell,
@@ -40,6 +43,8 @@ export function TopNav() {
   const location = useLocation();
   const { user, role, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
+  const { t } = useCommonT();
+  const term = useTerm();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { data: unreadData } = useNotifications(1, 1, { read: false });
@@ -109,7 +114,7 @@ export function TopNav() {
                 <Link
                   key={pill.key}
                   to={pill.path}
-                  title={pill.label}
+                  title={term(pill.label)}
                   className={cn(
                     "flex min-w-[2rem] shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 py-[7px] font-heading text-xs whitespace-nowrap transition-all",
                     isActive
@@ -121,7 +126,7 @@ export function TopNav() {
                   {/* On cramped widths, hide the label for inactive tabs; keep
                       it for the active tab so the current location is obvious. */}
                   <span className={isActive ? "inline" : "hidden xl:inline"}>
-                    {pill.label}
+                    {term(pill.label)}
                   </span>
                   {(() => {
                     const count = pillCount(pill.key);
@@ -129,7 +134,7 @@ export function TopNav() {
                     return (
                       <span
                         className="bg-danger flex h-[14px] min-w-[14px] shrink-0 items-center justify-center rounded-full px-[3px] text-[9px] font-bold text-white"
-                        aria-label={`${count} item${count === 1 ? "" : "s"} need${count === 1 ? "s" : ""} your attention`}
+                        aria-label={`${count} ${t("needsAttention")}`}
                       >
                         {count > 99 ? "99+" : count}
                       </span>
@@ -142,6 +147,8 @@ export function TopNav() {
         </div>
 
         <div className="flex shrink-0 flex-nowrap items-center gap-2.5">
+          <LangToggle />
+
           <div
             className={cn(
               "flex h-[38px] items-center gap-2 overflow-hidden rounded-[19px] border bg-[var(--nav-bg)] px-3 shadow-[var(--card-shadow)] backdrop-blur-xl transition-[width] duration-200 [border-color:var(--nav-border)]",
@@ -155,14 +162,14 @@ export function TopNav() {
                 if (!searchOpen) setSearchOpen(true);
               }}
               className="shrink-0 text-muted-foreground"
-              aria-label="Search"
+              aria-label={t("search")}
             >
               <Search className="size-[15px]" />
             </button>
             {searchOpen && (
               <Input
                 autoFocus
-                placeholder="Search obligations, regulations…"
+                placeholder={t("searchPlaceholder")}
                 className="h-auto border-none bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
                 onBlur={() => setSearchOpen(false)}
               />
@@ -172,7 +179,7 @@ export function TopNav() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            aria-label="Notifications"
+            aria-label={t("notifications")}
             className="relative flex size-[38px] shrink-0 items-center justify-center rounded-full border bg-[var(--nav-bg)] shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
           >
             <Bell
@@ -191,7 +198,7 @@ export function TopNav() {
           <button
             type="button"
             onClick={toggleTheme}
-            aria-label="Toggle theme"
+            aria-label={t("toggleTheme")}
             className="flex size-[38px] shrink-0 items-center justify-center rounded-full border bg-[var(--nav-bg)] shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
           >
             {theme === "dark" ? (
@@ -204,8 +211,8 @@ export function TopNav() {
           {isAdmin && (
             <Link
               to={ROUTES.ADMIN.USERS}
-              aria-label="Administration"
-              title="Administration"
+              aria-label={t("administration")}
+              title={t("administration")}
               className={cn(
                 "flex size-[38px] shrink-0 items-center justify-center rounded-full border shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]",
                 isAdminRoute ? "bg-primary" : "bg-[var(--nav-bg)]",
@@ -229,10 +236,10 @@ export function TopNav() {
               </div>
               <div className="hidden flex-col items-start leading-[1.15] md:flex">
                 <span className="text-xs font-bold whitespace-nowrap">
-                  {user?.name ?? user?.email ?? "Guest"}
+                  {user?.name ?? user?.email ?? t("guest")}
                 </span>
                 <span className="text-[10.5px] whitespace-nowrap text-muted-foreground capitalize">
-                  {role ?? "Guest"}
+                  {role ? term(role) : t("guest")}
                 </span>
               </div>
             </DropdownMenuTrigger>
@@ -240,7 +247,7 @@ export function TopNav() {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">
-                    {user?.name ?? "Guest"}
+                    {user?.name ?? t("guest")}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user?.email}
@@ -253,14 +260,14 @@ export function TopNav() {
                 className="cursor-pointer"
               >
                 <User className="mr-2 size-4" />
-                Profile
+                {t("profile")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => navigate(ROUTES.SETTINGS)}
                 className="cursor-pointer"
               >
                 <Settings className="mr-2 size-4" />
-                Settings
+                {t("settings")}
               </DropdownMenuItem>
               {isAdmin && (
                 <DropdownMenuItem
@@ -268,13 +275,13 @@ export function TopNav() {
                   className="cursor-pointer"
                 >
                   <Shield className="mr-2 size-4" />
-                  Administration
+                  {t("administration")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Sparkles className="mr-2 size-4" />
-                  Switch Role
+                  {t("switchRole")}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
@@ -288,7 +295,7 @@ export function TopNav() {
                 className="cursor-pointer text-destructive focus:text-destructive"
               >
                 <LogOut className="mr-2 size-4" />
-                Log out
+                {t("logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

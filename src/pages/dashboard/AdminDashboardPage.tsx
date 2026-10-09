@@ -32,6 +32,8 @@ import {
 import { CHART_COLORS } from "@/components/charts/chart-theme";
 import { DEMO_TODAY } from "@/mocks/db";
 import type { ActivityFeedItem } from "@/types";
+import { useL, useTerm } from "@/lib/i18n";
+import { useLanguageStore } from "@/stores";
 
 function useAdminData() {
   const dashboard = useDashboard("admin");
@@ -60,6 +62,10 @@ function useAdminData() {
 export default function AdminDashboardPage() {
   const { dashboard, users, auditLogs, aiConfig, isLoading, error } =
     useAdminData();
+  const L = useL();
+  const term = useTerm();
+  const lang = useLanguageStore((s) => s.lang);
+  const dateLocaleTag = lang === "vi" ? "vi-VN" : "en-US";
 
   const userItems = useMemo(() => users.data?.items ?? [], [users.data]);
   const auditItems = useMemo(
@@ -79,15 +85,15 @@ export default function AdminDashboardPage() {
       counts.set(role, (counts.get(role) ?? 0) + 1);
     });
     return Array.from(counts.entries()).map(([name, value]) => ({
-      name,
+      name: term(name),
       value,
     }));
-  }, [userItems]);
+  }, [userItems, term]);
 
   const auditEvents = useMemo(() => {
     const grouped = new Map<string, number>();
     auditItems.forEach((log) => {
-      const date = new Date(log.timestamp).toLocaleDateString("en-US", {
+      const date = new Date(log.timestamp).toLocaleDateString(dateLocaleTag, {
         month: "short",
         day: "numeric",
       });
@@ -96,7 +102,7 @@ export default function AdminDashboardPage() {
     return Array.from(grouped.entries())
       .slice(-7)
       .map(([name, value]) => ({ name, value }));
-  }, [auditItems]);
+  }, [auditItems, dateLocaleTag]);
 
   const aiUsage = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -115,11 +121,11 @@ export default function AdminDashboardPage() {
         );
       }).length;
       return {
-        name: day.toLocaleDateString("en-US", { weekday: "short" }),
+        name: day.toLocaleDateString(dateLocaleTag, { weekday: "short" }),
         queries,
       };
     });
-  }, [auditItems]);
+  }, [auditItems, dateLocaleTag]);
 
   const securityEvents = useMemo(() => {
     return auditItems
@@ -137,7 +143,7 @@ export default function AdminDashboardPage() {
           : log.action === "login"
             ? "submission"
             : "comment") as ActivityFeedItem["type"],
-        title: `${log.action} in ${log.module}${log.result === "failure" ? " (failed)" : ""}`,
+        title: `${log.action} · ${log.module}${log.result === "failure" ? L(" (failed)", " (thất bại)") : ""}`,
         description: log.details ?? "",
         userId: log.userId,
         userName: log.userName,
@@ -147,7 +153,7 @@ export default function AdminDashboardPage() {
         createdAt: log.createdAt,
         updatedAt: log.updatedAt,
       }));
-  }, [auditItems]);
+  }, [auditItems, L]);
 
   if (isLoading) {
     return (
@@ -169,7 +175,7 @@ export default function AdminDashboardPage() {
   if (error) {
     return (
       <ErrorState
-        title="Could not load admin dashboard"
+        title={L("Could not load admin dashboard", "Không tải được trang tổng quan quản trị")}
         message={error.message}
         onRetry={() => {
           dashboard.refetch();
@@ -183,14 +189,17 @@ export default function AdminDashboardPage() {
 
   return (
     <DashboardLayout
-      title="Admin Dashboard"
-      subtitle={`${activeUserCount} active users · ${auditItems.length} audit events logged recently.`}
+      title={L("Admin Dashboard", "Tổng quan quản trị")}
+      subtitle={L(
+        `${activeUserCount} active users · ${auditItems.length} audit events logged recently.`,
+        `${activeUserCount} người dùng hoạt động · ${auditItems.length} sự kiện kiểm toán gần đây.`,
+      )}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}
     >
       <div className="md:col-span-1">
-        <DashboardChartCard title="User Activity by Role" delay={0.1}>
+        <DashboardChartCard title={L("User Activity by Role", "Người dùng theo vai trò")} delay={0.1}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -213,7 +222,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="Audit Log Events" delay={0.15}>
+        <DashboardChartCard title={L("Audit Log Events", "Sự kiện nhật ký kiểm toán")} delay={0.15}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
@@ -237,7 +246,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="AI Usage (Queries)" delay={0.2}>
+        <DashboardChartCard title={L("AI Usage (Queries)", "Lượt dùng AI (truy vấn)")} delay={0.2}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -262,7 +271,7 @@ export default function AdminDashboardPage() {
       <div className="md:col-span-1">
         <DashboardActivityFeed
           items={securityEvents}
-          title="Security Events"
+          title={L("Security Events", "Sự kiện bảo mật")}
           delay={0.25}
         />
       </div>

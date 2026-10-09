@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ActivityFeedItem } from "@/types";
+import { useL, useDateLocale } from "@/lib/i18n";
 
 interface DashboardActivityFeedProps {
   items?: ActivityFeedItem[];
@@ -56,10 +57,13 @@ const typeColors: Record<ActivityFeedItem["type"], string> = {
 
 export function DashboardActivityFeed({
   items = [],
-  title = "Recent Activity",
+  title,
   maxItems = 10,
   delay = 0,
 }: DashboardActivityFeedProps) {
+  const L = useL();
+  const dateLocale = useDateLocale();
+  title ??= L("Recent Activity", "Hoạt động gần đây");
   const visible = items.slice(0, maxItems);
 
   return (
@@ -76,8 +80,8 @@ export function DashboardActivityFeed({
         <CardContent>
           {visible.length === 0 ? (
             <EmptyState
-              title="No recent activity"
-              description="Check back later for updates."
+              title={L("No recent activity", "Chưa có hoạt động gần đây")}
+              description={L("Check back later for updates.", "Quay lại sau để xem cập nhật.")}
               className="border-0 bg-transparent"
             />
           ) : (
@@ -108,6 +112,7 @@ export function DashboardActivityFeed({
                           <time dateTime={item.timestamp}>
                             {formatDistanceToNow(new Date(item.timestamp), {
                               addSuffix: true,
+                              locale: dateLocale,
                             })}
                           </time>
                         </div>

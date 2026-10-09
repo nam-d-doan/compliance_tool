@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Obligation, CAP } from "@/types";
 import type { PriorityLevel } from "@/constants/status";
+import { useL, useDateLocale } from "@/lib/i18n";
 
 interface QueueItem {
   id: string;
@@ -40,10 +41,13 @@ interface DashboardApprovalQueueProps {
 export function DashboardApprovalQueue({
   compliance = [],
   caps = [],
-  title = "Approval Queue",
+  title,
   maxItems = 10,
   delay = 0,
 }: DashboardApprovalQueueProps) {
+  const L = useL();
+  const dateLocale = useDateLocale();
+  title ??= L("Approval Queue", "Hàng đợi phê duyệt");
   const items: QueueItem[] = [
     ...compliance
       .filter((c) => ["review_required", "submitted"].includes(c.status))
@@ -87,7 +91,7 @@ export function DashboardApprovalQueue({
   };
 
   const typeLabels = {
-    compliance: "Compliance",
+    compliance: L("Compliance", "Tuân thủ"),
     cap: "CAP",
   };
 
@@ -113,8 +117,8 @@ export function DashboardApprovalQueue({
         <CardContent>
           {items.length === 0 ? (
             <EmptyState
-              title="No pending approvals"
-              description="You're all caught up."
+              title={L("No pending approvals", "Không có mục chờ duyệt")}
+              description={L("You're all caught up.", "Bạn đã xử lý hết.")}
               className="border-0 bg-transparent"
             />
           ) : (
@@ -149,7 +153,7 @@ export function DashboardApprovalQueue({
                                 size="sm"
                               />
                               <span className="text-xs text-muted-foreground">
-                                {format(new Date(item.dueDate), "MMM d")}
+                                {format(new Date(item.dueDate), "MMM d", { locale: dateLocale })}
                               </span>
                             </div>
                           </div>
@@ -158,7 +162,7 @@ export function DashboardApprovalQueue({
                               variant="ghost"
                               size="icon-xs"
                               className="text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-                              title="Approve"
+                              title={L("Approve", "Phê duyệt")}
                             >
                               <CheckCircle
                                 className="size-3.5"
@@ -169,7 +173,7 @@ export function DashboardApprovalQueue({
                               variant="ghost"
                               size="icon-xs"
                               className="text-red-600 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
-                              title="Reject"
+                              title={L("Reject", "Từ chối")}
                             >
                               <XCircle
                                 className="size-3.5"

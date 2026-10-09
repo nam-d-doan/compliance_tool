@@ -22,16 +22,18 @@ import {
   Lock,
   AlertCircle,
 } from "lucide-react";
+import { useAuthT, isAuthKey } from "@/constants/i18n/auth";
+import { useTerm } from "@/lib/i18n";
 
 const loginSchema = z.object({
   email: z
     .string()
-    .min(1, "Email is required")
-    .email("Enter a valid email address"),
+    .min(1, "emailRequired")
+    .email("emailInvalid"),
   password: z
     .string()
-    .min(1, "Password is required")
-    .min(8, "Password must be at least 8 characters"),
+    .min(1, "passwordRequired")
+    .min(8, "passwordMin"),
   rememberMe: z.boolean().default(false),
 });
 
@@ -39,6 +41,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const { t } = useAuthT();
+  const term = useTerm();
   const { setPendingUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
@@ -83,7 +87,7 @@ export function LoginForm() {
       const message =
         error instanceof Error
           ? error.message
-          : "Something went wrong. Please try again.";
+          : t("genericError");
       setFormError(message);
     } finally {
       setIsLoading(false);
@@ -104,10 +108,10 @@ export function LoginForm() {
     >
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Welcome back
+          {t("welcome")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to the AI Compliance Management System
+          {t("signInSubtitle")}
         </p>
       </div>
 
@@ -129,7 +133,7 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("email")}</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -144,12 +148,12 @@ export function LoginForm() {
             />
           </div>
           {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
+            <p className="text-xs text-destructive">{isAuthKey(errors.email.message) ? t(errors.email.message) : errors.email.message}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("password")}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -166,7 +170,7 @@ export function LoginForm() {
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             >
               {showPassword ? (
                 <EyeOff className="size-4" />
@@ -177,7 +181,9 @@ export function LoginForm() {
           </div>
           {errors.password && (
             <p className="text-xs text-destructive">
-              {errors.password.message}
+              {isAuthKey(errors.password.message)
+                ? t(errors.password.message)
+                : errors.password.message}
             </p>
           )}
         </div>
@@ -196,14 +202,14 @@ export function LoginForm() {
               htmlFor="rememberMe"
               className="cursor-pointer font-normal text-muted-foreground"
             >
-              Remember me
+              {t("rememberMe")}
             </Label>
           </div>
           <Link
             to="/forgot-password"
             className="text-sm font-medium text-primary hover:underline"
           >
-            Forgot password?
+            {t("forgotPasswordLink")}
           </Link>
         </div>
 
@@ -211,10 +217,10 @@ export function LoginForm() {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
-              Signing in…
+              {t("signingIn")}
             </>
           ) : (
-            "Sign in"
+            t("signIn")
           )}
         </Button>
       </form>
@@ -225,7 +231,7 @@ export function LoginForm() {
           onClick={() => setShowDemoAccounts((prev) => !prev)}
           className="flex w-full items-center justify-between rounded-lg border border-dashed p-3 text-sm transition-colors hover:bg-muted/50"
         >
-          <span className="font-medium text-foreground">Demo accounts</span>
+          <span className="font-medium text-foreground">{t("demoAccounts")}</span>
           {showDemoAccounts ? (
             <ChevronUp className="size-4 text-muted-foreground" />
           ) : (
@@ -244,7 +250,7 @@ export function LoginForm() {
             >
               <div className="mt-2 space-y-2 rounded-lg border bg-muted/30 p-3">
                 <p className="text-xs text-muted-foreground">
-                  Password for all accounts:{" "}
+                  {t("demoPassword")}{" "}
                   <span className="font-medium text-foreground">demo1234</span>
                 </p>
                 <div className="grid gap-2">
@@ -257,7 +263,7 @@ export function LoginForm() {
                     >
                       <span className="text-foreground">{user.email}</span>
                       <span className="capitalize text-muted-foreground">
-                        {user.role}
+                        {term(user.role)}
                       </span>
                     </button>
                   ))}
@@ -269,7 +275,7 @@ export function LoginForm() {
       </div>
 
       <p className="mt-8 text-center text-xs text-muted-foreground">
-        By signing in, you agree to the demo terms of use.
+        {t("termsNote")}
       </p>
     </motion.div>
   );

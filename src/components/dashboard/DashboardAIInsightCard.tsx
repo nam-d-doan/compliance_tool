@@ -7,6 +7,7 @@ import { Sparkles, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { TypewriterText } from "@/components/ai/TypewriterText";
 import { cn } from "@/lib/utils";
 import type { AIExplanation } from "@/types";
+import { useL } from "@/lib/i18n";
 
 interface DashboardAIInsightCardProps {
   summary: string;
@@ -22,6 +23,7 @@ export function DashboardAIInsightCard({
   delay = 0,
 }: DashboardAIInsightCardProps) {
   const [showReasoning, setShowReasoning] = useState(false);
+  const L = useL();
 
   return (
     <motion.div
@@ -42,15 +44,15 @@ export function DashboardAIInsightCard({
               <Sparkles className="size-4" aria-hidden="true" />
             </div>
             <div>
-              <CardTitle>AI Executive Summary</CardTitle>
+              <CardTitle>{L("AI Executive Summary", "Tóm tắt điều hành từ AI")}</CardTitle>
               <p className="text-xs text-muted-foreground">
-                Generated from current data
+                {L("Generated from current data", "Tạo từ dữ liệu hiện tại")}
               </p>
             </div>
           </div>
           {explanation?.confidence && (
             <Badge variant="secondary">
-              {Math.round(explanation.confidence * 100)}% confidence
+              {Math.round(explanation.confidence * 100)}% {L("confidence", "độ tin cậy")}
             </Badge>
           )}
         </CardHeader>
@@ -69,13 +71,13 @@ export function DashboardAIInsightCard({
               >
                 {showReasoning ? (
                   <>
-                    <ChevronUp className="size-3.5" aria-hidden="true" /> Hide
-                    reasoning
+                    <ChevronUp className="size-3.5" aria-hidden="true" />{" "}
+                    {L("Hide reasoning", "Ẩn lập luận")}
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="size-3.5" aria-hidden="true" /> View
-                    reasoning
+                    <ChevronDown className="size-3.5" aria-hidden="true" />{" "}
+                    {L("View reasoning", "Xem lập luận")}
                   </>
                 )}
               </Button>
@@ -107,7 +109,7 @@ export function DashboardAIInsightCard({
                         <div className="space-y-1.5 border-t pt-2">
                           <p className="flex items-center gap-1 font-medium text-foreground">
                             <BookOpen className="size-3" aria-hidden="true" />{" "}
-                            References
+                            {L("References", "Tham chiếu")}
                           </p>
                           <ul className="space-y-1">
                             {explanation.references.map((ref, index) => (

@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useCommonT } from "@/constants/i18n/common";
 
 export interface ErrorStateProps {
   title?: string;
@@ -11,11 +12,14 @@ export interface ErrorStateProps {
 }
 
 export function ErrorState({
-  title = "Something went wrong",
-  message = "We could not load the requested data. Please try again.",
+  title,
+  message,
   onRetry,
   className,
 }: ErrorStateProps) {
+  const { t } = useCommonT();
+  title ??= t("errorTitle");
+  message ??= t("errorMessage");
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -38,7 +42,7 @@ export function ErrorState({
       {onRetry && (
         <Button variant="outline" size="sm" className="mt-5" onClick={onRetry}>
           <RotateCcw className="size-4" aria-hidden="true" />
-          Retry
+          {t("retry")}
         </Button>
       )}
     </motion.div>

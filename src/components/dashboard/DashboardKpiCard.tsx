@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DashboardKPI } from "@/types";
 import * as Icons from "lucide-react";
+import { useL, useTerm } from "@/lib/i18n";
 
 interface DashboardKpiCardProps {
   kpi: DashboardKPI;
@@ -25,7 +26,7 @@ function resolveIcon(name?: string): LucideIcon {
 
 function formatPrevious(previous?: string | number): string {
   if (previous === undefined || previous === null) return "";
-  return `vs ${previous}`;
+  return `${previous}`;
 }
 
 // FDM tinted icon circle palette — cycled by index so KPI rows get varied accents.
@@ -44,6 +45,8 @@ export function DashboardKpiCard({
   iconClassName,
 }: DashboardKpiCardProps) {
   const Icon = resolveIcon(kpi.icon);
+  const L = useL();
+  const term = useTerm();
   const trend = kpi.trend ?? "flat";
   const positive = trend === "up";
   const negative = trend === "down";
@@ -68,7 +71,7 @@ export function DashboardKpiCard({
       >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            {kpi.title}
+            {term(kpi.title)}
           </CardTitle>
           <div
             className={cn(
@@ -97,7 +100,7 @@ export function DashboardKpiCard({
               </span>
               {kpi.previousPeriod !== undefined && (
                 <span className="text-muted-foreground">
-                  {formatPrevious(kpi.previousPeriod)}
+                  {L("vs", "so với")} {formatPrevious(kpi.previousPeriod)}
                 </span>
               )}
             </div>

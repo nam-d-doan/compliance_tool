@@ -1,5 +1,6 @@
 import { badgeVariants } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useTerm } from "@/lib/i18n";
 import {
   getPriorityStyle,
   type PriorityLevel,
@@ -22,6 +23,7 @@ export function PriorityBadge({
 }: PriorityBadgeProps) {
   const style = getPriorityStyle(priority);
   const Icon = style.icon;
+  const label = useTerm()(style.label);
 
   const baseClasses =
     "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 font-medium whitespace-nowrap transition-colors [&>svg]:pointer-events-none";
@@ -48,7 +50,7 @@ export function PriorityBadge({
           )}
           aria-hidden="true"
         />
-        {style.label}
+        {label}
       </span>
     );
   }
@@ -61,7 +63,7 @@ export function PriorityBadge({
   return (
     <span className={cn(baseClasses, sizeClasses, variantClasses, className)}>
       <Icon className="shrink-0" aria-hidden="true" />
-      {style.label}
+      {label}
     </span>
   );
 }

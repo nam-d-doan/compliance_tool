@@ -25,6 +25,8 @@ import {
   getSummaryStats,
 } from "@/lib/obligation-helpers";
 import { getGreeting } from "@/lib/greeting";
+import { useL } from "@/lib/i18n";
+import { useLanguageStore } from "@/stores";
 
 /** Assignment statuses that represent live work for a department. */
 const ACTIVE_ASSIGNMENT_STATUSES = ["published", "acknowledged", "in_progress"];
@@ -91,6 +93,8 @@ export default function OwnerDashboardPage() {
     isLoading,
     error,
   } = useOwnerData();
+  const L = useL();
+  const lang = useLanguageStore((s) => s.lang);
 
   const obligationItems = useMemo(
     () => obligations.data?.items ?? [],
@@ -153,26 +157,26 @@ export default function OwnerDashboardPage() {
   const chainStages: ChainStage[] = [
     {
       key: "regulation",
-      label: "Regulations",
+      label: L("Regulations", "Văn bản"),
       icon: CHAIN_ICONS.regulation,
       color: CHAIN_COLORS.regulation,
       value: relevantRegulations.length,
       path: "/regulation",
       breakdown: [
         {
-          label: "Effective",
+          label: L("Effective", "Có hiệu lực"),
           value: relevantRegulations.filter((r) => r.status === "Effective")
             .length,
           color: "var(--success)",
         },
         {
-          label: "Superseded",
+          label: L("Superseded", "Bị thay thế"),
           value: relevantRegulations.filter((r) => r.status === "Superseded")
             .length,
           color: "var(--warning)",
         },
         {
-          label: "Expired",
+          label: L("Expired", "Hết hiệu lực"),
           value: relevantRegulations.filter((r) => r.status === "Expired")
             .length,
           color: "var(--neutral)",
@@ -181,24 +185,24 @@ export default function OwnerDashboardPage() {
     },
     {
       key: "assignment",
-      label: "Assignments",
+      label: L("Assignments", "Phân giao"),
       icon: CHAIN_ICONS.assignment,
       color: CHAIN_COLORS.assignment,
       value: assignmentItems.length,
       path: "/assignment",
       breakdown: [
         {
-          label: "active",
+          label: L("active", "đang xử lý"),
           value: activeAssignments.length,
           color: "var(--info)",
         },
         {
-          label: "not started",
+          label: L("not started", "chưa bắt đầu"),
           value: notStartedAssignments.length,
           color: "var(--neutral)",
         },
         {
-          label: "completed",
+          label: L("completed", "hoàn thành"),
           value: completedAssignments.length,
           color: "var(--success)",
         },
@@ -206,29 +210,29 @@ export default function OwnerDashboardPage() {
     },
     {
       key: "obligation",
-      label: "Obligations",
+      label: L("Obligations", "Nghĩa vụ"),
       icon: CHAIN_ICONS.obligation,
       color: CHAIN_COLORS.obligation,
       value: obligationStats.total,
       path: "/obligations",
       breakdown: [
         {
-          label: "need attention",
+          label: L("need attention", "cần xử lý"),
           value: obligationStats.needAttention,
           color: "var(--danger)",
         },
         {
-          label: "in progress",
+          label: L("in progress", "đang thực hiện"),
           value: obligationStats.inProgress,
           color: "var(--warning)",
         },
         {
-          label: "upcoming",
+          label: L("upcoming", "sắp tới"),
           value: obligationStats.upcoming,
           color: "var(--info)",
         },
         {
-          label: "completed",
+          label: L("completed", "hoàn thành"),
           value: obligationStats.completed,
           color: "var(--success)",
         },
@@ -236,25 +240,32 @@ export default function OwnerDashboardPage() {
     },
     {
       key: "cap",
-      label: "Corrective Actions",
+      label: L("Corrective Actions", "Hành động khắc phục"),
       icon: CHAIN_ICONS.cap,
       color: CHAIN_COLORS.cap,
       value: myCaps.length,
       path: "/cap",
       breakdown: [
-        { label: "open", value: capOpen, color: "var(--info)" },
+        { label: L("open", "đang mở"), value: capOpen, color: "var(--info)" },
         {
-          label: "pending approval",
+          label: L("pending approval", "chờ phê duyệt"),
           value: capPendingApproval,
           color: "var(--warning)",
         },
-        { label: "closed", value: capClosed, color: "var(--success)" },
+        { label: L("closed", "đã đóng"), value: capClosed, color: "var(--success)" },
       ],
     },
   ];
 
-  const aiSummary =
-    orphaned.length > 0
+  const aiSummary = lang === "vi"
+    ? orphaned.length > 0
+      ? `${orphaned.length} nghĩa vụ chưa có kế hoạch khắc phục. ${capOpen > 0 ? `Bạn đang có ${capOpen} kế hoạch triển khai — ưu tiên các rủi ro cao nhất tiếp theo.` : "Bắt đầu từ các rủi ro cao nhất."}`
+      : capOpen > 0
+        ? `${capOpen} kế hoạch khắc phục đang thực hiện. Tiếp tục đẩy để đóng.`
+        : activeAssignments.length > 0
+          ? `${activeAssignments.length} phân giao gửi tới ${deptName ?? "phòng của bạn"} đang chờ rà soát trước khi chuyển thành nghĩa vụ.`
+          : "Bạn đã xử lý hết — hiện không có việc gì cần chú ý."
+    : orphaned.length > 0
       ? `${orphaned.length} obligation${orphaned.length === 1 ? "" : "s"} still ${orphaned.length === 1 ? "needs" : "need"} a corrective action plan. ${capOpen > 0 ? `You already have ${capOpen} plan${capOpen === 1 ? "" : "s"} in motion — prioritize the highest-risk gaps next.` : "Start with the highest-risk gaps first."}`
       : capOpen > 0
         ? `${capOpen} action plan${capOpen === 1 ? "" : "s"} in progress across your obligations. Keep them moving toward close.`
@@ -281,11 +292,11 @@ export default function OwnerDashboardPage() {
     return (
       <div className="space-y-6">
         <PageHero
-          title={getGreeting(user?.name ?? "there")}
-          subtitle="Compliance workspace"
+          title={getGreeting(user?.name ?? "there", lang)}
+          subtitle={L("Compliance workspace", "Không gian tuân thủ")}
         />
         <ErrorState
-          title="Could not load your dashboard"
+          title={L("Could not load your dashboard", "Không tải được trang tổng quan")}
           message={error.message}
           onRetry={() => {
             obligations.refetch();
@@ -307,7 +318,7 @@ export default function OwnerDashboardPage() {
     >
       <div className="space-y-2">
         <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">
-          {getGreeting(user?.name ?? "there")}
+          {getGreeting(user?.name ?? "there", lang)}
         </h1>
         <AISummaryLine text={aiSummary} />
       </div>

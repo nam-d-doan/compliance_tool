@@ -19,8 +19,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Obligation } from "@/types";
+import { useL, useDateLocale } from "@/lib/i18n";
+import { useLanguageStore } from "@/stores";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAY_LABELS_VI = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
 interface DeadlineCalendarProps {
   obligations: Obligation[];
@@ -30,6 +33,9 @@ interface DeadlineCalendarProps {
  * what's due then. */
 export function DeadlineCalendar({ obligations }: DeadlineCalendarProps) {
   const navigate = useNavigate();
+  const L = useL();
+  const lang = useLanguageStore((s) => s.lang);
+  const dateLocale = useDateLocale();
   const [month, setMonth] = useState(() => new Date());
   const [selected, setSelected] = useState<Date | null>(() => new Date());
 
@@ -59,14 +65,14 @@ export function DeadlineCalendar({ obligations }: DeadlineCalendarProps) {
       <CardHeader className="flex shrink-0 flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-sm">
           <CalendarDays className="size-4" aria-hidden="true" />
-          {format(month, "MMMM yyyy")}
+          {format(month, "MMMM yyyy", { locale: dateLocale })}
         </CardTitle>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon-xs"
             onClick={() => setMonth((m) => subMonths(m, 1))}
-            aria-label="Previous month"
+            aria-label={L("Previous month", "Tháng trước")}
           >
             <ChevronLeft className="size-3.5" aria-hidden="true" />
           </Button>
@@ -74,7 +80,7 @@ export function DeadlineCalendar({ obligations }: DeadlineCalendarProps) {
             variant="ghost"
             size="icon-xs"
             onClick={() => setMonth((m) => addMonths(m, 1))}
-            aria-label="Next month"
+            aria-label={L("Next month", "Tháng sau")}
           >
             <ChevronRight className="size-3.5" aria-hidden="true" />
           </Button>
@@ -82,7 +88,7 @@ export function DeadlineCalendar({ obligations }: DeadlineCalendarProps) {
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col">
         <div className="grid flex-1 grid-cols-7 grid-rows-6 gap-1 text-center">
-          {WEEKDAY_LABELS.map((w, i) => (
+          {(lang === "vi" ? WEEKDAY_LABELS_VI : WEEKDAY_LABELS).map((w, i) => (
             <div
               key={i}
               className="pb-1 text-[10px] font-semibold text-muted-foreground"
@@ -133,11 +139,15 @@ export function DeadlineCalendar({ obligations }: DeadlineCalendarProps) {
 
         <div className="mt-4 flex shrink-0 flex-col space-y-1.5 border-t border-border pt-4">
           <p className="shrink-0 text-xs font-semibold text-muted-foreground">
-            {selected ? format(selected, "EEEE, MMM d") : "Select a day"}
+            {selected
+              ? format(selected, "EEEE, MMM d", { locale: dateLocale })
+              : L("Select a day", "Chọn một ngày")}
           </p>
           {selectedItems.length === 0 ? (
             <div className="flex min-h-[3rem] items-center">
-              <p className="text-xs text-muted-foreground">Nothing due.</p>
+              <p className="text-xs text-muted-foreground">
+                {L("Nothing due.", "Không có việc đến hạn.")}
+              </p>
             </div>
           ) : (
             <ul

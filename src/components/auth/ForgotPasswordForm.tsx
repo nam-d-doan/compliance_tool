@@ -11,17 +11,19 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Resolver } from "react-hook-form";
 import { Loader2, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { useAuthT, isAuthKey } from "@/constants/i18n/auth";
 
 const forgotPasswordSchema = z.object({
   email: z
     .string()
-    .min(1, "Email is required")
-    .email("Enter a valid email address"),
+    .min(1, "emailRequired")
+    .email("emailInvalid"),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export function ForgotPasswordForm() {
+  const { t } = useAuthT();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export function ForgotPasswordForm() {
       const message =
         error instanceof Error
           ? error.message
-          : "Something went wrong. Please try again.";
+          : t("genericError");
       setFormError(message);
     } finally {
       setIsLoading(false);
@@ -67,10 +69,10 @@ export function ForgotPasswordForm() {
     >
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Forgot password
+          {t("forgotTitle")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter your email and we&apos;ll send you a reset link.
+          {t("forgotSubtitle")}
         </p>
       </div>
 
@@ -89,10 +91,10 @@ export function ForgotPasswordForm() {
                 <CheckCircle2 className="size-6" />
               </div>
               <h2 className="text-lg font-medium text-foreground">
-                Check your email
+                {t("checkEmail")}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                If an account exists, a reset link has been sent.
+                {t("resetSent")}
               </p>
             </div>
 
@@ -101,7 +103,7 @@ export function ForgotPasswordForm() {
               className={cn(buttonVariants({ variant: "outline" }), "w-full")}
             >
               <ArrowLeft className="size-4" />
-              Back to sign in
+              {t("backToSignIn")}
             </Link>
           </motion.div>
         ) : (
@@ -120,7 +122,7 @@ export function ForgotPasswordForm() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("email")}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -136,7 +138,9 @@ export function ForgotPasswordForm() {
                 </div>
                 {errors.email && (
                   <p className="text-xs text-destructive">
-                    {errors.email.message}
+                    {isAuthKey(errors.email.message)
+                      ? t(errors.email.message)
+                      : errors.email.message}
                   </p>
                 )}
               </div>
@@ -145,10 +149,10 @@ export function ForgotPasswordForm() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 size-4 animate-spin" />
-                    Sending…
+                    {t("sending")}
                   </>
                 ) : (
-                  "Send reset link"
+                  t("sendResetLink")
                 )}
               </Button>
             </form>
@@ -159,7 +163,7 @@ export function ForgotPasswordForm() {
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ArrowLeft className="size-4" />
-                Back to sign in
+                {t("backToSignIn")}
               </Link>
             </div>
           </motion.div>

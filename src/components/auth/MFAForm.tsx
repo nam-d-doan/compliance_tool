@@ -12,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
+import { useAuthT, isAuthKey } from "@/constants/i18n/auth";
 
 const CODE_LENGTH = 6;
 
 const mfaSchema = z.object({
-  code: z.string().length(CODE_LENGTH, `Enter the ${CODE_LENGTH}-digit code`),
+  code: z.string().length(CODE_LENGTH, "codeLength"),
 });
 
 type MfaFormValues = z.infer<typeof mfaSchema>;
@@ -29,6 +30,7 @@ function formatCountdown(seconds: number): string {
 
 export function MFAForm() {
   const navigate = useNavigate();
+  const { t } = useAuthT();
   const { pendingUser, clearPendingUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -146,8 +148,8 @@ export function MFAForm() {
 
   const handleResend = () => {
     if (!canResend) return;
-    toast.success("Code resent", {
-      description: "A new verification code has been sent to your email.",
+    toast.success(t("codeResent"), {
+      description: t("codeResentDesc"),
     });
     setCountdown(30);
     setCanResend(false);
@@ -165,17 +167,17 @@ export function MFAForm() {
         const fakeToken = `fake-jwt-${pendingUser.id}-${Date.now()}`;
         login(pendingUser, fakeToken);
         clearPendingUser();
-        toast.success("Signed in successfully");
+        toast.success(t("signedIn"));
         navigate("/dashboard", { replace: true });
         return;
       }
 
-      setFormError("Verification failed. Please try again.");
+      setFormError(t("verifyFailed"));
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Verification failed. Please try again.";
+          : t("verifyFailed");
       setFormError(message);
     } finally {
       setIsLoading(false);
@@ -198,10 +200,10 @@ export function MFAForm() {
           <ShieldCheck className="size-6" />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Verify your identity
+          {t("verifyTitle")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter the 6-digit verification code sent to{" "}
+          {t("verifySentTo")}{" "}
           <span className="font-medium text-foreground">
             {pendingUser.email}
           </span>
@@ -218,7 +220,7 @@ export function MFAForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="mfa-code-0" className="sr-only">
-            Verification code
+            {t("verificationCode")}
           </Label>
           <Controller
             name="code"
@@ -241,7 +243,7 @@ export function MFAForm() {
                     onPaste={index === 0 ? handlePaste : undefined}
                     disabled={isLoading}
                     className="h-12 w-12 text-center text-xl font-semibold sm:h-14 sm:w-14"
-                    aria-label={`Digit ${index + 1} of ${CODE_LENGTH}`}
+                    aria-label={`${t("digitOf")} ${index + 1}/${CODE_LENGTH}`}
                   />
                 ))}
               </div>
@@ -249,7 +251,7 @@ export function MFAForm() {
           />
           {errors.code && (
             <p className="text-center text-xs text-destructive">
-              {errors.code.message}
+              {isAuthKey(errors.code.message) ? t(errors.code.message) : errors.code.message}
             </p>
           )}
         </div>
@@ -262,10 +264,10 @@ export function MFAForm() {
           {isLoading ? (
             <>
               <Loader2 className="mr-2 size-4 animate-spin" />
-              Verifying…
+              {t("verifying")}
             </>
           ) : (
-            "Verify"
+            t("verify")
           )}
         </Button>
       </form>
@@ -278,10 +280,12 @@ export function MFAForm() {
               onClick={handleResend}
               className="font-medium text-primary hover:underline"
             >
-              Resend code
+              {t("resendCode")}
             </button>
           ) : (
-            <span>Resend code in {formatCountdown(countdown)}</span>
+            <span>
+              {t("resendIn")} {formatCountdown(countdown)}
+            </span>
           )}
         </div>
 
@@ -291,7 +295,7 @@ export function MFAForm() {
           className="flex items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
-          Back to sign in
+          {t("backToSignIn")}
         </Link>
       </div>
     </motion.div>

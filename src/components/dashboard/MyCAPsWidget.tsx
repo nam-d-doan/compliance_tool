@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, EmptyState } from "@/components/common";
 import { cn } from "@/lib/utils";
 import type { CAP } from "@/types";
+import { useL, useDateLocale, type Bi } from "@/lib/i18n";
 
 type CapTab = "open" | "pending_approval" | "closed";
 
@@ -21,43 +22,50 @@ const MAX_ROWS = 5;
 
 const TABS: {
   id: CapTab;
-  label: string;
+  label: Bi;
   match: CAP["status"];
   icon: typeof PlayCircle;
   accent: string;
-  emptyTitle: string;
-  emptyDescription: string;
+  emptyTitle: Bi;
+  emptyDescription: Bi;
 }[] = [
   {
     id: "open",
-    label: "Open",
+    label: ["Open", "Đang mở"],
     match: "Open",
     icon: PlayCircle,
     accent: "data-[state=active]:bg-info-bg data-[state=active]:text-info",
-    emptyTitle: "No open action plans",
-    emptyDescription:
+    emptyTitle: ["No open action plans", "Chưa có kế hoạch đang mở"],
+    emptyDescription: [
       "Action plans you're working on will appear here. Create one from an obligation.",
+      "Kế hoạch bạn đang thực hiện sẽ hiện ở đây. Tạo kế hoạch từ một nghĩa vụ.",
+    ],
   },
   {
     id: "pending_approval",
-    label: "Pending Approval",
+    label: ["Pending Approval", "Chờ phê duyệt"],
     match: "Pending Approval",
     icon: Hourglass,
     accent:
       "data-[state=active]:bg-warning-bg data-[state=active]:text-warning",
-    emptyTitle: "Nothing awaiting approval",
-    emptyDescription:
+    emptyTitle: ["Nothing awaiting approval", "Không có mục chờ duyệt"],
+    emptyDescription: [
       "Submitted action plans pending compliance review show here.",
+      "Kế hoạch đã nộp chờ bộ phận tuân thủ rà soát sẽ hiện ở đây.",
+    ],
   },
   {
     id: "closed",
-    label: "Closed",
+    label: ["Closed", "Đã đóng"],
     icon: CheckCircle2,
     match: "Closed",
     accent:
       "data-[state=active]:bg-success-bg data-[state=active]:text-success",
-    emptyTitle: "No closed plans yet",
-    emptyDescription: "Completed and approved action plans are tracked here.",
+    emptyTitle: ["No closed plans yet", "Chưa có kế hoạch đã đóng"],
+    emptyDescription: [
+      "Completed and approved action plans are tracked here.",
+      "Kế hoạch đã hoàn thành và được duyệt được lưu ở đây.",
+    ],
   },
 ];
 
@@ -67,6 +75,8 @@ interface MyCAPsWidgetProps {
 
 export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
   const navigate = useNavigate();
+  const L = useL();
+  const dateLocale = useDateLocale();
   const [activeTab, setActiveTab] = useState<CapTab>("open");
 
   const buckets = useMemo(() => {
@@ -101,9 +111,11 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
       <div className="border-b border-border px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold tracking-tight">My CAPs</h2>
+            <h2 className="text-base font-semibold tracking-tight">
+              {L("My CAPs", "Kế hoạch khắc phục của tôi")}
+            </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Your corrective action plans across the remediation lifecycle.
+              {L("Your corrective action plans across the remediation lifecycle.", "Các kế hoạch khắc phục của bạn qua từng giai đoạn.")}
             </p>
           </div>
           <Button
@@ -112,7 +124,7 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
             className="text-muted-foreground"
             onClick={() => navigate("/cap/list")}
           >
-            View All
+            {L("View All", "Xem tất cả")}
             <ArrowRight className="size-3.5" aria-hidden="true" />
           </Button>
         </div>
@@ -139,7 +151,7 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
                   )}
                 >
                   <Icon className="size-3.5" aria-hidden="true" />
-                  <span>{tab.label}</span>
+                  <span>{L(...tab.label)}</span>
                   <span
                     className={cn(
                       "ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
@@ -170,8 +182,8 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
                   >
                     {items.length === 0 ? (
                       <EmptyState
-                        title={tab.emptyTitle}
-                        description={tab.emptyDescription}
+                        title={L(...tab.emptyTitle)}
+                        description={L(...tab.emptyDescription)}
                         className="border-0 bg-transparent py-10"
                       />
                     ) : (
@@ -188,7 +200,7 @@ export function MyCAPsWidget({ caps }: MyCAPsWidgetProps) {
                               {cap.title}
                             </span>
                             <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                              {format(new Date(cap.dueDate), "MMM d")}
+                              {format(new Date(cap.dueDate), "MMM d", { locale: dateLocale })}
                             </span>
                             <span className="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
                               {cap.progress}%

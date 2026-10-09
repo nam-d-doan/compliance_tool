@@ -5,10 +5,11 @@ import {
   ChartSkeleton,
 } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useLanguageStore } from "@/stores";
 import { getGreeting } from "@/lib/greeting";
 import { AISummaryLine } from "./AISummaryLine";
 import { cn } from "@/lib/utils";
+import { useL } from "@/lib/i18n";
 
 interface DashboardLayoutProps {
   /** Fallback shown as the AI summary line when the page has no dynamic
@@ -35,7 +36,9 @@ export function DashboardLayout({
   onRetry,
 }: DashboardLayoutProps) {
   const { user } = useAuthStore();
-  const greeting = getGreeting(user?.name ?? "there");
+  const lang = useLanguageStore((s) => s.lang);
+  const L = useL();
+  const greeting = getGreeting(user?.name ?? "there", lang);
 
   if (isLoading) {
     return (
@@ -65,7 +68,7 @@ export function DashboardLayout({
           <AISummaryLine text={subtitle ?? title} />
         </div>
         <ErrorState
-          title="Could not load dashboard"
+          title={L("Could not load dashboard", "Không tải được trang tổng quan")}
           message={error.message}
           onRetry={onRetry}
         />

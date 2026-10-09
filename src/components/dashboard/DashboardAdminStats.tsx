@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AuditLog, AIConfig } from "@/types";
+import { useL, useDateLocale } from "@/lib/i18n";
 
 interface DashboardAdminStatsProps {
   auditLogs?: AuditLog[];
@@ -56,10 +57,13 @@ const actionColors: Record<AuditLog["action"], string> = {
 export function DashboardAdminStats({
   auditLogs = [],
   aiConfig,
-  title = "Recent Audit Logs",
+  title,
   maxItems = 10,
   delay = 0,
 }: DashboardAdminStatsProps) {
+  const L = useL();
+  const dateLocale = useDateLocale();
+  title ??= L("Recent Audit Logs", "Nhật ký kiểm toán gần đây");
   const logs = auditLogs.slice(0, maxItems);
 
   return (
@@ -82,8 +86,8 @@ export function DashboardAdminStats({
         <CardContent>
           {logs.length === 0 ? (
             <EmptyState
-              title="No audit logs"
-              description="System activity will be recorded here."
+              title={L("No audit logs", "Chưa có nhật ký kiểm toán")}
+              description={L("System activity will be recorded here.", "Hoạt động hệ thống sẽ được ghi lại ở đây.")}
               className="border-0 bg-transparent"
             />
           ) : (
@@ -118,7 +122,7 @@ export function DashboardAdminStats({
                         dateTime={log.timestamp}
                         className="shrink-0 text-xs text-muted-foreground"
                       >
-                        {format(new Date(log.timestamp), "MMM d, HH:mm")}
+                        {format(new Date(log.timestamp), "MMM d, HH:mm", { locale: dateLocale })}
                       </time>
                     </li>
                   );
@@ -131,32 +135,32 @@ export function DashboardAdminStats({
             <div className="mt-4 rounded-lg border bg-muted/50 p-3">
               <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
                 <Database className="size-4" aria-hidden="true" />
-                System / AI Config
+                {L("System / AI Config", "Cấu hình hệ thống / AI")}
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>
                   <span className="block font-medium text-foreground">
-                    Model
+                    {L("Model", "Mô hình")}
                   </span>
                   {aiConfig.preferredModel}
                 </div>
                 <div>
                   <span className="block font-medium text-foreground">
-                    Confidence
+                    {L("Confidence", "Ngưỡng tin cậy")}
                   </span>
                   {aiConfig.confidenceThreshold}
                 </div>
                 <div>
                   <span className="block font-medium text-foreground">
-                    Auto Recommend
+                    {L("Auto Recommend", "Tự động gợi ý")}
                   </span>
-                  {aiConfig.autoRecommendation ? "On" : "Off"}
+                  {aiConfig.autoRecommendation ? L("On", "Bật") : L("Off", "Tắt")}
                 </div>
                 <div>
                   <span className="block font-medium text-foreground">
-                    Explainable AI
+                    {L("Explainable AI", "AI giải thích được")}
                   </span>
-                  {aiConfig.explainableAI ? "On" : "Off"}
+                  {aiConfig.explainableAI ? L("On", "Bật") : L("Off", "Tắt")}
                 </div>
               </div>
             </div>

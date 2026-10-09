@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ROUTES } from "@/constants/routes";
 import type { Assignment } from "@/types";
 import { cn } from "@/lib/utils";
+import { useL } from "@/lib/i18n";
 
 type Breakdown = "status" | "department" | "priority" | "review";
 
@@ -50,11 +51,13 @@ export function DashboardAssignmentsCard({
   description,
   assignments,
   linkTo = ROUTES.ASSIGNMENTS.LIST,
-  linkLabel = "View all assignments",
+  linkLabel,
   breakdown = "status",
   delay = 0,
   className,
 }: DashboardAssignmentsCardProps) {
+  const L = useL();
+  linkLabel ??= L("View all assignments", "Xem tất cả phân giao");
   const stats = useMemo(() => {
     const overdue = assignments.filter(isOverdue).length;
     const dueSoon = assignments.filter(isDueSoon).length;
@@ -75,7 +78,7 @@ export function DashboardAssignmentsCard({
         const names = a.assignedDepartmentNames?.length
           ? a.assignedDepartmentNames
           : a.assignedDepartmentIds;
-        keys = names.length ? names : ["Unassigned"];
+        keys = names.length ? names : [L("Unassigned", "Chưa giao")];
       } else if (breakdown === "priority") {
         keys = [a.priority];
       } else {
@@ -89,7 +92,7 @@ export function DashboardAssignmentsCard({
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
-  }, [assignments, breakdown]);
+  }, [assignments, breakdown, L]);
 
   // For review variant, filter to assignments waiting for acknowledgment/completion
   const reviewItems = useMemo(() => {
@@ -135,7 +138,7 @@ export function DashboardAssignmentsCard({
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-center">
               <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                 <AlertTriangle className="size-3" aria-hidden="true" />
-                Overdue
+                {L("Overdue", "Quá hạn")}
               </div>
               <div
                 className={cn(
@@ -151,7 +154,7 @@ export function DashboardAssignmentsCard({
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-center">
               <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                 <Clock className="size-3" aria-hidden="true" />
-                Due ≤7d
+                {L("Due ≤7d", "Hạn ≤7 ngày")}
               </div>
               <div
                 className={cn(
@@ -167,7 +170,7 @@ export function DashboardAssignmentsCard({
             <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-center">
               <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                 <AlertTriangle className="size-3" aria-hidden="true" />
-                Critical
+                {L("Critical", "Khẩn cấp")}
               </div>
               <div
                 className={cn(
@@ -186,7 +189,7 @@ export function DashboardAssignmentsCard({
           {breakdown === "review" ? (
             reviewItems.length === 0 ? (
               <EmptyState
-                title="Nothing awaiting review"
+                title={L("Nothing awaiting review", "Không có mục chờ rà soát")}
                 className="border-0 bg-transparent py-6"
               />
             ) : (
@@ -222,7 +225,7 @@ export function DashboardAssignmentsCard({
             )
           ) : breakdownRows.length === 0 ? (
             <EmptyState
-              title="No assignments"
+              title={L("No assignments", "Chưa có phân giao")}
               className="border-0 bg-transparent py-6"
             />
           ) : (

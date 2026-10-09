@@ -3,26 +3,34 @@ import { Sun, Moon, Sparkles, Lock } from "lucide-react";
 import { useThemeStore } from "@/stores";
 import { AuroraBackground } from "@/components/layout/AuroraBackground";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { LangToggle } from "@/components/layout/LangToggle";
+import { useAuthT } from "@/constants/i18n/auth";
+import { useCommonT } from "@/constants/i18n/common";
 
 const CHAIN_STEPS = [
-  { label: "Regulation", color: "#8bd9c2" },
-  { label: "Assignment", color: "#6e7bff" },
-  { label: "Obligation", color: "#ffe600" },
-  { label: "CAP", color: "#ff6a52" },
-];
+  { label: "chainRegulation", color: "#8bd9c2" },
+  { label: "chainAssignment", color: "#6e7bff" },
+  { label: "chainObligation", color: "#ffe600" },
+  { label: "chainCap", color: "#ff6a52" },
+] as const;
 
 export default function LoginPage() {
   const { theme, toggleTheme } = useThemeStore();
+  const { t } = useAuthT();
+  const { t: tc } = useCommonT();
 
   return (
     <div className="relative flex min-h-svh items-center justify-center p-6 sm:p-10">
       <AuroraBackground />
 
+      <div className="fixed top-6 right-6 z-10">
+        <LangToggle />
+      </div>
       <button
         type="button"
         onClick={toggleTheme}
-        aria-label="Toggle theme"
-        className="fixed top-6 right-6 z-10 flex size-[38px] items-center justify-center rounded-full border bg-[var(--nav-bg)] shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
+        aria-label={tc("toggleTheme")}
+        className="fixed top-6 right-[5.5rem] z-10 flex size-[38px] items-center justify-center rounded-full border bg-[var(--nav-bg)] shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
       >
         {theme === "dark" ? (
           <Moon className="size-[15px]" />
@@ -68,7 +76,7 @@ export default function LoginPage() {
               transition={{ duration: 0.5, delay: 0.05 }}
               className="font-heading text-[27px] leading-[1.35] font-bold tracking-tight"
             >
-              AI-powered compliance management for modern enterprises
+              {t("heroTitle")}
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 10 }}
@@ -76,8 +84,7 @@ export default function LoginPage() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="mt-4 mb-8 text-[13.5px] leading-relaxed text-[#b7b4c8]"
             >
-              Streamline obligations, corrective actions and regulatory
-              reporting in one intelligent platform.
+              {t("heroSubtitle")}
             </motion.p>
 
             <motion.div
@@ -103,7 +110,7 @@ export default function LoginPage() {
                       className="animate-chain-label-glow text-[9.5px]"
                       style={{ animationDelay: `${index * 1.2}s` }}
                     >
-                      {step.label}
+                      {t(step.label)}
                     </div>
                   </div>
                   {index < CHAIN_STEPS.length - 1 && (
@@ -126,9 +133,9 @@ export default function LoginPage() {
             >
               <Sparkles className="text-chart-accent mt-0.5 size-[15px] shrink-0" />
               <div>
-                <p className="text-[12.5px] font-bold">AI Copilot</p>
+                <p className="text-[12.5px] font-bold">{t("copilotTitle")}</p>
                 <p className="mt-0.5 text-[11.5px] text-[#b7b4c8]">
-                  Recommendations, summaries and risk insights on demand.
+                  {t("copilotDesc")}
                 </p>
               </div>
             </motion.div>
@@ -141,18 +148,17 @@ export default function LoginPage() {
               <Lock className="mt-0.5 size-[15px] shrink-0 text-[#b7b4c8]" />
               <div>
                 <p className="text-[12.5px] font-bold">
-                  Enterprise-grade security
+                  {t("securityTitle")}
                 </p>
                 <p className="mt-0.5 text-[11.5px] text-[#b7b4c8]">
-                  Role-based access, audit trails and MFA.
+                  {t("securityDesc")}
                 </p>
               </div>
             </motion.div>
           </div>
 
           <p className="text-[11px] text-[#8a889c]">
-            &copy; {new Date().getFullYear()} Compliance Tool Demo. All rights
-            reserved.
+            &copy; {new Date().getFullYear()} {t("copyright")}
           </p>
         </div>
 

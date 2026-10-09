@@ -3,6 +3,8 @@ import { useAuthStore } from "@/stores";
 import type { Role } from "@/types";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { UserCircle, Check } from "lucide-react";
+import { useTerm } from "@/lib/i18n";
+import { DEMO_USERS } from "@/constants/demo-users";
 
 const ROLES: Role[] = ["admin", "executive", "owner", "approver"];
 
@@ -19,32 +21,56 @@ const ROLE_DASHBOARD: Record<Role, string> = {
  * Bare list of role items meant to be rendered inside a parent menu's
  * submenu content (TopNav's "Switch role" submenu). Renders no trigger and
  * no nested menu of its own.
+ *
+ * Switching role signs in as that role's demo account (not just a role flip on
+ * the current user): views scoped by user id — e.g. LM "My Cases" — and the
+ * audit trail would otherwise show the previous person's data/name.
  */
 export function RoleSwitch() {
-  const { role, updateUser } = useAuthStore();
+  const { role, login } = useAuthStore();
+  const term = useTerm();
   const navigate = useNavigate();
   const currentRole = role ?? "approver";
 
   const handleRoleChange = (newRole: Role) => {
-    updateUser({ role: newRole });
+    const demoUser = DEMO_USERS.find((u) => u.role === newRole);
+    if (demoUser) {
+      // Same token shape as the mock auth handler / MFAForm.
+      login(
+        {
+          id: demoUser.id,
+          email: demoUser.email,
+          name: demoUser.name,
+          role: demoUser.role,
+          isActive: demoUser.isActive,
+          createdAt: demoUser.createdAt,
+          updatedAt: demoUser.updatedAt,
+        },
+        `fake-jwt-${demoUser.id}-${Date.now()}`,
+      );
+    }
     navigate(ROLE_DASHBOARD[newRole], { replace: true });
   };
 
   return (
     <>
-      {ROLES.map((r) => (
-        <DropdownMenuItem
-          key={r}
-          onClick={() => handleRoleChange(r)}
-          className="capitalize"
-        >
-          <UserCircle className="size-4 text-muted-foreground" />
-          <span className="flex-1">{r}</span>
-          {r === currentRole && (
-            <Check className="size-4 text-primary" aria-label="active role" />
-          )}
-        </DropdownMenuItem>
-      ))}
+      {ROLES.map((r) => {
+        const demoUser = DEMO_USERS.find((u) => u.role === r);
+        return (
+          <DropdownMenuItem key={r} onClick={() => handleRoleChange(r)}>
+            <UserCircle className="size-4 text-muted-foreground" />
+            <span className="flex flex-1 flex-col">
+              <span>{term(r)}</span>
+              {demoUser && (
+                <span className="text-xs text-muted-foreground">{demoUser.name}</span>
+              )}
+            </span>
+            {r === currentRole && (
+              <Check className="size-4 text-primary" aria-label="active role" />
+            )}
+          </DropdownMenuItem>
+        );
+      })}
     </>
   );
 }

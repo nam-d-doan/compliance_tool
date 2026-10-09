@@ -28,6 +28,7 @@ import {
 } from "@/lib/obligation-helpers";
 import { cn } from "@/lib/utils";
 import type { Obligation, CAP } from "@/types";
+import { useL, useDateLocale, type Bi } from "@/lib/i18n";
 
 interface MyObligationsWidgetProps {
   obligations: Obligation[];
@@ -38,48 +39,56 @@ const MAX_ROWS = 5;
 
 const TABS: {
   id: ObligationTab;
-  label: string;
+  label: Bi;
   icon: typeof AlertTriangle;
   accent: string;
-  emptyTitle: string;
-  emptyDescription: string;
+  emptyTitle: Bi;
+  emptyDescription: Bi;
 }[] = [
   {
     id: "need_attention",
-    label: "Need Attention",
+    label: ["Need Attention", "Cần xử lý"],
     icon: AlertTriangle,
     accent:
       "data-[state=active]:bg-red-500/10 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400",
-    emptyTitle: "Nothing needs attention",
-    emptyDescription:
+    emptyTitle: ["Nothing needs attention", "Không có việc cần xử lý"],
+    emptyDescription: [
       "No overdue, critical, or review-required obligations. You're all caught up.",
+      "Không có nghĩa vụ quá hạn, khẩn cấp hoặc cần rà soát.",
+    ],
   },
   {
     id: "upcoming",
-    label: "Upcoming",
+    label: ["Upcoming", "Sắp tới"],
     icon: CalendarClock,
     accent:
       "data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400",
-    emptyTitle: "No upcoming deadlines",
-    emptyDescription: "Nothing is due in the next 7 days.",
+    emptyTitle: ["No upcoming deadlines", "Không có hạn sắp tới"],
+    emptyDescription: ["Nothing is due in the next 7 days.", "Không có việc đến hạn trong 7 ngày tới."],
   },
   {
     id: "in_progress",
-    label: "In Progress",
+    label: ["In Progress", "Đang thực hiện"],
     icon: PlayCircle,
     accent:
       "data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400",
-    emptyTitle: "Nothing in progress",
-    emptyDescription: "Drafts and active obligations will appear here.",
+    emptyTitle: ["Nothing in progress", "Chưa có việc đang thực hiện"],
+    emptyDescription: [
+      "Drafts and active obligations will appear here.",
+      "Nghĩa vụ nháp và đang thực hiện sẽ hiện ở đây.",
+    ],
   },
   {
     id: "completed",
-    label: "Completed",
+    label: ["Completed", "Hoàn thành"],
     icon: CheckCircle2,
     accent:
       "data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400",
-    emptyTitle: "No completed obligations yet",
-    emptyDescription: "Finished obligations are tracked here for your record.",
+    emptyTitle: ["No completed obligations yet", "Chưa có nghĩa vụ hoàn thành"],
+    emptyDescription: [
+      "Finished obligations are tracked here for your record.",
+      "Nghĩa vụ đã hoàn thành được lưu ở đây.",
+    ],
   },
 ];
 
@@ -88,6 +97,8 @@ export function MyObligationsWidget({
   caps,
 }: MyObligationsWidgetProps) {
   const navigate = useNavigate();
+  const L = useL();
+  const dateLocale = useDateLocale();
   const [activeTab, setActiveTab] = useState<ObligationTab>("need_attention");
   const capMap = useMemo(() => buildObligationCapMap(caps), [caps]);
 
@@ -117,7 +128,7 @@ export function MyObligationsWidget({
       <div className="border-b border-border px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold tracking-tight">
-            My Obligations
+            {L("My Obligations", "Nghĩa vụ của tôi")}
           </h2>
           <Button
             variant="ghost"
@@ -125,12 +136,12 @@ export function MyObligationsWidget({
             className="text-muted-foreground"
             onClick={() => navigate("/obligations")}
           >
-            View All
+            {L("View All", "Xem tất cả")}
             <ArrowRight className="size-3.5" aria-hidden="true" />
           </Button>
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Prioritised by urgency and risk across everything you own.
+          {L("Prioritised by urgency and risk across everything you own.", "Sắp theo mức khẩn và rủi ro trên toàn bộ nghĩa vụ bạn phụ trách.")}
         </p>
       </div>
 
@@ -156,7 +167,7 @@ export function MyObligationsWidget({
                     )}
                   >
                     <Icon className="size-3.5" aria-hidden="true" />
-                    <span>{tab.label}</span>
+                    <span>{L(...tab.label)}</span>
                     <span
                       className={cn(
                         "ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
@@ -187,8 +198,8 @@ export function MyObligationsWidget({
                     >
                       {items.length === 0 ? (
                         <EmptyState
-                          title={tab.emptyTitle}
-                          description={tab.emptyDescription}
+                          title={L(...tab.emptyTitle)}
+                          description={L(...tab.emptyDescription)}
                           className="border-0 bg-transparent py-10"
                         />
                       ) : (
@@ -213,7 +224,7 @@ export function MyObligationsWidget({
                                   {obg.title}
                                 </span>
                                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                                  {format(new Date(obg.dueDate), "MMM d")}
+                                  {format(new Date(obg.dueDate), "MMM d", { locale: dateLocale })}
                                 </span>
                                 {showCreateCap && (
                                   <Tooltip>
@@ -228,7 +239,7 @@ export function MyObligationsWidget({
                                             `/cap/create?obligations=${obg.id}`,
                                           );
                                         }}
-                                        aria-label="Create CAP"
+                                        aria-label={L("Create CAP", "Tạo kế hoạch khắc phục")}
                                       >
                                         <Plus
                                           className="size-3.5"
@@ -237,7 +248,7 @@ export function MyObligationsWidget({
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent side="top">
-                                      Create CAP
+                                      {L("Create CAP", "Tạo kế hoạch khắc phục")}
                                     </TooltipContent>
                                   </Tooltip>
                                 )}

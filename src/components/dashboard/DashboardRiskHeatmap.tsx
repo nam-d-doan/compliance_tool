@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { RiskHeatmapData } from "@/types";
+import { useL, useTerm } from "@/lib/i18n";
 
 interface DashboardRiskHeatmapProps {
   data?: RiskHeatmapData;
@@ -54,9 +55,12 @@ function buildDefaultData(): RiskHeatmapData {
 
 export function DashboardRiskHeatmap({
   data,
-  title = "Risk Heatmap",
+  title,
   delay = 0,
 }: DashboardRiskHeatmapProps) {
+  const L = useL();
+  const term = useTerm();
+  title ??= L("Risk Heatmap", "Bản đồ nhiệt rủi ro");
   const heatmap = data ?? buildDefaultData();
 
   return (
@@ -76,14 +80,14 @@ export function DashboardRiskHeatmap({
               <thead>
                 <tr>
                   <th className="p-2 text-left font-medium text-muted-foreground">
-                    Business Unit
+                    {L("Business Unit", "Đơn vị")}
                   </th>
                   {heatmap.cols.map((col) => (
                     <th
                       key={col}
                       className="p-2 text-center font-medium text-muted-foreground"
                     >
-                      {col}
+                      {term(col)}
                     </th>
                   ))}
                 </tr>
@@ -91,7 +95,7 @@ export function DashboardRiskHeatmap({
               <tbody>
                 {heatmap.rows.map((row) => (
                   <tr key={row}>
-                    <td className="p-2 font-medium text-foreground">{row}</td>
+                    <td className="p-2 font-medium text-foreground">{term(row)}</td>
                     {heatmap.cols.map((col) => {
                       const cell = heatmap.cells.find(
                         (c) => c.row === row && c.col === col,
@@ -127,28 +131,28 @@ export function DashboardRiskHeatmap({
                 className="size-2 rounded-full bg-emerald-500"
                 aria-hidden="true"
               />{" "}
-              Low
+              {term("Low")}
             </span>
             <span className="inline-flex items-center gap-1">
               <span
                 className="size-2 rounded-full bg-amber-500"
                 aria-hidden="true"
               />{" "}
-              Medium
+              {term("Medium")}
             </span>
             <span className="inline-flex items-center gap-1">
               <span
                 className="size-2 rounded-full bg-orange-500"
                 aria-hidden="true"
               />{" "}
-              High
+              {term("High")}
             </span>
             <span className="inline-flex items-center gap-1">
               <span
                 className="size-2 rounded-full bg-red-500"
                 aria-hidden="true"
               />{" "}
-              Critical
+              {term("Critical")}
             </span>
           </div>
         </CardContent>

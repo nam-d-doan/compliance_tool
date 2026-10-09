@@ -37,6 +37,8 @@ import {
   useRegulationList,
 } from "@/hooks/queries";
 import { DEMO_TODAY } from "@/mocks/db";
+import { useL, useTerm } from "@/lib/i18n";
+import { getStatusStyle } from "@/constants/status";
 
 function useApproverData() {
   const dashboard = useDashboard("approver");
@@ -70,6 +72,8 @@ export default function ApproverDashboardPage() {
     isLoading,
     error,
   } = useApproverData();
+  const L = useL();
+  const term = useTerm();
 
   const complianceItems = useMemo(
     () => compliance.data?.items ?? [],
@@ -102,20 +106,20 @@ export default function ApproverDashboardPage() {
       counts.set(item.status, (counts.get(item.status) ?? 0) + 1);
     });
     return Array.from(counts.entries()).map(([name, value]) => ({
-      name,
+      name: term(getStatusStyle(name).label),
       value,
     }));
-  }, [complianceItems, capItems]);
+  }, [complianceItems, capItems, term]);
 
   const turnaroundData = useMemo(() => {
     const decided = complianceItems.filter((item) =>
       ["approved", "rejected", "returned"].includes(item.status),
     );
     const buckets = [
-      { name: "< 1 day", min: 0, max: 1, value: 0 },
-      { name: "1-3 days", min: 1, max: 3, value: 0 },
-      { name: "3-5 days", min: 3, max: 5, value: 0 },
-      { name: "> 5 days", min: 5, max: Infinity, value: 0 },
+      { name: L("< 1 day", "< 1 ngày"), min: 0, max: 1, value: 0 },
+      { name: L("1-3 days", "1-3 ngày"), min: 1, max: 3, value: 0 },
+      { name: L("3-5 days", "3-5 ngày"), min: 3, max: 5, value: 0 },
+      { name: L("> 5 days", "> 5 ngày"), min: 5, max: Infinity, value: 0 },
     ];
     decided.forEach((item) => {
       const days =
@@ -126,7 +130,7 @@ export default function ApproverDashboardPage() {
       if (bucket) bucket.value += 1;
     });
     return buckets.map(({ name, value }) => ({ name, value }));
-  }, [complianceItems]);
+  }, [complianceItems, L]);
 
   if (isLoading) {
     return (
@@ -147,7 +151,7 @@ export default function ApproverDashboardPage() {
   if (error) {
     return (
       <ErrorState
-        title="Could not load approver dashboard"
+        title={L("Could not load approver dashboard", "Không tải được trang tổng quan phê duyệt")}
         message={error.message}
         onRetry={() => {
           dashboard.refetch();
@@ -160,8 +164,11 @@ export default function ApproverDashboardPage() {
 
   return (
     <DashboardLayout
-      title="Compliance Approver Dashboard"
-      subtitle={`${pendingApprovalCount} item${pendingApprovalCount === 1 ? "" : "s"} ${pendingApprovalCount === 1 ? "is" : "are"} waiting on your approval right now.`}
+      title={L("Compliance Approver Dashboard", "Tổng quan phê duyệt tuân thủ")}
+      subtitle={L(
+        `${pendingApprovalCount} item${pendingApprovalCount === 1 ? "" : "s"} ${pendingApprovalCount === 1 ? "is" : "are"} waiting on your approval right now.`,
+        `${pendingApprovalCount} mục đang chờ bạn phê duyệt.`,
+      )}
       kpis={(dashboard.data?.kpis ?? []).map((kpi, index) => (
         <DashboardKpiCard key={kpi.id} kpi={kpi} index={index} />
       ))}
@@ -175,7 +182,7 @@ export default function ApproverDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="Approval Turnaround Time" delay={0.15}>
+        <DashboardChartCard title={L("Approval Turnaround Time", "Thời gian xử lý phê duyệt")} delay={0.15}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -198,11 +205,11 @@ export default function ApproverDashboardPage() {
       </div>
 
       <div className="md:col-span-1">
-        <DashboardChartCard title="Approval Status Breakdown" delay={0.2}>
+        <DashboardChartCard title={L("Approval Status Breakdown", "Phân bổ trạng thái phê duyệt")} delay={0.2}>
           <div className="h-64">
             {approvalStatusData.length === 0 ? (
               <EmptyState
-                title="No data"
+                title={L("No data", "Chưa có dữ liệu")}
                 className="h-full border-0 bg-transparent"
               />
             ) : (
@@ -243,18 +250,18 @@ export default function ApproverDashboardPage() {
       <div className="md:col-span-2">
         <DashboardActivityFeed
           items={dashboard.data?.activity}
-          title="Recent Approvals"
+          title={L("Recent Approvals", "Phê duyệt gần đây")}
           delay={0.25}
         />
       </div>
 
       <div className="md:col-span-2">
         <DashboardAssignmentsCard
-          title="Assignments for Review"
-          description="Waiting for acknowledgment or completion."
+          title={L("Assignments for Review", "Phân giao cần rà soát")}
+          description={L("Waiting for acknowledgment or completion.", "Đang chờ tiếp nhận hoặc hoàn thành.")}
           assignments={assignmentItems}
           breakdown="review"
-          linkLabel="Go to assignments"
+          linkLabel={L("Go to assignments", "Tới danh sách phân giao")}
           delay={0.3}
         />
       </div>

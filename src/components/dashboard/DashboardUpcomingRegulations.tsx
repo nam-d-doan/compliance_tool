@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, PriorityBadge } from "@/components/common";
 import type { Regulation } from "@/types";
+import { useL, useDateLocale } from "@/lib/i18n";
 
 const UPCOMING_WINDOW_DAYS = 90;
 
@@ -24,6 +25,8 @@ export function DashboardUpcomingRegulations({
   maxItems = 6,
   delay = 0,
 }: DashboardUpcomingRegulationsProps) {
+  const L = useL();
+  const dateLocale = useDateLocale();
   const items = useMemo(() => {
     const cutoff = new Date(now);
     cutoff.setDate(cutoff.getDate() + UPCOMING_WINDOW_DAYS);
@@ -53,7 +56,7 @@ export function DashboardUpcomingRegulations({
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <div className="flex items-center gap-2">
             <Gavel className="size-5 text-amber-500" aria-hidden="true" />
-            <CardTitle>Upcoming Regulatory Impact</CardTitle>
+            <CardTitle>{L("Upcoming Regulatory Impact", "Văn bản sắp có hiệu lực")}</CardTitle>
           </div>
           <Badge variant="secondary" className="h-5">
             {items.length}
@@ -62,8 +65,8 @@ export function DashboardUpcomingRegulations({
         <CardContent>
           {items.length === 0 ? (
             <EmptyState
-              title="No regulatory changes in the next 90 days"
-              description="Newly effective regulations will appear here as they approach."
+              title={L("No regulatory changes in the next 90 days", "Không có thay đổi pháp lý trong 90 ngày tới")}
+              description={L("Newly effective regulations will appear here as they approach.", "Văn bản sắp có hiệu lực sẽ hiện ở đây.")}
               className="border-0 bg-transparent"
             />
           ) : (
@@ -80,8 +83,8 @@ export function DashboardUpcomingRegulations({
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <PriorityBadge priority={reg.priority} size="sm" />
                       <span className="text-xs text-muted-foreground">
-                        Effective{" "}
-                        {format(new Date(reg.effectiveDate), "MMM d, yyyy")}
+                        {L("Effective", "Hiệu lực từ")}{" "}
+                        {format(new Date(reg.effectiveDate), "MMM d, yyyy", { locale: dateLocale })}
                       </span>
                     </div>
                   </div>

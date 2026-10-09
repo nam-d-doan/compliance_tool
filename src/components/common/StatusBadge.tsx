@@ -1,5 +1,6 @@
 import { badgeVariants } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useTerm } from "@/lib/i18n";
 import {
   getStatusStyle,
   type StatusSize,
@@ -28,6 +29,7 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const style = getStatusStyle(status, kind);
   const Icon = style.icon;
+  const label = useTerm()(style.label);
 
   const baseClasses =
     "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 font-medium whitespace-nowrap transition-colors [&>svg]:pointer-events-none";
@@ -54,7 +56,7 @@ export function StatusBadge({
           )}
           aria-hidden="true"
         />
-        {style.label}
+        {label}
       </span>
     );
   }
@@ -67,7 +69,7 @@ export function StatusBadge({
   return (
     <span className={cn(baseClasses, sizeClasses, variantClasses, className)}>
       <Icon className="shrink-0" aria-hidden="true" />
-      {style.label}
+      {label}
     </span>
   );
 }

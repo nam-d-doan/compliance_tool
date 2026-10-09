@@ -18,6 +18,7 @@ import {
 import { ChartSkeleton } from "@/components/common/Skeletons";
 import { EmptyState } from "@/components/common/EmptyState";
 import { cn } from "@/lib/utils";
+import { useCommonT } from "@/constants/i18n/common";
 import {
   CHART_COLORS,
   CHART_TOOLTIP_STYLE,
@@ -46,6 +47,7 @@ export function BarChartCard({
   loading,
   className,
 }: BarChartCardProps) {
+  const { t } = useCommonT();
   if (loading) {
     return <ChartSkeleton className={className} />;
   }
@@ -59,8 +61,8 @@ export function BarChartCard({
         </CardHeader>
         <CardContent>
           <EmptyState
-            title="No chart data"
-            description="There is not enough data to display this chart."
+            title={t("noChartData")}
+            description={t("noChartDataDesc")}
             className="min-h-[12rem]"
           />
         </CardContent>

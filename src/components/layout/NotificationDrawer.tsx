@@ -28,6 +28,8 @@ import {
   Loader2,
   type LucideIcon,
 } from "lucide-react";
+import { COMMON_I18N, useCommonT } from "@/constants/i18n/common";
+import { useDateLocale } from "@/lib/i18n";
 
 // API notification `type` -> icon + display label. Keeps the drawer driven by
 // real data instead of a hardcoded list, so the badge count and the drawer
@@ -58,6 +60,14 @@ const CATEGORY_STYLES: Record<string, string> = {
   System: "bg-info-bg text-info",
 };
 
+const TYPE_LABEL_KEY: Record<Notification["type"], keyof typeof COMMON_I18N> = {
+  approval: "notifTypeApproval",
+  compliance: "notifTypeCompliance",
+  cap: "notifTypeCap",
+  ai: "notifTypeAi",
+  system: "notifTypeSystem",
+};
+
 const DEFAULT_CATEGORY_STYLE = "bg-muted text-muted-foreground";
 
 type NotificationFilter = "all" | "unread";
@@ -71,6 +81,8 @@ export function NotificationDrawer({
   open,
   onOpenChange,
 }: NotificationDrawerProps) {
+  const { t } = useCommonT();
+  const dateLocale = useDateLocale();
   const [filter, setFilter] = useState<NotificationFilter>("all");
 
   // Fetch a generous page so the drawer lists everything the mock generates.
@@ -100,27 +112,27 @@ export function NotificationDrawer({
                 <Bell className="size-5" />
               </span>
               <SheetTitle className="text-base font-semibold tracking-tight">
-                Notifications
+                {t("notifications")}
               </SheetTitle>
             </div>
             <SheetDescription className="text-xs">
-              Stay updated on approvals, deadlines, and AI insights.
+              {t("notifSubtitle")}
             </SheetDescription>
           </div>
 
           {/* Segmented filter control */}
           <div
             role="group"
-            aria-label="Filter notifications"
+            aria-label={t("notifFilter")}
             className="inline-flex w-full items-center gap-1 rounded-lg bg-muted p-1"
           >
             <FilterTab
-              label="All"
+              label={t("notifAll")}
               active={filter === "all"}
               onClick={() => setFilter("all")}
             />
             <FilterTab
-              label="Unread"
+              label={t("notifUnread")}
               active={filter === "unread"}
               count={unreadCount}
               onClick={() => setFilter("unread")}
@@ -141,6 +153,7 @@ export function NotificationDrawer({
                 const Icon = TYPE_ICON[notification.type] ?? Bell;
                 const category =
                   TYPE_LABEL[notification.type] ?? notification.type;
+                const typeKey = TYPE_LABEL_KEY[notification.type];
                 return (
                   <motion.button
                     key={notification.id}
@@ -195,13 +208,13 @@ export function NotificationDrawer({
                         <span>
                           {formatDistanceToNow(
                             new Date(notification.createdAt),
-                            { addSuffix: true },
+                            { addSuffix: true, locale: dateLocale },
                           )}
                         </span>
                         <span aria-hidden="true" className="opacity-50">
                           &middot;
                         </span>
-                        <span>{category}</span>
+                        <span>{typeKey ? t(typeKey) : category}</span>
                       </div>
                     </div>
                   </motion.button>
@@ -219,7 +232,7 @@ export function NotificationDrawer({
             disabled={unreadCount === 0 || markAllMutation.isPending}
           >
             <Check className="size-4" />
-            Mark all as read
+            {t("notifMarkAll")}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -266,6 +279,7 @@ function FilterTab({
 }
 
 function EmptyState({ filter }: { filter: NotificationFilter }) {
+  const { t } = useCommonT();
   const isUnread = filter === "unread";
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
@@ -274,12 +288,10 @@ function EmptyState({ filter }: { filter: NotificationFilter }) {
       </span>
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">
-          {isUnread ? "You're all caught up" : "No notifications"}
+          {isUnread ? t("notifCaughtUp") : t("notifNone")}
         </p>
         <p className="text-xs text-muted-foreground">
-          {isUnread
-            ? "No unread items right now."
-            : "New activity will show up here."}
+          {isUnread ? t("notifNoUnread") : t("notifEmptyHint")}
         </p>
       </div>
     </div>
