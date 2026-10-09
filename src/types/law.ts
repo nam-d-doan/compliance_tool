@@ -72,6 +72,8 @@ export interface AdviceRequest extends BaseEntity {
   severity?: DeadlineSeverity;
 
   fileIds: string[];
+  /** Folder trên File Sharing Storage của yêu cầu — có cả folder rỗng. */
+  folders: string[];
   tags: string[];
 }
 
@@ -136,7 +138,11 @@ export interface LawEvent extends BaseEntity {
     | "alert_resolved"
     | "priority_assessed"
     | "message_posted"
-    | "opinion_approved";
+    | "opinion_approved"
+    | "file_attached"
+    | "file_moved"
+    | "file_deleted"
+    | "folder_created";
   userId: string;
   userName: string;
   description: string;

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileService } from "@/services";
-import { fileKeys, capKeys, nccKeys, lmKeys } from "@/hooks/query-keys";
+import { fileKeys, capKeys, nccKeys, lmKeys, lawKeys } from "@/hooks/query-keys";
 
 /** Upload a single file attachment. Invalidates file lists and the linked CAP/NCC/LM case. */
 export function useUploadFile() {
@@ -54,6 +54,11 @@ export function useUploadFile() {
           queryKey: lmKeys.detail(variables.caseId),
         });
       }
+      if (variables.requestId) {
+        queryClient.invalidateQueries({
+          queryKey: lawKeys.detail(variables.requestId),
+        });
+      }
     },
   });
 }
@@ -65,8 +70,9 @@ export function useMoveFileToFolder() {
       FileService.moveToFolder(id, folderPath),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fileKeys.all });
-      // Chuyển folder ghi CaseEvent — tab Lịch sử phải tải lại.
+      // Chuyển folder ghi CaseEvent/LawEvent — tab Lịch sử phải tải lại.
       queryClient.invalidateQueries({ queryKey: lmKeys.all });
+      queryClient.invalidateQueries({ queryKey: lawKeys.all });
     },
   });
 }
@@ -81,6 +87,7 @@ export function useDeleteFile() {
       queryClient.invalidateQueries({ queryKey: capKeys.all });
       queryClient.invalidateQueries({ queryKey: nccKeys.all });
       queryClient.invalidateQueries({ queryKey: lmKeys.all });
+      queryClient.invalidateQueries({ queryKey: lawKeys.all });
     },
   });
 }

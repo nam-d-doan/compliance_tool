@@ -11,6 +11,7 @@ import {
   type MockResolverContext,
 } from "./utils";
 import { recordEvent } from "./lm_handlers";
+import { recordEvent as recordLawEvent } from "./law_handlers";
 import type {
   FileAttachment,
   CAP,
@@ -147,6 +148,8 @@ export async function handleUploadFile({ request }: { request: Request }) {
     const adviceRequest = findById(db.adviceRequests, requestId);
     if (adviceRequest && !adviceRequest.fileIds.includes(attachment.id)) {
       adviceRequest.fileIds = [...adviceRequest.fileIds, attachment.id];
+      recordLawEvent(db, requestId, "file_attached", uploadedById, uploadedBy,
+        `Uploaded "${attachment.name}"`, undefined, folderPath, attachment.name);
     }
   }
 
@@ -169,6 +172,10 @@ export async function handleUpdateFile({ params, request }: MockResolverContext)
     recordEvent(db, file.caseId, "file_moved", actor.id, actor.name,
       `Moved "${file.name}"`, prevFolder, file.folderPath, file.name);
   }
+  if (file.requestId && actor && prevFolder !== file.folderPath) {
+    recordLawEvent(db, file.requestId, "file_moved", actor.id, actor.name,
+      `Moved "${file.name}"`, prevFolder, file.folderPath, file.name);
+  }
   return jsonResponse(file);
 }
 
@@ -183,6 +190,16 @@ export async function handleDeleteFile({ params, request }: MockResolverContext)
   if (removed.caseId && actor) {
     recordEvent(db, removed.caseId, "file_deleted", actor.id, actor.name,
       `Deleted "${removed.name}"`, removed.folderPath, undefined, removed.name);
+  }
+  if (removed.requestId && actor) {
+    recordLawEvent(db, removed.requestId, "file_deleted", actor.id, actor.name,
+      `Deleted "${removed.name}"`, removed.folderPath, undefined, removed.name);
+  }
+  // Gỡ khỏi AdviceRequest.fileIds — tin nhắn/ý kiến cũ giữ id nhưng UI tự bỏ qua file không còn.
+  for (const r of db.adviceRequests) {
+    if (r.fileIds.includes(removed.id)) {
+      r.fileIds = r.fileIds.filter((id) => id !== removed.id);
+    }
   }
 
   // Revoke any object URL we minted to avoid leaking blob memory.

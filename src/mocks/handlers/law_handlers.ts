@@ -31,6 +31,7 @@ import {
 } from "./utils";
 import { hasPermission } from "@/constants/rbac";
 import {
+  LAW_DEFAULT_FOLDERS,
   LAW_PRIORITY_SLA_DAYS,
   LAW_PRIORITY_WORKLOAD_WEIGHT,
   LAW_PRIORITY_TIERS,
@@ -58,7 +59,7 @@ import type {
 } from "@/types";
 import type { MockDb } from "@/mocks/db";
 
-function recordEvent(
+export function recordEvent(
   db: MockDb,
   requestId: string,
   type: LawEvent["type"],
@@ -123,8 +124,8 @@ function evaluateLawAlerts(db: MockDb): void {
         db,
         r.id,
         "alert_flagged",
-        r.ownerId,
-        r.ownerName,
+        "system",
+        "System",
         "System flagged this request's SLA deadline",
       );
       db.notifications.unshift({
@@ -272,6 +273,7 @@ export async function handleCreateLawRequest({
     revisedCount: 0,
     alertStatus: "pending",
     fileIds: [],
+    folders: [...LAW_DEFAULT_FOLDERS],
     tags: body.tags ?? [],
     createdAt: now,
     updatedAt: now,
@@ -318,8 +320,18 @@ export async function handleUpdateLawRequest({
     next.ownerName = findById(db.users, body.ownerId)?.name ?? next.ownerName;
   }
 
-  const actorId = next.ownerId || prev.ownerId;
-  const actorName = next.ownerName || prev.ownerName;
+  const actor = actorFromRequest(request, db.users) ?? { id: prev.ownerId, name: prev.ownerName };
+  const actorId = actor.id;
+  const actorName = actor.name;
+
+  // Folder mới (tab Tài liệu) ghi event riêng, không gộp vào "updated".
+  if (body.folders) {
+    body.folders
+      .filter((f) => !(prev.folders ?? []).includes(f))
+      .forEach((f) =>
+        recordEvent(db, prev.id, "folder_created", actorId, actorName, `Created folder "${f}"`, undefined, undefined, f),
+      );
+  }
 
   if (body.status && body.status !== prev.status) {
     if (body.status === "completed") {
@@ -361,7 +373,11 @@ export async function handleUpdateLawRequest({
     (k) =>
       k !== "status" &&
       k !== "ownerId" &&
-      (body as Record<string, unknown>)[k] !== undefined,
+      k !== "folders" &&
+      (body as Record<string, unknown>)[k] !== undefined &&
+      // Form sửa gửi lại MỌI field — chỉ ghi field giá trị thật sự đổi.
+      JSON.stringify((body as Record<string, unknown>)[k]) !==
+        JSON.stringify((prev as unknown as Record<string, unknown>)[k]),
   );
   if (changedKeys.length > 0) {
     recordEvent(
@@ -371,6 +387,9 @@ export async function handleUpdateLawRequest({
       actorId,
       actorName,
       `Updated: ${changedKeys.join(", ")}`,
+      undefined,
+      undefined,
+      changedKeys.join(", "),
     );
   }
 
@@ -385,7 +404,7 @@ export async function handleDeleteLawRequest({ params }: MockResolverContext) {
   const index = db.adviceRequests.findIndex((r) => r.id === id);
   if (index === -1) return notFound("Request not found");
   db.adviceRequests.splice(index, 1);
-  db.lawEvents = db.lawEvents.filter((e) => e.requestId !== id);
+  // Audit trail KHÔNG xoá theo yêu cầu — vẫn tra lại được sau khi xoá.
   db.lawMessages = db.lawMessages.filter((m) => m.requestId !== id);
   db.advisoryOpinions = db.advisoryOpinions.filter((o) => o.requestId !== id);
   return jsonResponse({ success: true });
@@ -449,8 +468,9 @@ export async function handleRemindLawRequest({
     fromUserId?: string;
     fromUserName?: string;
   };
-  const fromUserId = body.fromUserId || req.managerId || req.ownerId;
-  const fromUserName = body.fromUserName || req.managerName || req.ownerName;
+  const fromToken = actorFromRequest(request, db.users);
+  const fromUserId = fromToken?.id || body.fromUserId || req.managerId || req.ownerId;
+  const fromUserName = fromToken?.name || body.fromUserName || req.managerName || req.ownerName;
 
   const now = new Date().toISOString();
   db.notifications.unshift({
@@ -474,6 +494,9 @@ export async function handleRemindLawRequest({
     fromUserId,
     fromUserName,
     `Reminder sent to ${req.ownerName}`,
+    undefined,
+    undefined,
+    req.ownerName,
   );
 
   return jsonResponse({ success: true });
@@ -501,8 +524,9 @@ export async function handleUpdateLawAlert({
   if (!req) return notFound("Request not found");
 
   const body = (await request.json()) as UpdateLawAlertInput;
-  const actorId = body.actorId || req.ownerId;
-  const actorName = body.actorName || req.ownerName;
+  const fromToken = actorFromRequest(request, db.users);
+  const actorId = fromToken?.id || body.actorId || req.ownerId;
+  const actorName = fromToken?.name || body.actorName || req.ownerName;
   const now = new Date().toISOString();
 
   if (body.action === "acknowledge") {

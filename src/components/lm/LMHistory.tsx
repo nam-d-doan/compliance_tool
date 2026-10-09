@@ -4,21 +4,12 @@
  *    `type` + `subject` (KHÔNG dịch `description` — đó là fallback tiếng
  *    Anh cho event cũ thiếu subject), người thực hiện, ngày + giờ, và khối
  *    "trước → sau" khi event có fromValue/toValue.
- * 2. Lọc theo nhóm thao tác và theo người thực hiện (lọc phía client — 1
- *    hồ sơ chỉ vài chục event).
+ * 2. Hiển thị + lọc dùng chung: components/common/AuditTimeline.tsx (LAW
+ *    cũng dùng). File này chỉ giữ phần dựng câu theo loại CaseEvent.
  */
-import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
-import {
-  AlertTriangle,
-  ArrowRight,
-  Briefcase,
-  FileText,
-  ListTodo,
-  Route,
-  type LucideIcon,
-} from "lucide-react";
-import { EmptyState } from "@/components/common";
+import { AlertTriangle, Briefcase, FileText, ListTodo, Route } from "lucide-react";
+import { AuditTimeline, type TimelineGroup } from "@/components/common/AuditTimeline";
 import { useLanguageStore } from "@/stores";
 import { useL, useDateLocale } from "@/lib/i18n";
 import {
@@ -27,7 +18,6 @@ import {
   type CaseStage,
   type DeadlineType,
 } from "@/constants/lm";
-import { cn } from "@/lib/utils";
 import type { CaseEvent } from "@/types";
 
 type Group = "case" | "progress" | "alert" | "task" | "docs";
@@ -56,7 +46,7 @@ const GROUP_OF: Record<CaseEvent["type"], Group> = {
   folder_created: "docs",
 };
 
-const GROUP_STYLE: Record<Group, { icon: LucideIcon; className: string; label: [string, string] }> = {
+const GROUP_STYLE: Record<Group, TimelineGroup> = {
   case: { icon: Briefcase, className: "bg-info-bg text-info", label: ["Case", "Hồ sơ"] },
   progress: { icon: Route, className: "bg-success-bg text-success", label: ["Milestones & stage", "Mốc & giai đoạn"] },
   alert: { icon: AlertTriangle, className: "bg-danger-bg text-danger", label: ["Alerts", "Cảnh báo"] },
@@ -86,17 +76,6 @@ export function LMHistory({ events }: { events: CaseEvent[] }) {
   const L = useL();
   const lang = useLanguageStore((s) => s.lang);
   const dateLocale = useDateLocale();
-  const [group, setGroup] = useState<Group | "all">("all");
-  const [person, setPerson] = useState("all");
-
-  const people = useMemo(
-    () => Array.from(new Set(events.map((e) => e.userName))).sort(),
-    [events],
-  );
-  const visible = events.filter(
-    (e) => (group === "all" || GROUP_OF[e.type] === group) && (person === "all" || e.userName === person),
-  );
-
   const stage = (v?: string) => (v ? getStageLabel(v as CaseStage, lang) : "");
   const folder = (v?: string) => v || L("Unfiled", "Chưa phân loại");
   const value = (v: string) =>
@@ -174,79 +153,22 @@ export function LMHistory({ events }: { events: CaseEvent[] }) {
     return { text: e.description };
   };
 
-  const selectClass =
-    "h-8 rounded-lg border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={group}
-          onChange={(e) => setGroup(e.target.value as Group | "all")}
-          aria-label={L("Filter by action type", "Lọc theo loại thao tác")}
-          className={selectClass}
-        >
-          <option value="all">{L("All actions", "Tất cả thao tác")}</option>
-          {(Object.keys(GROUP_STYLE) as Group[]).map((g) => (
-            <option key={g} value={g}>
-              {L(...GROUP_STYLE[g].label)}
-            </option>
-          ))}
-        </select>
-        <select
-          value={person}
-          onChange={(e) => setPerson(e.target.value)}
-          aria-label={L("Filter by person", "Lọc theo người thực hiện")}
-          className={selectClass}
-        >
-          <option value="all">{L("Everyone", "Mọi người")}</option>
-          {people.map((p) => (
-            <option key={p} value={p}>
-              {p === "System" ? L("System", "Hệ thống") : p}
-            </option>
-          ))}
-        </select>
-        <span className="text-xs text-muted-foreground">
-          {visible.length}/{events.length} {L("entries", "bản ghi")}
-        </span>
-      </div>
-
-      {visible.length === 0 ? (
-        <EmptyState title={L("No matching entries", "Không có bản ghi phù hợp")} className="border-0 bg-transparent" />
-      ) : (
-        <ol className="relative space-y-4 border-l border-border pl-6">
-          {visible.map((e) => {
-            const style = GROUP_STYLE[GROUP_OF[e.type] ?? "case"];
-            const Icon = style.icon;
-            const d = describe(e);
-            return (
-              <li key={e.id} className="relative">
-                <span
-                  className={cn(
-                    "absolute -left-[37px] flex size-6 items-center justify-center rounded-full ring-4 ring-card",
-                    style.className,
-                  )}
-                  aria-hidden="true"
-                >
-                  <Icon className="size-3.5" />
-                </span>
-                <p className="text-sm">{d.text}</p>
-                {(d.from || d.to) && (
-                  <p className="mt-1 inline-flex flex-wrap items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs">
-                    <span className="text-muted-foreground line-through">{d.from || "—"}</span>
-                    <ArrowRight className="size-3 text-muted-foreground" aria-hidden="true" />
-                    <span className="font-medium">{d.to || "—"}</span>
-                  </p>
-                )}
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {e.userId === "system" ? L("System", "Hệ thống") : e.userName} ·{" "}
-                  {format(parseISO(e.createdAt), "dd/MM/yyyy HH:mm", { locale: dateLocale })}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-    </div>
+    <AuditTimeline
+      groups={GROUP_STYLE}
+      entries={events.map((e) => {
+        const d = describe(e);
+        return {
+          id: e.id,
+          group: GROUP_OF[e.type] ?? "case",
+          text: d.text,
+          from: d.from,
+          to: d.to,
+          userName: e.userName,
+          isSystem: e.userId === "system",
+          createdAt: e.createdAt,
+        };
+      })}
+    />
   );
 }

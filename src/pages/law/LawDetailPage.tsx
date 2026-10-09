@@ -1,6 +1,7 @@
 /**
  * PSEUDO CODE (ngắn gọn)
- * 1. 3 tab — Flow tư vấn (mặc định) / Thông tin & SLA / Lịch sử.
+ * 1. 4 tab — Flow tư vấn (mặc định) / Thông tin & SLA / Tài liệu / Lịch sử.
+ *    Tài liệu + Lịch sử dùng chung khung với LM (DocumentStorage, AuditTimeline).
  * 2. Review GĐ1 — trạng thái chỉ đổi qua flow 4 bước (components/law/
  *    LawWorkflow.tsx): đánh giá ưu tiên → trao đổi → nộp & duyệt ý kiến.
  *    Bỏ 2 nút đổi trạng thái thủ công cũ (Start Processing/Mark Completed).
@@ -29,9 +30,12 @@ import {
 } from "@/components/common";
 import { LawForm, type LawFormValues } from "@/components/law/LawForm";
 import { LawWorkflow } from "@/components/law/LawWorkflow";
+import { LawDocuments } from "@/components/law/LawDocuments";
+import { LawHistory } from "@/components/law/LawHistory";
 import {
   useLawRequestDetail,
   useLawRequestEvents,
+  useFilesByIds,
   useLawWorkload,
 } from "@/hooks/queries";
 import {
@@ -80,6 +84,7 @@ export default function LawDetailPage() {
 
   const detail = useLawRequestDetail(id);
   const events = useLawRequestEvents(id);
+  const files = useFilesByIds(detail.data?.fileIds ?? []);
   const update = useUpdateLawRequest(id);
   const remind = useRemindLawRequest(id);
   const updateAlert = useUpdateLawAlert(id);
@@ -199,6 +204,7 @@ export default function LawDetailPage() {
         <TabsList>
           <TabsTrigger value="flow">{L("Advisory Flow", "Flow tư vấn")}</TabsTrigger>
           <TabsTrigger value="overview">{L("Details & SLA", "Thông tin & SLA")}</TabsTrigger>
+          <TabsTrigger value="files">{L("Documents", "Tài liệu")}</TabsTrigger>
           <TabsTrigger value="history">{L("History", "Lịch sử")}</TabsTrigger>
         </TabsList>
 
@@ -276,6 +282,17 @@ export default function LawDetailPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="files">
+          <Card>
+            <CardHeader>
+              <CardTitle>{L("Documents", "Tài liệu")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LawDocuments request={item} files={files.data?.items ?? []} canEdit={canUpdate} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="history">
           <Card>
             <CardHeader>
@@ -287,16 +304,7 @@ export default function LawDetailPage() {
               ) : (events.data ?? []).length === 0 ? (
                 <EmptyState title={L("No history yet", "Chưa có lịch sử")} />
               ) : (
-                <ul className="space-y-3">
-                  {(events.data ?? []).map((e) => (
-                    <li key={e.id} className="border-l-2 border-border pl-3">
-                      <p className="text-sm">{e.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {e.userName} · {fmtD(e.createdAt)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                <LawHistory events={events.data ?? []} />
               )}
             </CardContent>
           </Card>

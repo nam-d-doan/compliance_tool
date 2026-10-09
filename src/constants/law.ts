@@ -10,6 +10,13 @@
 import type { ComponentType } from "react";
 import { Gavel, ShieldAlert, Building2, type LucideIcon } from "lucide-react";
 
+/** Folder mặc định trên File Sharing Storage của 1 yêu cầu tư vấn — bám các
+ * bước flow. Tên folder là dữ liệu (tiếng Việt), không dịch theo giao diện. */
+export const LAW_DEFAULT_FOLDERS = ["01. Yêu cầu", "02. Trao đổi", "03. Ý kiến tư vấn"];
+
+/** Gốc thư mục mô phỏng — demo CHƯA nối storage thật (giống LM_FILE_SHARE_ROOT). */
+export const LAW_FILE_SHARE_ROOT = "\\fileshare.bank.local\PhapChe\LAW";
+
 export const LAW_PRIORITY_TIERS = [
   "law_mandatory",
   "sbv_regulation",

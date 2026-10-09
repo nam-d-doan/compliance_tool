@@ -55,6 +55,7 @@ import {
   LAW_REQUEST_STATUSES,
   LAW_PRIORITY_SLA_DAYS,
   LAW_PRIORITY_ALERT_DAYS_BEFORE,
+  LAW_DEFAULT_FOLDERS,
 } from "@/constants/law";
 import {
   CURATED_REGULATIONS,
@@ -1350,6 +1351,7 @@ function generateAdviceRequests(
     const fileIds: string[] = [];
 
     event(requestId, "created", contact, submittedAt, `Created request ${code}`, { subject: code });
+    fileIds.push(attach(requestId, "Phieu-yeu-cau-tu-van.pdf", "01. Yêu cầu", contact, submittedAt));
 
     let assessedAt: Date | undefined;
     let completedAt: Date | undefined;
@@ -1481,6 +1483,7 @@ function generateAdviceRequests(
       resolvedAt: completedAt ? iso(completedAt) : undefined,
       resolvedById: completedAt ? manager.id : undefined,
       fileIds,
+      folders: [...LAW_DEFAULT_FOLDERS],
       tags: [],
       createdAt: iso(submittedAt),
       updatedAt: iso(updatedAt),
