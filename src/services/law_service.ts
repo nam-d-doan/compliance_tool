@@ -7,6 +7,8 @@ import type {
   CreateLawMessageInput,
   SubmitAdvisoryOpinionInput,
   ReviewAdvisoryOpinionInput,
+  SaveOpinionToKnowledgeBaseInput,
+  KnowledgeBaseKind,
   AdviceRequest,
   LawRequestFilter,
   CreateAdviceRequestInput,
@@ -75,6 +77,9 @@ export const LawService = {
   submitOpinion(id: string, data: SubmitAdvisoryOpinionInput) {
     return apiPost<AdvisoryOpinion>(API_ENDPOINTS.LAW_REQUEST_OPINIONS(id), data);
   },
+  saveToKnowledgeBase(id: string, data: SaveOpinionToKnowledgeBaseInput) {
+    return apiPost<KnowledgeBaseEntry>(API_ENDPOINTS.LAW_SAVE_TO_KB(id), data);
+  },
   reviewOpinion(opinionId: string, data: ReviewAdvisoryOpinionInput) {
     return apiPost<AdvisoryOpinion>(API_ENDPOINTS.LAW_OPINION_REVIEW(opinionId), data);
   },
@@ -90,8 +95,11 @@ export const LawService = {
   updateAlert(id: string, data: UpdateLawAlertInput) {
     return apiPut<AdviceRequest>(API_ENDPOINTS.LAW_ALERT_UPDATE(id), data);
   },
-  kbList(search?: string) {
-    const qs = search ? `?search=${encodeURIComponent(search)}` : "";
+  kbList(search?: string, kind?: KnowledgeBaseKind) {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (kind) params.set("kind", kind);
+    const qs = params.toString() ? `?${params}` : "";
     return apiGet<KnowledgeBaseEntry[]>(`${API_ENDPOINTS.LAW_KB_LIST}${qs}`);
   },
   kbCreate(data: CreateKnowledgeBaseEntryInput) {

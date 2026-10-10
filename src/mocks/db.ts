@@ -1579,6 +1579,54 @@ const KNOWLEDGE_BASE_SEED: {
     summary: "Template opinion on the mandatory cooling-off period for new consumer lending regulations.",
   },
   {
+    title: "Standard opinion: corporate credit contract review",
+    category: "Lending",
+    tags: ["credit contract", "corporate lending", "loan agreement"],
+    summary: "Template opinion for reviewing a standard credit contract for corporate clients: mandatory terms, security, events of default.",
+  },
+  {
+    title: "Standard opinion: bank guarantee terms and guarantor rights",
+    category: "Guarantee",
+    tags: ["guarantee", "guarantor", "bank guarantee"],
+    summary: "Template opinion on validity conditions of a bank guarantee and the rights and obligations of the guarantor.",
+  },
+  {
+    title: "Standard opinion: handling group-3+ bad debt",
+    category: "Debt Recovery",
+    tags: ["bad debt", "npl", "debt classification"],
+    summary: "Template opinion on the handling procedure, provisioning and recovery options for debts classified group 3 and above.",
+  },
+  {
+    title: "Standard opinion: corporate bond issuance conditions",
+    category: "Capital Markets",
+    tags: ["bond", "issuance", "disclosure"],
+    summary: "Template opinion on eligibility conditions and disclosure obligations for a corporate bond issuance.",
+  },
+  {
+    title: "Standard opinion: debt assignment to a third party",
+    category: "Debt Recovery",
+    tags: ["debt assignment", "debt transfer", "notice"],
+    summary: "Template opinion on legal conditions, borrower notice and documentation for assigning a debt to a third party.",
+  },
+  {
+    title: "Standard opinion: mortgage notarization and registration",
+    category: "Collateral",
+    tags: ["mortgage", "notarization", "secured transaction registration"],
+    summary: "Template opinion on notarization and secured-transaction registration steps for a mortgage contract.",
+  },
+  {
+    title: "Standard opinion: KYC policy update after SBV amendments",
+    category: "KYC",
+    tags: ["kyc", "sbv", "customer due diligence"],
+    summary: "Template opinion on updating the internal KYC policy to reflect amended SBV customer due diligence rules.",
+  },
+  {
+    title: "Standard opinion: overdue interest in standard loan contracts",
+    category: "Lending",
+    tags: ["overdue interest", "interest rate", "penalty interest"],
+    summary: "Template opinion on the permissible overdue and penalty interest rates in standard loan contracts.",
+  },
+  {
     title: "Internal precedent: debt assignment notice requirements",
     category: "Debt Recovery",
     tags: ["debt assignment", "notice", "precedent"],
@@ -1593,13 +1641,44 @@ function generateKnowledgeBase(users: UserProfile[]): KnowledgeBaseEntry[] {
   return KNOWLEDGE_BASE_SEED.map((seed, i) => {
     const author = owners[i % owners.length];
     const createdAt = subDays(today, (KNOWLEDGE_BASE_SEED.length - i) * 5);
+    // Review GĐ4 — mẫu ý kiến có khung đủ dùng để soạn nhanh; án lệ ghi
+    // tình tiết / kết quả / bài học. Phân loại theo tiền tố tiêu đề seed.
+    const kind = seed.title.startsWith("Internal precedent") ? "precedent" : "template";
+    const content =
+      kind === "template"
+        ? [
+            "1. ISSUE",
+            seed.summary,
+            "",
+            "2. LEGAL BASIS",
+            `- Applicable law and SBV circulars on ${seed.category.toLowerCase()} (cite article and clause).`,
+            "- Relevant internal policy of the Bank.",
+            "",
+            "3. OPINION",
+            "- [State whether the proposed approach is permissible and under which conditions.]",
+            "",
+            "4. RECOMMENDATIONS",
+            "- [Required clause amendments / controls / approvals.]",
+            "- [Residual risks and who owns them.]",
+          ].join("\n")
+        : [
+            "FACTS",
+            seed.summary,
+            "",
+            "OUTCOME",
+            "- [How the matter was resolved and on what legal basis.]",
+            "",
+            "LESSONS / WHEN TO REUSE",
+            `- Check this precedent for new ${seed.category.toLowerCase()} requests with similar facts.`,
+          ].join("\n");
     return {
       id: uid("kb"),
+      kind,
       title: seed.title,
       category: seed.category,
       tags: seed.tags,
       summary: seed.summary,
-      content: `${seed.summary} (full guidance content — demo placeholder.)`,
+      content,
       authorId: author.id,
       authorName: author.name,
       createdAt: iso(createdAt),

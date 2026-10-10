@@ -105,8 +105,8 @@ export const lawKeys = {
   opinions: (id: string) => [...lawKeys.detail(id), "opinions"] as const,
   workload: () => [...lawKeys.all, "workload"] as const,
   slaRules: () => [...lawKeys.all, "sla-rules"] as const,
-  knowledgeBase: (search?: string) =>
-    [...lawKeys.all, "knowledge-base", search ?? ""] as const,
+  knowledgeBase: (search?: string, kind?: string) =>
+    [...lawKeys.all, "knowledge-base", search ?? "", kind ?? "all"] as const,
   dashboard: () => [...lawKeys.all, "dashboard"] as const,
 };
 

@@ -23,6 +23,7 @@ const GROUP_OF: Record<LawEvent["type"], Group> = {
   opinion_issued: "flow",
   revision_requested: "flow",
   opinion_approved: "flow",
+  saved_to_knowledge_base: "flow",
   message_posted: "discussion",
   alert_flagged: "alert",
   alert_acknowledged: "alert",
@@ -89,6 +90,14 @@ export function LawHistory({ events }: { events: LawEvent[] }) {
       case "opinion_approved":
         if (!s) break;
         return { text: L(`Approved opinion v${s}`, `Duyệt ý kiến tư vấn bản v${s}`) };
+      case "saved_to_knowledge_base":
+        if (!s) break;
+        return {
+          text:
+            e.toValue === "precedent"
+              ? L(`Saved as an internal precedent: ${q}`, `Lưu thành án lệ nội bộ: ${q}`)
+              : L(`Saved as an opinion template: ${q}`, `Lưu thành mẫu ý kiến: ${q}`),
+        };
       case "message_posted":
         return {
           text:

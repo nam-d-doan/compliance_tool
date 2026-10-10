@@ -11,6 +11,7 @@ import type {
   CreateLawMessageInput,
   SubmitAdvisoryOpinionInput,
   ReviewAdvisoryOpinionInput,
+  SaveOpinionToKnowledgeBaseInput,
 } from "@/types";
 
 /** Mọi bước của flow tư vấn đổi status/ghi lịch sử — làm mới đủ các nơi hiển thị. */
@@ -116,6 +117,16 @@ export function useUpdateLawAlert(requestId: string) {
 }
 
 /** GĐ3 — thêm 1 mục vào kho tri thức. */
+/** Review GĐ4 — "Lưu thành mẫu" từ ý kiến đã duyệt của yêu cầu đã đóng. */
+export function useSaveOpinionToKnowledgeBase(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SaveOpinionToKnowledgeBaseInput) => LawService.saveToKnowledgeBase(requestId, data),
+    // lawKeys.all gồm cả kho tri thức lẫn lịch sử của yêu cầu.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: lawKeys.all }),
+  });
+}
+
 export function useCreateKnowledgeBaseEntry() {
   const queryClient = useQueryClient();
   return useMutation({

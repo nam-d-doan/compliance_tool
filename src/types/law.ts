@@ -142,7 +142,8 @@ export interface LawEvent extends BaseEntity {
     | "file_attached"
     | "file_moved"
     | "file_deleted"
-    | "folder_created";
+    | "folder_created"
+    | "saved_to_knowledge_base";
   userId: string;
   userName: string;
   description: string;
@@ -211,6 +212,9 @@ export interface CreateAdviceRequestInput {
  * thể — kho dùng chung, tránh tư vấn trùng lặp.
  */
 export interface KnowledgeBaseEntry extends BaseEntity {
+  /** Review GĐ4 — "template" = mẫu ý kiến tư vấn (dùng để soạn nhanh),
+   * "precedent" = án lệ / tiền lệ nội bộ (tham khảo). */
+  kind: KnowledgeBaseKind;
   title: string;
   category: string;
   tags: string[];
@@ -218,9 +222,15 @@ export interface KnowledgeBaseEntry extends BaseEntity {
   content: string;
   authorId: string;
   authorName: string;
+  /** Có khi mục được lưu từ 1 yêu cầu đã đóng ("Lưu thành mẫu"). */
+  sourceRequestId?: string;
+  sourceRequestCode?: string;
 }
 
+export type KnowledgeBaseKind = "template" | "precedent";
+
 export interface CreateKnowledgeBaseEntryInput {
+  kind?: KnowledgeBaseKind;
   title: string;
   category: string;
   tags?: string[];
@@ -228,6 +238,14 @@ export interface CreateKnowledgeBaseEntryInput {
   content: string;
   authorId?: string;
   authorName?: string;
+}
+
+/** Review GĐ4 — lưu ý kiến đã duyệt của 1 yêu cầu đã đóng vào kho tri thức. */
+export interface SaveOpinionToKnowledgeBaseInput {
+  kind: KnowledgeBaseKind;
+  title: string;
+  category?: string;
+  tags?: string[];
 }
 
 /**

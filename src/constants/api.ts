@@ -135,6 +135,7 @@ export const API_ENDPOINTS = {
   LAW_REQUEST_MESSAGES: (id: string) => `/api/law/requests/${id}/messages`,
   LAW_REQUEST_OPINIONS: (id: string) => `/api/law/requests/${id}/opinions`,
   LAW_OPINION_REVIEW: (id: string) => `/api/law/opinions/${id}/review`,
+  LAW_SAVE_TO_KB: (id: string) => `/api/law/requests/${id}/save-to-kb`,
   LAW_WORKLOAD: "/api/law/workload",
   LAW_REQUEST_REMIND: (id: string) => `/api/law/requests/${id}/remind`,
   LAW_SLA_RULES: "/api/law/sla-rules",

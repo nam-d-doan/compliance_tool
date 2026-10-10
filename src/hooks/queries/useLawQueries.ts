@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LawService } from "@/services";
 import { lawKeys } from "@/hooks/query-keys";
 import { useAuthStore } from "@/stores";
-import type { LawRequestFilter } from "@/types";
+import type { KnowledgeBaseKind, LawRequestFilter } from "@/types";
 
 export function useLawRequestList(
   filters: LawRequestFilter = {},
@@ -64,10 +64,10 @@ export function useLawWorkload() {
 }
 
 /** GĐ3 — Khai thác Tri thức: danh sách + tìm theo từ khóa. */
-export function useKnowledgeBaseList(search?: string) {
+export function useKnowledgeBaseList(search?: string, kind?: KnowledgeBaseKind) {
   return useQuery({
-    queryKey: lawKeys.knowledgeBase(search),
-    queryFn: () => LawService.kbList(search),
+    queryKey: lawKeys.knowledgeBase(search, kind),
+    queryFn: () => LawService.kbList(search, kind),
     staleTime: 5 * 60 * 1000,
   });
 }

@@ -25,10 +25,12 @@ import { useCreateKnowledgeBaseEntry } from "@/hooks/mutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { toast } from "sonner";
-import type { CreateKnowledgeBaseEntryInput } from "@/types";
+import type { CreateKnowledgeBaseEntryInput, KnowledgeBaseKind } from "@/types";
+import { cn } from "@/lib/utils";
 import { useL, useDateLocale } from "@/lib/i18n";
 
 interface KbFormValues {
+  kind: KnowledgeBaseKind;
   title: string;
   category: string;
   tags: string;
@@ -45,8 +47,21 @@ export default function LawKnowledgeBasePage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [kind, setKind] = useState<KnowledgeBaseKind | "all">("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  const { data, isPending, isError, refetch } = useKnowledgeBaseList(search);
+  const { data, isPending, isError, refetch } = useKnowledgeBaseList(search, kind === "all" ? undefined : kind);
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const KIND_LABEL: Record<KnowledgeBaseKind, string> = {
+    template: L("Opinion template", "Mẫu ý kiến tư vấn"),
+    precedent: L("Internal precedent", "Án lệ nội bộ"),
+  };
   const create = useCreateKnowledgeBaseEntry();
 
   const {
@@ -55,7 +70,7 @@ export default function LawKnowledgeBasePage() {
     reset,
     formState: { errors },
   } = useForm<KbFormValues>({
-    defaultValues: { title: "", category: "", tags: "", summary: "", content: "" },
+    defaultValues: { kind: "template", title: "", category: "", tags: "", summary: "", content: "" },
   });
 
   const applySearch = (e: React.FormEvent) => {
@@ -65,6 +80,7 @@ export default function LawKnowledgeBasePage() {
 
   const onCreate = (values: KbFormValues) => {
     const payload: CreateKnowledgeBaseEntryInput = {
+      kind: values.kind,
       title: values.title,
       category: values.category || "Other",
       summary: values.summary,
@@ -127,6 +143,20 @@ export default function LawKnowledgeBasePage() {
         </Button>
       </form>
 
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={L("Filter by type", "Lọc theo loại")}>
+        {(["all", "template", "precedent"] as const).map((k) => (
+          <Button
+            key={k}
+            size="sm"
+            variant={kind === k ? "secondary" : "ghost"}
+            aria-pressed={kind === k}
+            onClick={() => setKind(k)}
+          >
+            {k === "all" ? L("All", "Tất cả") : KIND_LABEL[k]}
+          </Button>
+        ))}
+      </div>
+
       {isPending ? (
         <DetailSkeleton />
       ) : isError ? (
@@ -140,11 +170,29 @@ export default function LawKnowledgeBasePage() {
         <div className="grid gap-4 md:grid-cols-2">
           {(data ?? []).map((entry) => (
             <Card key={entry.id}>
-              <CardHeader>
+              <CardHeader className="space-y-1.5">
+                <span
+                  className={cn(
+                    "w-fit rounded-full px-2 py-0.5 text-[11px] font-medium",
+                    entry.kind === "template" ? "bg-info-bg text-info" : "bg-warning-bg text-warning",
+                  )}
+                >
+                  {KIND_LABEL[entry.kind]}
+                </span>
                 <CardTitle className="text-base">{entry.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-sm text-muted-foreground">{entry.summary}</p>
+                {expanded.has(entry.id) && (
+                  <pre className="whitespace-pre-wrap rounded-md bg-muted p-2.5 font-sans text-xs">{entry.content}</pre>
+                )}
+                <button
+                  type="button"
+                  onClick={() => toggle(entry.id)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {expanded.has(entry.id) ? L("Hide content", "Ẩn nội dung") : L("Show full content", "Xem nội dung đầy đủ")}
+                </button>
                 <div className="flex flex-wrap gap-1">
                   <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                     {entry.category}
@@ -160,6 +208,8 @@ export default function LawKnowledgeBasePage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {entry.authorName} · {format(parseISO(entry.createdAt), "MMM d, yyyy", { locale: dateLocale })}
+                  {entry.sourceRequestCode &&
+                    ` · ${L("saved from", "lưu từ")} ${entry.sourceRequestCode}`}
                 </p>
               </CardContent>
             </Card>
@@ -173,6 +223,17 @@ export default function LawKnowledgeBasePage() {
             <SheetTitle>{L("New Knowledge Base Entry", "Thêm mục vào Kho tri thức")}</SheetTitle>
           </SheetHeader>
           <form onSubmit={handleSubmit(onCreate)} className="space-y-4 px-4 pb-4">
+            <div className="space-y-2">
+              <Label htmlFor="kb-kind">{L("Type", "Loại")}</Label>
+              <select
+                id="kb-kind"
+                {...register("kind")}
+                className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+              >
+                <option value="template">{KIND_LABEL.template}</option>
+                <option value="precedent">{KIND_LABEL.precedent}</option>
+              </select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="kb-title">{L("Title", "Tiêu đề")}</Label>
               <Input

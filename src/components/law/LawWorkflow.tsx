@@ -7,6 +7,8 @@
  *    cách" Pháp chế hoặc Đơn vị yêu cầu (MÔ PHỎNG — chưa có vai trò đơn vị).
  * 4. Đóng: các phiên bản ý kiến tư vấn (mới nhất trên). Chuyên viên phụ
  *    trách soạn & nộp; Manager duyệt (đóng yêu cầu) hoặc trả lại kèm lý do.
+ *    Review GĐ4 "Tư vấn mẫu": khi soạn có 3 mẫu gợi ý (lib/knowledge-match),
+ *    bấm để điền sẵn; yêu cầu đã đóng có "Lưu thành mẫu" (server ẩn danh).
  * Mỗi bước có trạng thái: xong (✓) / đang làm (số + viền màu) / chưa tới.
  * Quyền ở UI chỉ để ẩn nút — server kiểm lại theo người đăng nhập.
  */
@@ -14,6 +16,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import {
   ArrowRight,
+  BookOpen,
   Check,
   Download,
   FileText,
@@ -25,13 +28,17 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { rankKnowledgeEntries } from "@/lib/knowledge-match";
 import { DetailSkeleton } from "@/components/common";
-import { useLawMessages, useLawOpinions, useFilesByIds } from "@/hooks/queries";
+import { Link } from "react-router-dom";
+import { useLawMessages, useLawOpinions, useFilesByIds, useKnowledgeBaseList } from "@/hooks/queries";
 import {
   useAssessLawRequest,
   usePostLawMessage,
   useSubmitLawOpinion,
   useReviewLawOpinion,
+  useSaveOpinionToKnowledgeBase,
 } from "@/hooks/mutations";
 import { useUploadFile } from "@/hooks/mutations/useFileMutations";
 import { useAuthStore } from "@/stores";
@@ -41,7 +48,7 @@ import { useL, useTerm, useDateLocale } from "@/lib/i18n";
 import { makeDemoPdf, isMockFileUrl } from "@/lib/demo-pdf";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { AdviceRequest, AdvisoryOpinion, FileAttachment, LawMessage } from "@/types";
+import type { AdviceRequest, AdvisoryOpinion, FileAttachment, KnowledgeBaseKind, LawMessage } from "@/types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -469,6 +476,10 @@ function ClosureStep({ request }: { request: AdviceRequest }) {
         />
       ))}
 
+      {request.status === "completed" && (isOwner || hasPermission(role, "law:approve")) && (
+        <SaveToKnowledgeBase request={request} />
+      )}
+
       {request.status === "in_progress" && !canSubmit && (
         <p className="text-sm text-muted-foreground">
           {L(
@@ -506,6 +517,7 @@ function ClosureStep({ request }: { request: AdviceRequest }) {
               ? L(`Draft opinion v${list[0].version + 1}`, `Soạn ý kiến bản v${list[0].version + 1}`)
               : L("Draft the advisory opinion", "Soạn ý kiến tư vấn")}
           </p>
+          <TemplateSuggestions request={request} hasDraft={Boolean(draft.trim())} onUse={setDraft} />
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -523,6 +535,144 @@ function ClosureStep({ request }: { request: AdviceRequest }) {
         </form>
       )}
     </div>
+  );
+}
+
+function TemplateSuggestions({
+  request,
+  hasDraft,
+  onUse,
+}: {
+  request: AdviceRequest;
+  hasDraft: boolean;
+  onUse: (content: string) => void;
+}) {
+  const L = useL();
+  const kb = useKnowledgeBaseList(undefined, "template");
+  const suggestions = rankKnowledgeEntries(
+    `${request.title} ${request.description ?? ""} ${request.tags.join(" ")}`,
+    kb.data ?? [],
+  );
+  if (suggestions.length === 0) return null;
+  return (
+    <div className="rounded-lg bg-muted/50 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs font-medium">
+          <BookOpen className="size-3.5 text-primary" aria-hidden="true" />
+          {L("Suggested opinion templates", "Mẫu ý kiến gợi ý")}
+        </p>
+        <Link to="/law/knowledge-base" className="text-xs text-primary hover:underline">
+          {L("Open knowledge base", "Mở kho tri thức")}
+        </Link>
+      </div>
+      <ul className="space-y-1.5">
+        {suggestions.map((t) => (
+          <li key={t.id} className="flex items-start justify-between gap-2 rounded-md bg-background p-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium">{t.title}</p>
+              <p className="line-clamp-2 text-[11px] text-muted-foreground">{t.summary}</p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              onClick={() => {
+                onUse(t.content);
+                toast.success(L("Template inserted — edit before submitting", "Đã điền mẫu — chỉnh sửa trước khi nộp"));
+              }}
+            >
+              {hasDraft ? L("Replace with this", "Thay bằng mẫu này") : L("Use template", "Dùng mẫu này")}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SaveToKnowledgeBase({ request }: { request: AdviceRequest }) {
+  const L = useL();
+  const kb = useKnowledgeBaseList();
+  const save = useSaveOpinionToKnowledgeBase(request.id);
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(request.title);
+  const [kind, setKind] = useState<KnowledgeBaseKind>("template");
+  const [category, setCategory] = useState("");
+
+  const saved = kb.data?.find((e) => e.sourceRequestId === request.id);
+  if (kb.isPending) return null;
+  if (saved) {
+    return (
+      <p className="flex flex-wrap items-center gap-1.5 rounded-md bg-success-bg px-2 py-1 text-xs text-success">
+        <BookOpen className="size-3.5" aria-hidden="true" />
+        {saved.kind === "template"
+          ? L("Saved as an opinion template:", "Đã lưu thành mẫu ý kiến:")
+          : L("Saved as an internal precedent:", "Đã lưu thành án lệ nội bộ:")}{" "}
+        <Link to="/law/knowledge-base" className="font-medium underline">
+          {saved.title}
+        </Link>
+      </p>
+    );
+  }
+  if (!open) {
+    return (
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <BookOpen className="size-3.5" aria-hidden="true" />
+        {L("Save to knowledge base", "Lưu thành mẫu")}
+      </Button>
+    );
+  }
+  return (
+    <form
+      className="space-y-2 rounded-lg border border-border p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate(
+          { kind, title: title.trim(), category: category.trim() || undefined },
+          {
+            onSuccess: () => {
+              toast.success(L("Saved to the knowledge base", "Đã lưu vào kho tri thức"));
+              setOpen(false);
+            },
+            onError: (err) => toast.error(err.message || L("Save failed", "Lưu thất bại")),
+          },
+        );
+      }}
+    >
+      <p className="text-sm font-medium">{L("Save the approved opinion to the knowledge base", "Lưu ý kiến đã duyệt vào kho tri thức")}</p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground sm:col-span-2">
+          {L("Title", "Tiêu đề")}
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-9" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {L("Type", "Loại")}
+          <select value={kind} onChange={(e) => setKind(e.target.value as KnowledgeBaseKind)} className={selectClass}>
+            <option value="template">{L("Opinion template", "Mẫu ý kiến tư vấn")}</option>
+            <option value="precedent">{L("Internal precedent", "Án lệ nội bộ")}</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground sm:col-span-3">
+          {L("Category (optional)", "Danh mục (không bắt buộc)")}
+          <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder={L("e.g. Lending", "VD: Lending")} className="h-9" />
+        </label>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {L(
+          "The requesting unit's name and the request code are removed from the saved text.",
+          "Tên đơn vị yêu cầu và mã yêu cầu sẽ được ẩn trong nội dung lưu.",
+        )}
+      </p>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={save.isPending || !title.trim()}>
+          {L("Save", "Lưu")}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          {L("Cancel", "Huỷ")}
+        </Button>
+      </div>
+    </form>
   );
 }
 

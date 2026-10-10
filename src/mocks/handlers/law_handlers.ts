@@ -49,6 +49,7 @@ import type {
   LawDashboardSummary,
   KnowledgeBaseEntry,
   CreateKnowledgeBaseEntryInput,
+  SaveOpinionToKnowledgeBaseInput,
   AdvisoryOpinion,
   LawMessage,
   AssessLawRequestInput,
@@ -605,6 +606,9 @@ export async function handleGetKnowledgeBaseList({
   const db = getDb();
   let items = [...db.knowledgeBase];
 
+  if (q.kind) {
+    items = items.filter((e) => e.kind === q.kind);
+  }
   if (q.search) {
     const term = q.search.toLowerCase();
     items = items.filter(
@@ -630,10 +634,11 @@ export async function handleCreateKnowledgeBaseEntry({
   }
   const db = getDb();
   const now = new Date().toISOString();
-  const author = body.authorId ? findById(db.users, body.authorId) : undefined;
+  const author = currentUser(db, request) ?? (body.authorId ? findById(db.users, body.authorId) : undefined);
 
   const entry: KnowledgeBaseEntry = {
     id: `kb-${crypto.randomUUID()}`,
+    kind: body.kind === "precedent" ? "precedent" : "template",
     title: body.title,
     category: body.category ?? "Other",
     tags: body.tags ?? [],
@@ -645,6 +650,60 @@ export async function handleCreateKnowledgeBaseEntry({
     updatedAt: now,
   };
   db.knowledgeBase.unshift(entry);
+  return jsonResponse(entry, 201);
+}
+
+/**
+ * PSEUDO CODE — review GĐ4 "Tư vấn mẫu": lưu ý kiến đã duyệt thành mục kho
+ * 1. Chỉ yêu cầu đã đóng, có bản ý kiến "approved". Người lưu: chuyên viên
+ *    phụ trách hoặc Manager (law:approve).
+ * 2. Ẩn danh: thay tên đơn vị yêu cầu và mã yêu cầu trong nội dung — mẫu
+ *    dùng chung toàn pháp chế, không lộ ai đã hỏi.
+ * 3. Mỗi yêu cầu lưu 1 lần (chặn trùng theo sourceRequestId). Ghi LawEvent.
+ */
+export async function handleSaveOpinionToKnowledgeBase({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  const user = currentUser(db, request);
+  if (!user || (user.id !== item.ownerId && !hasPermission(user.role, "law:approve"))) {
+    return forbidden("Only the assigned specialist or a manager can save this opinion");
+  }
+  if (item.status !== "completed") return badRequest("Only closed requests can be saved to the knowledge base");
+  const approved = db.advisoryOpinions
+    .filter((o) => o.requestId === item.id && o.status === "approved")
+    .sort((a, b) => b.version - a.version)[0];
+  if (!approved) return badRequest("This request has no approved opinion");
+  if (db.knowledgeBase.some((e) => e.sourceRequestId === item.id)) {
+    return badRequest("This request has already been saved to the knowledge base");
+  }
+  const body = (await request.json()) as SaveOpinionToKnowledgeBaseInput;
+  const title = body.title?.trim();
+  if (!title) return badRequest("title is required");
+
+  const anonymize = (text: string) =>
+    text.split(item.requestingUnitName).join("[Requesting unit]").split(item.code).join("[Request]");
+  const content = anonymize(approved.content);
+  const now = new Date().toISOString();
+  const entry: KnowledgeBaseEntry = {
+    id: `kb-${crypto.randomUUID()}`,
+    kind: body.kind === "precedent" ? "precedent" : "template",
+    title: anonymize(title),
+    category: body.category?.trim() || "Other",
+    tags: body.tags ?? [],
+    summary: content.length > 180 ? `${content.slice(0, 177)}...` : content,
+    content,
+    authorId: user.id,
+    authorName: user.name,
+    sourceRequestId: item.id,
+    sourceRequestCode: item.code,
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.knowledgeBase.unshift(entry);
+  recordEvent(db, item.id, "saved_to_knowledge_base", user.id, user.name,
+    `Saved advisory opinion v${approved.version} to the knowledge base`, undefined, entry.kind, entry.title);
   return jsonResponse(entry, 201);
 }
 
@@ -1000,6 +1059,7 @@ export const lawHandlers = [
   http.get("/api/law/requests/:id/opinions", handleGetLawOpinions),
   http.post("/api/law/requests/:id/opinions", handleSubmitLawOpinion),
   http.post("/api/law/opinions/:id/review", handleReviewLawOpinion),
+  http.post("/api/law/requests/:id/save-to-kb", handleSaveOpinionToKnowledgeBase),
   http.put("/api/law/requests/:id/alert", handleUpdateLawAlert),
   http.get("/api/law/requests/:id", handleGetLawRequestDetail),
   http.put("/api/law/requests/:id", handleUpdateLawRequest),
