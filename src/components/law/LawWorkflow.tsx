@@ -602,6 +602,16 @@ function SaveToKnowledgeBase({ request }: { request: AdviceRequest }) {
 
   const saved = kb.data?.find((e) => e.sourceRequestId === request.id);
   if (kb.isPending) return null;
+  if (request.confidential) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {L(
+          "Confidential request — its opinion cannot be saved to the knowledge base.",
+          "Yêu cầu Mật — không lưu ý kiến vào kho tri thức được.",
+        )}
+      </p>
+    );
+  }
   if (saved) {
     return (
       <p className="flex flex-wrap items-center gap-1.5 rounded-md bg-success-bg px-2 py-1 text-xs text-success">

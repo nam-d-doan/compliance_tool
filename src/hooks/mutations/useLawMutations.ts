@@ -12,6 +12,7 @@ import type {
   SubmitAdvisoryOpinionInput,
   ReviewAdvisoryOpinionInput,
   SaveOpinionToKnowledgeBaseInput,
+  SetLawConfidentialityInput,
 } from "@/types";
 
 /** Mọi bước của flow tư vấn đổi status/ghi lịch sử — làm mới đủ các nơi hiển thị. */
@@ -117,6 +118,15 @@ export function useUpdateLawAlert(requestId: string) {
 }
 
 /** GĐ3 — thêm 1 mục vào kho tri thức. */
+/** Review GĐ5 — gắn / gỡ cờ Mật. */
+export function useSetLawConfidentiality(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SetLawConfidentialityInput) => LawService.setConfidentiality(requestId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: lawKeys.all }),
+  });
+}
+
 /** Review GĐ4 — "Lưu thành mẫu" từ ý kiến đã duyệt của yêu cầu đã đóng. */
 export function useSaveOpinionToKnowledgeBase(requestId: string) {
   const queryClient = useQueryClient();

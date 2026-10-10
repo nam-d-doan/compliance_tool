@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Plus, Trash2, BookOpen } from "lucide-react";
+import { Plus, Trash2, BookOpen, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -58,6 +58,8 @@ export default function LawListPage() {
   const dateLocale = useDateLocale();
 
   const [filters, setFilters] = useState<LawRequestFilter>({});
+  // Tab "tham khảo" là yêu cầu của người khác — cần cột chuyên viên.
+  const showOwner = !isSpecialist || filters.scope === "reference";
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -125,6 +127,25 @@ export default function LawListPage() {
           </Button>
         )}
       </PageHero>
+
+      {isSpecialist && (
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={L("Which requests", "Phạm vi")}>
+          {(["mine", "reference"] as const).map((sc) => (
+            <Button
+              key={sc}
+              size="sm"
+              variant={(filters.scope ?? "mine") === sc ? "secondary" : "ghost"}
+              aria-pressed={(filters.scope ?? "mine") === sc}
+              onClick={() => {
+                setPage(1);
+                setFilters((f) => ({ ...f, scope: sc === "mine" ? undefined : sc }));
+              }}
+            >
+              {sc === "mine" ? L("Assigned to me", "Của tôi") : L("Closed — for reference", "Đã đóng — tham khảo")}
+            </Button>
+          ))}
+        </div>
+      )}
 
       <form
         onSubmit={applySearch}
@@ -198,7 +219,7 @@ export default function LawListPage() {
                 <th className="px-3 py-2">{L("Priority", "Ưu tiên")}</th>
                 <th className="px-3 py-2">{L("Status", "Trạng thái")}</th>
                 <th className="px-3 py-2">{L("Requesting Unit", "Đơn vị yêu cầu")}</th>
-                {!isSpecialist && <th className="px-3 py-2">{L("Specialist", "Chuyên viên")}</th>}
+                {showOwner && <th className="px-3 py-2">{L("Specialist", "Chuyên viên")}</th>}
                 <th className="px-3 py-2">{L("Submitted", "Ngày gửi")}</th>
                 <th className="px-3 py-2">{L("Due Date", "Hạn xử lý")}</th>
                 {canDelete && <th className="px-3 py-2" />}
@@ -212,7 +233,17 @@ export default function LawListPage() {
                   onClick={() => navigate(`/law/${r.id}`)}
                 >
                   <td className="px-3 py-2 font-medium">{r.code}</td>
-                  <td className="px-3 py-2">{r.title}</td>
+                  <td className="px-3 py-2">
+                    <span className="inline-flex items-center gap-1.5">
+                      {r.confidential && (
+                        <Lock
+                          className="size-3.5 shrink-0 text-destructive"
+                          aria-label={L("Confidential", "Mật")}
+                        />
+                      )}
+                      {r.title}
+                    </span>
+                  </td>
                   <td className="px-3 py-2">
                     <span
                       className={cn(
@@ -229,7 +260,7 @@ export default function LawListPage() {
                   <td className="px-3 py-2 text-muted-foreground">
                     {r.requestingUnitName}
                   </td>
-                  {!isSpecialist && <td className="px-3 py-2">{r.ownerName}</td>}
+                  {showOwner && <td className="px-3 py-2">{r.ownerName}</td>}
                   <td className="px-3 py-2 text-muted-foreground">
                     {format(parseISO(r.submittedAt), "MMM d, yyyy", { locale: dateLocale })}
                   </td>

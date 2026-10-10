@@ -8,6 +8,7 @@ import type {
   SubmitAdvisoryOpinionInput,
   ReviewAdvisoryOpinionInput,
   SaveOpinionToKnowledgeBaseInput,
+  SetLawConfidentialityInput,
   KnowledgeBaseKind,
   AdviceRequest,
   LawRequestFilter,
@@ -76,6 +77,9 @@ export const LawService = {
   },
   submitOpinion(id: string, data: SubmitAdvisoryOpinionInput) {
     return apiPost<AdvisoryOpinion>(API_ENDPOINTS.LAW_REQUEST_OPINIONS(id), data);
+  },
+  setConfidentiality(id: string, data: SetLawConfidentialityInput) {
+    return apiPut<AdviceRequest>(API_ENDPOINTS.LAW_CONFIDENTIALITY(id), data);
   },
   saveToKnowledgeBase(id: string, data: SaveOpinionToKnowledgeBaseInput) {
     return apiPost<KnowledgeBaseEntry>(API_ENDPOINTS.LAW_SAVE_TO_KB(id), data);

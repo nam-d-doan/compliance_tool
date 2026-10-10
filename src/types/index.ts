@@ -94,6 +94,7 @@ export type {
   LawQueueItem,
   KnowledgeBaseKind,
   SaveOpinionToKnowledgeBaseInput,
+  SetLawConfidentialityInput,
   AssessLawRequestInput,
   CreateLawMessageInput,
   SubmitAdvisoryOpinionInput,

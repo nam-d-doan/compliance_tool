@@ -16,7 +16,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { motion } from "motion/react";
-import { Pencil, Send, Users } from "lucide-react";
+import { Eye, Lock, Pencil, Send, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -32,6 +32,7 @@ import { LawForm, type LawFormValues } from "@/components/law/LawForm";
 import { LawWorkflow } from "@/components/law/LawWorkflow";
 import { LawDocuments } from "@/components/law/LawDocuments";
 import { LawHistory } from "@/components/law/LawHistory";
+import { LawConfidentiality } from "@/components/law/LawConfidentiality";
 import {
   useLawRequestDetail,
   useLawRequestEvents,
@@ -96,14 +97,26 @@ export default function LawDetailPage() {
   if (detail.isError || !item) {
     const isForbidden = (detail.error as { status?: number } | null)?.status === 403;
     if (isForbidden) {
+      const isConfidential = detail.error?.message.startsWith("CONFIDENTIAL") ?? false;
       return (
         <div className="space-y-4">
           <ErrorState
-            title={L("Not your request", "Yêu cầu không thuộc quyền xem")}
-            message={L(
-              "Advisory specialists can only open requests assigned to them.",
-              "Chuyên viên tư vấn chỉ xem được yêu cầu mình phụ trách.",
-            )}
+            title={
+              isConfidential
+                ? L("Confidential request", "Yêu cầu Mật")
+                : L("Not your request", "Yêu cầu không thuộc quyền xem")
+            }
+            message={
+              isConfidential
+                ? L(
+                    "This request is restricted to the assigned specialist and managers.",
+                    "Yêu cầu này chỉ chuyên viên phụ trách và Manager được xem.",
+                  )
+                : L(
+                    "Advisory specialists can only open open requests assigned to them. Closed requests are available under \"Closed — for reference\".",
+                    "Chuyên viên chỉ mở được yêu cầu đang xử lý do mình phụ trách. Yêu cầu đã đóng xem ở mục \"Đã đóng — tham khảo\".",
+                  )
+            }
           />
           <div className="flex justify-center">
             <Button variant="outline" asChild>
@@ -115,6 +128,10 @@ export default function LawDetailPage() {
     }
     return <ErrorState onRetry={() => detail.refetch()} />;
   }
+
+  // Review GĐ5 — chuyên viên khác mở yêu cầu đã đóng (không Mật) để tham khảo: chỉ đọc.
+  const isReference = role === "owner" && item.ownerId !== user?.id;
+  const canEdit = canUpdate && !isReference;
 
   const handleEditSubmit = (values: LawFormValues) => {
     const payload: UpdateAdviceRequestInput = {
@@ -202,7 +219,7 @@ export default function LawDetailPage() {
               {L("Assign", "Phân công")}
             </Button>
           )}
-          {canUpdate && (
+          {canEdit && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" aria-hidden="true" />
               {L("Edit Request", "Sửa yêu cầu")}
@@ -211,7 +228,23 @@ export default function LawDetailPage() {
         </div>
       </PageHero>
 
+      {isReference && (
+        <p className="flex items-center gap-2 rounded-lg bg-info-bg px-3 py-2 text-sm text-info">
+          <Eye className="size-4 shrink-0" aria-hidden="true" />
+          {L(
+            `Read-only — closed request of ${item.ownerName}, shown for reference.`,
+            `Chỉ đọc — yêu cầu đã đóng của ${item.ownerName}, hiển thị để tham khảo.`,
+          )}
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
+        {item.confidential && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger">
+            <Lock className="size-3" aria-hidden="true" />
+            {L("Confidential", "Mật")}
+          </span>
+        )}
         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
           {term(LAW_STATUS_LABELS[item.status])}
         </span>
@@ -274,7 +307,7 @@ export default function LawDetailPage() {
                   ? L(...ALERT_STATUS_LABEL[item.alertStatus])
                   : item.alertStatus}
               </span>
-              {canUpdate && (
+              {canEdit && (
                 <div className="flex gap-2">
                   {item.alertStatus === "flagged" && (
                     <Button
@@ -300,6 +333,8 @@ export default function LawDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {!isReference && <LawConfidentiality request={item} />}
         </TabsContent>
 
         <TabsContent value="files">
@@ -308,7 +343,7 @@ export default function LawDetailPage() {
               <CardTitle>{L("Documents", "Tài liệu")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <LawDocuments request={item} files={files.data?.items ?? []} canEdit={canUpdate} />
+              <LawDocuments request={item} files={files.data?.items ?? []} canEdit={canEdit} />
             </CardContent>
           </Card>
         </TabsContent>

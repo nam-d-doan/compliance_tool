@@ -1342,6 +1342,9 @@ function generateAdviceRequests(
     const managerWho = { id: manager.id, name: manager.name };
     const code = `LAW-${today.getFullYear()}-${pad(i + 1)}`;
     const requestId = uid("law");
+    // 4 yêu cầu Mật: 2 đang mở (chờ đánh giá / chờ duyệt) + 2 ĐÃ ĐÓNG — để
+    // demo được "đã đóng nhưng không hiện ở mục tham khảo".
+    const confidentialSeed = [4, 10, 15, 23].includes(i);
 
     // Ngày gửi bám SLA để demo có đủ trạng thái: yêu cầu đang mở phần lớn còn
     // hạn / sắp hạn, 1/5 quá hạn; yêu cầu đã đóng gửi từ 20-60 ngày trước.
@@ -1499,10 +1502,22 @@ function generateAdviceRequests(
       resolvedById: completedAt ? manager.id : undefined,
       fileIds,
       folders: [...LAW_DEFAULT_FOLDERS],
+      // Review GĐ5 — yêu cầu Mật (xem confidentialSeed).
+      confidential: confidentialSeed,
+      confidentialReason: confidentialSeed
+        ? "Involves a named customer's restructuring under negotiation — need-to-know only."
+        : undefined,
+      confidentialSetById: confidentialSeed ? manager.id : undefined,
+      confidentialSetByName: confidentialSeed ? manager.name : undefined,
+      confidentialSetAt: confidentialSeed ? iso(addDays(submittedAt, 1)) : undefined,
       tags: [],
       createdAt: iso(submittedAt),
       updatedAt: iso(updatedAt),
     });
+    if (confidentialSeed) {
+      event(requestId, "confidentiality_changed", managerWho, addDays(submittedAt, 1),
+        "Marked request as confidential", { fromValue: "false", toValue: "true", subject: requests[requests.length - 1].confidentialReason });
+    }
   }
 
   return { requests, events, messages, opinions, files };

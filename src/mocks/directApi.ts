@@ -133,6 +133,7 @@ import {
   handleSubmitLawOpinion,
   handleReviewLawOpinion,
   handleSaveOpinionToKnowledgeBase,
+  handleSetLawConfidentiality,
   handleGetLawWorkload,
   handleRemindLawRequest,
   handleGetLawSlaRules,
@@ -295,6 +296,7 @@ const routes: Route[] = [
   { methods: ["POST"], pattern: "/api/law/requests/:id/opinions", handler: handleSubmitLawOpinion },
   { methods: ["POST"], pattern: "/api/law/opinions/:id/review", handler: handleReviewLawOpinion },
   { methods: ["POST"], pattern: "/api/law/requests/:id/save-to-kb", handler: handleSaveOpinionToKnowledgeBase },
+  { methods: ["PUT"], pattern: "/api/law/requests/:id/confidentiality", handler: handleSetLawConfidentiality },
   {
     methods: ["GET"],
     pattern: "/api/law/requests/:id",

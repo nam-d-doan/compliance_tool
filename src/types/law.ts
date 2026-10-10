@@ -74,6 +74,14 @@ export interface AdviceRequest extends BaseEntity {
   fileIds: string[];
   /** Folder trên File Sharing Storage của yêu cầu — có cả folder rỗng. */
   folders: string[];
+
+  /** Review GĐ5 — yêu cầu Mật: chỉ chuyên viên phụ trách + Manager/Admin
+   * xem được (kể cả sau khi đóng), không lưu được thành mẫu. */
+  confidential: boolean;
+  confidentialReason?: string;
+  confidentialSetById?: string;
+  confidentialSetByName?: string;
+  confidentialSetAt?: string;
   tags: string[];
 }
 
@@ -143,7 +151,8 @@ export interface LawEvent extends BaseEntity {
     | "file_moved"
     | "file_deleted"
     | "folder_created"
-    | "saved_to_knowledge_base";
+    | "saved_to_knowledge_base"
+    | "confidentiality_changed";
   userId: string;
   userName: string;
   description: string;
@@ -152,6 +161,12 @@ export interface LawEvent extends BaseEntity {
   /** Đối tượng của thao tác (mức ưu tiên, phiên bản ý kiến...) — để UI dựng
    * câu song ngữ, giống CaseEvent.subject của LM. */
   subject?: string;
+}
+
+/** Review GĐ5 — gắn / gỡ cờ Mật. Gắn bắt buộc lý do. */
+export interface SetLawConfidentialityInput {
+  confidential: boolean;
+  reason?: string;
 }
 
 /** Bước 2 — Manager chốt mức ưu tiên. */
@@ -184,6 +199,9 @@ export interface UpdateLawAlertInput {
 }
 
 export interface LawRequestFilter {
+  /** Chuyên viên: "mine" (mặc định) = yêu cầu mình phụ trách; "reference" =
+   * yêu cầu đã đóng, không Mật của người khác — đọc để tham khảo. */
+  scope?: "mine" | "reference";
   status?: LawRequestStatus | LawRequestStatus[];
   priorityTier?: LawPriorityTier | LawPriorityTier[];
   ownerId?: string;

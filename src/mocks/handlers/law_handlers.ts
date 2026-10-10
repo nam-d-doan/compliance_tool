@@ -50,6 +50,7 @@ import type {
   KnowledgeBaseEntry,
   CreateKnowledgeBaseEntryInput,
   SaveOpinionToKnowledgeBaseInput,
+  SetLawConfidentialityInput,
   AdvisoryOpinion,
   LawMessage,
   AssessLawRequestInput,
@@ -154,12 +155,29 @@ function evaluateLawAlerts(db: MockDb): void {
  */
 function assertRequestAccess(db: MockDb, request: Request, requestId: string): Response | null {
   const user = currentUser(db, request);
-  if (!user || user.role !== "owner") return null;
   const item = findById(db.adviceRequests, requestId);
-  if (item && item.ownerId !== user.id) {
-    return forbidden("You can only view requests assigned to you");
+  if (!user || !item) return null;
+  const access = requestAccess(user, item);
+  if (access === "none") {
+    return forbidden(
+      item.confidential
+        ? "CONFIDENTIAL: this request is restricted to the assigned specialist and managers"
+        : "You can only view requests assigned to you",
+    );
   }
   return null;
+}
+
+/**
+ * Review GĐ5 — Confidentiality (quy tắc mặc định, chờ Nam chốt):
+ * - Manager/Approver/Admin (law:approve) và chuyên viên phụ trách: "full".
+ * - Chuyên viên khác: yêu cầu thường ĐÃ ĐÓNG → "read" (chỉ đọc, tham khảo);
+ *   yêu cầu đang mở hoặc Mật → "none".
+ */
+function requestAccess(user: UserProfile, item: AdviceRequest): "full" | "read" | "none" {
+  if (user.id === item.ownerId || hasPermission(user.role, "law:approve")) return "full";
+  if (user.role === "owner" && item.status === "completed" && !item.confidential) return "read";
+  return user.role === "owner" ? "none" : "full";
 }
 
 export async function handleGetLawRequestList({
@@ -173,10 +191,14 @@ export async function handleGetLawRequestList({
   const db = getDb();
   evaluateLawAlerts(db);
   const viewer = currentUser(db, request);
-  let items =
-    viewer?.role === "owner"
-      ? db.adviceRequests.filter((r) => r.ownerId === viewer.id)
-      : [...db.adviceRequests];
+  let items = [...db.adviceRequests];
+  if (viewer?.role === "owner") {
+    // Chuyên viên: "mine" = của mình; "reference" = đã đóng, không Mật, của người khác.
+    items =
+      q.scope === "reference"
+        ? items.filter((r) => r.ownerId !== viewer.id && requestAccess(viewer, r) === "read")
+        : items.filter((r) => r.ownerId === viewer.id);
+  }
 
   if (q.status) {
     const statuses = normalizeArrayParam(q.status);
@@ -295,6 +317,7 @@ export async function handleCreateLawRequest({
     alertStatus: "pending",
     fileIds: [],
     folders: [...LAW_DEFAULT_FOLDERS],
+    confidential: false,
     tags: body.tags ?? [],
     createdAt: now,
     updatedAt: now,
@@ -328,8 +351,14 @@ export async function handleUpdateLawRequest({
   const db = getDb();
   const index = db.adviceRequests.findIndex((r) => r.id === params.id);
   if (index === -1) return notFound("Request not found");
+  const editor = currentUser(db, request);
+  if (editor && requestAccess(editor, db.adviceRequests[index]) !== "full") {
+    return forbidden("You cannot edit this request");
+  }
   const body = (await request.json()) as UpdateAdviceRequestInput;
   const prev = db.adviceRequests[index];
+  // Cờ Mật chỉ đổi qua endpoint riêng (bắt buộc lý do, có quyền riêng).
+  delete (body as Partial<AdviceRequest>).confidential;
   const next: AdviceRequest = {
     ...prev,
     ...body,
@@ -675,6 +704,9 @@ export async function handleSaveOpinionToKnowledgeBase({ params, request }: Mock
     .filter((o) => o.requestId === item.id && o.status === "approved")
     .sort((a, b) => b.version - a.version)[0];
   if (!approved) return badRequest("This request has no approved opinion");
+  if (item.confidential) {
+    return badRequest("Confidential requests cannot be saved to the knowledge base");
+  }
   if (db.knowledgeBase.some((e) => e.sourceRequestId === item.id)) {
     return badRequest("This request has already been saved to the knowledge base");
   }
@@ -1049,6 +1081,50 @@ export async function handleReviewLawOpinion({ params, request }: MockResolverCo
   return jsonResponse(opinion);
 }
 
+/**
+ * Review GĐ5 — gắn / gỡ cờ Mật.
+ * - Gắn: chuyên viên phụ trách hoặc Manager; bắt buộc lý do.
+ * - Gỡ: chỉ Manager (law:approve) — tránh chuyên viên tự mở rộng phạm vi xem.
+ */
+export async function handleSetLawConfidentiality({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  const user = currentUser(db, request);
+  if (!user) return forbidden("Not signed in");
+  const body = (await request.json()) as SetLawConfidentialityInput;
+  const isManager = hasPermission(user.role, "law:approve");
+  if (body.confidential === item.confidential) return badRequest("No change");
+
+  const now = new Date().toISOString();
+  if (body.confidential) {
+    if (!isManager && user.id !== item.ownerId) {
+      return forbidden("Only the assigned specialist or a manager can mark a request confidential");
+    }
+    const reason = body.reason?.trim();
+    if (!reason) return badRequest("A reason is required to mark a request confidential");
+    item.confidential = true;
+    item.confidentialReason = reason;
+    item.confidentialSetById = user.id;
+    item.confidentialSetByName = user.name;
+    item.confidentialSetAt = now;
+    recordEvent(db, item.id, "confidentiality_changed", user.id, user.name,
+      "Marked request as confidential", "false", "true", reason);
+  } else {
+    if (!isManager) return forbidden("Only a manager can lift confidentiality");
+    item.confidential = false;
+    item.confidentialReason = undefined;
+    item.confidentialSetById = undefined;
+    item.confidentialSetByName = undefined;
+    item.confidentialSetAt = undefined;
+    recordEvent(db, item.id, "confidentiality_changed", user.id, user.name,
+      "Lifted confidentiality", "true", "false", body.reason?.trim() || undefined);
+  }
+  item.updatedAt = now;
+  return jsonResponse(item);
+}
+
 export const lawHandlers = [
   http.get("/api/law/requests", handleGetLawRequestList),
   http.post("/api/law/requests", handleCreateLawRequest),
@@ -1060,6 +1136,7 @@ export const lawHandlers = [
   http.post("/api/law/requests/:id/opinions", handleSubmitLawOpinion),
   http.post("/api/law/opinions/:id/review", handleReviewLawOpinion),
   http.post("/api/law/requests/:id/save-to-kb", handleSaveOpinionToKnowledgeBase),
+  http.put("/api/law/requests/:id/confidentiality", handleSetLawConfidentiality),
   http.put("/api/law/requests/:id/alert", handleUpdateLawAlert),
   http.get("/api/law/requests/:id", handleGetLawRequestDetail),
   http.put("/api/law/requests/:id", handleUpdateLawRequest),

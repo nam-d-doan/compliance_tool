@@ -24,6 +24,7 @@ const GROUP_OF: Record<LawEvent["type"], Group> = {
   revision_requested: "flow",
   opinion_approved: "flow",
   saved_to_knowledge_base: "flow",
+  confidentiality_changed: "request",
   message_posted: "discussion",
   alert_flagged: "alert",
   alert_acknowledged: "alert",
@@ -90,6 +91,10 @@ export function LawHistory({ events }: { events: LawEvent[] }) {
       case "opinion_approved":
         if (!s) break;
         return { text: L(`Approved opinion v${s}`, `Duyệt ý kiến tư vấn bản v${s}`) };
+      case "confidentiality_changed":
+        return e.toValue === "true"
+          ? { text: s ? L(`Marked confidential — ${s}`, `Gắn cờ Mật — ${s}`) : L("Marked confidential", "Gắn cờ Mật") }
+          : { text: L("Lifted confidentiality", "Gỡ cờ Mật") };
       case "saved_to_knowledge_base":
         if (!s) break;
         return {
