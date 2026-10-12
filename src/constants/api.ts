@@ -139,6 +139,7 @@ export const API_ENDPOINTS = {
   LAW_CONFIDENTIALITY: (id: string) => `/api/law/requests/${id}/confidentiality`,
   LAW_REQUEST_INFO: (id: string) => `/api/law/requests/${id}/request-info`,
   LAW_INFO_RECEIVED: (id: string) => `/api/law/requests/${id}/info-received`,
+  LAW_DECLINE: (id: string) => `/api/law/requests/${id}/decline`,
   LAW_WORKLOAD: "/api/law/workload",
   LAW_REQUEST_REMIND: (id: string) => `/api/law/requests/${id}/remind`,
   LAW_SLA_RULES: "/api/law/sla-rules",

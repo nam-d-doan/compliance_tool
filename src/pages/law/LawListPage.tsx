@@ -30,6 +30,7 @@ import {
   LAW_PRIORITY_STYLES,
   LAW_REQUEST_STATUSES,
   LAW_STATUS_LABELS,
+  isLawRequestClosed,
   type LawRequestStatus,
 } from "@/constants/law";
 import { cn } from "@/lib/utils";
@@ -273,7 +274,7 @@ export default function LawListPage() {
                   <td className="px-3 py-2">
                     <DueDateCell
                       dueDate={r.dueDate}
-                      completed={r.status === "completed"}
+                      completed={isLawRequestClosed(r.status)}
                     />
                   </td>
                   {canDelete && (

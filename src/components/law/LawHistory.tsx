@@ -23,6 +23,7 @@ const GROUP_OF: Record<LawEvent["type"], Group> = {
   assigned: "flow",
   info_requested: "discussion",
   info_received: "discussion",
+  declined: "flow",
   status_changed: "flow",
   opinion_issued: "flow",
   revision_requested: "flow",
@@ -97,6 +98,15 @@ export function LawHistory({ events }: { events: LawEvent[] }) {
           from: dateOf(e.fromValue),
           to: dateOf(e.toValue),
         };
+      case "declined": {
+        const what =
+          e.toValue === "transferred"
+            ? L("Transferred to another unit", "Chuyển đơn vị khác")
+            : e.toValue === "duplicate"
+              ? L("Closed as duplicate", "Đóng vì trùng")
+              : L("Rejected at triage", "Từ chối tiếp nhận");
+        return { text: s ? `${what} — ${s}` : what };
+      }
       case "assigned":
         return { text: s ? L(`Assigned to ${s}`, `Phân công cho ${s}`) : L("Assigned a specialist", "Phân công chuyên viên") };
       case "status_changed":

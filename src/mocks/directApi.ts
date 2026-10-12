@@ -136,6 +136,7 @@ import {
   handleSetLawConfidentiality,
   handleRequestLawInfo,
   handleReceiveLawInfo,
+  handleDeclineLawRequest,
   handleGetLawWorkload,
   handleRemindLawRequest,
   handleGetLawSlaRules,
@@ -301,6 +302,7 @@ const routes: Route[] = [
   { methods: ["PUT"], pattern: "/api/law/requests/:id/confidentiality", handler: handleSetLawConfidentiality },
   { methods: ["POST"], pattern: "/api/law/requests/:id/request-info", handler: handleRequestLawInfo },
   { methods: ["POST"], pattern: "/api/law/requests/:id/info-received", handler: handleReceiveLawInfo },
+  { methods: ["POST"], pattern: "/api/law/requests/:id/decline", handler: handleDeclineLawRequest },
   {
     methods: ["GET"],
     pattern: "/api/law/requests/:id",

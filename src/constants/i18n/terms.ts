@@ -82,6 +82,7 @@ export const VI_TERMS: Record<string, string> = {
   "Awaiting Assessment": "Chờ đánh giá",
   "In Discussion": "Đang trao đổi",
   "Awaiting Information": "Chờ bổ sung hồ sơ",
+  "Closed — No Opinion": "Đóng — không tư vấn",
 
   // Thông báo validate form (zod) — LawForm, LMForm
   "Title must be at least 3 characters": "Tiêu đề phải có ít nhất 3 ký tự",

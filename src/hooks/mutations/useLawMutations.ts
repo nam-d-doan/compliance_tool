@@ -14,6 +14,7 @@ import type {
   SaveOpinionToKnowledgeBaseInput,
   SetLawConfidentialityInput,
   RequestLawInfoInput,
+  DeclineLawRequestInput,
 } from "@/types";
 
 /** Mọi bước của flow tư vấn đổi status/ghi lịch sử — làm mới đủ các nơi hiển thị. */
@@ -124,6 +125,15 @@ export function useRequestLawInfo(requestId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: RequestLawInfoInput) => LawService.requestInfo(requestId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: lawKeys.all }),
+  });
+}
+
+/** Review A2 — đóng không tư vấn ở bước phân loại (từ chối / chuyển / trùng). */
+export function useDeclineLawRequest(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DeclineLawRequestInput) => LawService.decline(requestId, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: lawKeys.all }),
   });
 }

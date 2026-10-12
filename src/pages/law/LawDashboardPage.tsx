@@ -15,6 +15,7 @@ import { motion } from "motion/react";
 import { format, parseISO } from "date-fns";
 import {
   AlertTriangle,
+  BookOpen,
   Briefcase,
   CheckCircle2,
   ClipboardCheck,
@@ -130,6 +131,12 @@ export default function LawDashboardPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="space-y-6">
       <PageHero title={heroTitle} subtitle={heroSubtitle}>
         <Button variant="outline" asChild>
+          <Link to="/law/knowledge-base">
+            <BookOpen className="size-4" aria-hidden="true" />
+            {L("Knowledge Base", "Kho tri thức")}
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
           <Link to={ROUTES.LAW.LIST}>
             <List className="size-4" aria-hidden="true" />
             {L("View List", "Xem danh sách")}
@@ -206,7 +213,15 @@ export default function LawDashboardPage() {
           icon={ClipboardCheck}
           subtitle={L("Flagged requests already resolved", "Yêu cầu gắn cờ đã xử lý xong")}
         />
-        <KPICard label={L("Closed requests", "Yêu cầu đã đóng")} value={data.totalCompleted} icon={CheckCircle2} />
+        <KPICard
+          label={L("Closed with an opinion", "Đã đóng — có ý kiến")}
+          value={data.totalCompleted}
+          icon={CheckCircle2}
+          subtitle={L(
+            `+ ${data.totalDeclined} closed without opinion (rejected / transferred / duplicate)`,
+            `+ ${data.totalDeclined} đóng không tư vấn (từ chối / chuyển / trùng)`,
+          )}
+        />
       </div>
 
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">

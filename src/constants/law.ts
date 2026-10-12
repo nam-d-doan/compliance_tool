@@ -64,13 +64,16 @@ export const LAW_PRIORITY_WORKLOAD_WEIGHT: Record<LawPriorityTier, number> = {
 /** Review GĐ1 — 4 trạng thái bám flow tư vấn: new = chờ đánh giá ưu tiên,
  * in_progress = đang trao đổi, pending_approval = đã nộp ý kiến chờ Manager
  * duyệt, completed = đã đóng. Review A1: awaiting_info = chờ đơn vị bổ sung
- * hồ sơ (SLA dừng), quay lại đúng bước trước đó khi nhận đủ. */
+ * hồ sơ (SLA dừng), quay lại đúng bước trước đó khi nhận đủ. Review A2:
+ * declined = đóng ở bước phân loại, không ra ý kiến (từ chối / chuyển đơn
+ * vị khác / trùng). */
 export const LAW_REQUEST_STATUSES = [
   "new",
   "awaiting_info",
   "in_progress",
   "pending_approval",
   "completed",
+  "declined",
 ] as const;
 
 export type LawRequestStatus = (typeof LAW_REQUEST_STATUSES)[number];
@@ -81,4 +84,10 @@ export const LAW_STATUS_LABELS: Record<LawRequestStatus, string> = {
   in_progress: "In Discussion",
   pending_approval: "Pending Approval",
   completed: "Closed",
+  declined: "Closed — No Opinion",
 };
+
+/** Review A2 — yêu cầu đã kết thúc (có ý kiến hoặc đóng không tư vấn). */
+export function isLawRequestClosed(status: LawRequestStatus): boolean {
+  return status === "completed" || status === "declined";
+}

@@ -60,6 +60,8 @@ export interface AdviceRequest extends BaseEntity {
   infoRequest?: LawInfoRequest;
   /** Tổng số ngày SLA đã dừng vì chờ bổ sung — đã cộng vào dueDate. */
   slaPausedDays: number;
+  /** Review A2 — có khi status "declined" (đóng ở bước phân loại). */
+  declineInfo?: LawDeclineInfo;
 
   /** Bước 2 "Đánh giá ưu tiên" — có khi Manager đã chốt mức ưu tiên. */
   assessedAt?: string;
@@ -161,7 +163,8 @@ export interface LawEvent extends BaseEntity {
     | "saved_to_knowledge_base"
     | "confidentiality_changed"
     | "info_requested"
-    | "info_received";
+    | "info_received"
+    | "declined";
   userId: string;
   userName: string;
   description: string;
@@ -184,6 +187,31 @@ export interface LawInfoRequest {
 
 export interface RequestLawInfoInput {
   note: string;
+}
+
+/** Review A2 — 3 kiểu đóng không tư vấn ở bước phân loại. */
+export type LawDeclineType = "rejected" | "transferred" | "duplicate";
+export type LawRejectReason = "not_legal" | "out_of_scope" | "other";
+
+export interface LawDeclineInfo {
+  type: LawDeclineType;
+  note: string;
+  rejectReason?: LawRejectReason;
+  transferredToUnitId?: string;
+  transferredToUnitName?: string;
+  /** Trùng: trỏ tới 1 mục kho tri thức hoặc 1 yêu cầu đã đóng. */
+  duplicateOf?: { kind: "kb" | "request"; id: string; title: string; code?: string };
+  declinedById: string;
+  declinedByName: string;
+  declinedAt: string;
+}
+
+export interface DeclineLawRequestInput {
+  type: LawDeclineType;
+  note: string;
+  rejectReason?: LawRejectReason;
+  transferredToUnitId?: string;
+  duplicateOf?: { kind: "kb" | "request"; id: string };
 }
 
 /** Review GĐ5 — gắn / gỡ cờ Mật. Gắn bắt buộc lý do. */
@@ -317,6 +345,8 @@ export interface LawDashboardSummary {
   returnedForRevision: number;
   /** Đang chờ đơn vị bổ sung hồ sơ (SLA dừng). */
   awaitingInfo: number;
+  /** Đóng không tư vấn (từ chối / chuyển / trùng) — không tính KPI a/b. */
+  totalDeclined: number;
   onTimeCompletionRate: number;
   qualityRate: number;
   alertResolutionRate: number;

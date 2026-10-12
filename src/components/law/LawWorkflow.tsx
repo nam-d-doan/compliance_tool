@@ -8,6 +8,8 @@
  *    (Manager / chuyên viên phụ trách): SLA dừng, banner ở bước Trao đổi,
  *    đơn vị gửi bổ sung trong luồng tin nhắn, bấm "Đã nhận bổ sung" để quay
  *    về đúng bước trước đó (hạn SLA cộng thêm số ngày đã dừng).
+ * 2c. Review A2 — "Không tiếp nhận…" ở bước 2 (Manager): từ chối / chuyển
+ *    đơn vị khác / trùng (trỏ mục kho hoặc yêu cầu đã đóng). Bước 3-4 "Bỏ qua".
  * 3. Trao đổi: luồng tin nhắn 2 bên, đính kèm file. Ô soạn chọn "gửi với tư
  *    cách" Pháp chế hoặc Đơn vị yêu cầu (MÔ PHỎNG — chưa có vai trò đơn vị).
  * 4. Đóng: các phiên bản ý kiến tư vấn (mới nhất trên). Chuyên viên phụ
@@ -21,6 +23,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import {
   ArrowRight,
+  Ban,
   BookOpen,
   FileQuestion,
   PauseCircle,
@@ -40,7 +43,14 @@ import { Input } from "@/components/ui/input";
 import { rankKnowledgeEntries } from "@/lib/knowledge-match";
 import { DetailSkeleton } from "@/components/common";
 import { Link } from "react-router-dom";
-import { useLawMessages, useLawOpinions, useFilesByIds, useKnowledgeBaseList, useLawWorkload } from "@/hooks/queries";
+import {
+  useLawMessages,
+  useLawOpinions,
+  useFilesByIds,
+  useKnowledgeBaseList,
+  useLawWorkload,
+  useLawRequestList,
+} from "@/hooks/queries";
 import {
   useAssessLawRequest,
   usePostLawMessage,
@@ -49,26 +59,39 @@ import {
   useSaveOpinionToKnowledgeBase,
   useRequestLawInfo,
   useReceiveLawInfo,
+  useDeclineLawRequest,
 } from "@/hooks/mutations";
+import { useOrgUnits } from "@/hooks/queries/useAdminQueries";
 import { useUploadFile } from "@/hooks/mutations/useFileMutations";
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { LAW_PRIORITY_TIERS, LAW_PRIORITY_STYLES, type LawPriorityTier } from "@/constants/law";
-import { useL, useTerm, useDateLocale } from "@/lib/i18n";
+import { useL, useTerm, useDateLocale, type Bi } from "@/lib/i18n";
 import { makeDemoPdf, isMockFileUrl } from "@/lib/demo-pdf";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { AdviceRequest, AdvisoryOpinion, FileAttachment, KnowledgeBaseKind, LawMessage, Role } from "@/types";
+import type {
+  AdviceRequest,
+  AdvisoryOpinion,
+  FileAttachment,
+  KnowledgeBaseKind,
+  LawDeclineType,
+  LawMessage,
+  LawRejectReason,
+  Role,
+} from "@/types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";
 
-type StepState = "done" | "active" | "upcoming";
+type StepState = "done" | "active" | "upcoming" | "skipped";
 
 function stepStates(request: AdviceRequest): [StepState, StepState, StepState, StepState] {
   switch (request.status) {
+    case "declined":
+      return ["done", "done", "skipped", "skipped"];
     // Chờ bổ sung: việc trao đổi diễn ra ở bước 3; bước 2 vẫn mở nếu dừng ngay lúc phân loại.
     case "awaiting_info":
       return request.infoRequest?.resumeStatus === "new"
@@ -138,18 +161,32 @@ function Step({ n, state, title, children }: { n: number; state: StepState; titl
             "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
             state === "done" && "bg-success-bg text-success",
             state === "active" && "bg-primary text-primary-foreground",
-            state === "upcoming" && "bg-muted text-muted-foreground",
+            (state === "upcoming" || state === "skipped") && "bg-muted text-muted-foreground",
           )}
           aria-hidden="true"
         >
           {state === "done" ? <Check className="size-4" /> : n}
         </span>
-        <h3 className={cn("text-sm font-semibold", state === "upcoming" && "text-muted-foreground")}>{title}</h3>
+        <h3
+          className={cn(
+            "text-sm font-semibold",
+            (state === "upcoming" || state === "skipped") && "text-muted-foreground",
+            state === "skipped" && "line-through",
+          )}
+        >
+          {title}
+        </h3>
         <span className="ml-auto text-xs text-muted-foreground">
-          {state === "done" ? L("Done", "Đã xong") : state === "active" ? L("In progress", "Đang thực hiện") : L("Not started", "Chưa tới")}
+          {state === "done"
+            ? L("Done", "Đã xong")
+            : state === "active"
+              ? L("In progress", "Đang thực hiện")
+              : state === "skipped"
+                ? L("Skipped", "Bỏ qua")
+                : L("Not started", "Chưa tới")}
         </span>
       </div>
-      {state === "upcoming" ? null : <div className="pl-10">{children}</div>}
+      {state === "upcoming" || state === "skipped" ? null : <div className="pl-10">{children}</div>}
     </li>
   );
 }
@@ -201,6 +238,10 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
   const pickedOwnerId = ownerId || suggestedOwnerId;
   const tierLabel = (t: LawPriorityTier) => term(LAW_PRIORITY_STYLES[t].label);
 
+  if (request.status === "declined" && request.declineInfo) {
+    return <DeclineSummary request={request} />;
+  }
+
   if (request.assessedAt) {
     const changed = request.initialPriorityTier !== request.priorityTier;
     return (
@@ -235,12 +276,15 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
 
   if (request.status === "awaiting_info") {
     return (
-      <p className="text-sm text-muted-foreground">
-        {L(
-          "On hold — waiting for the requesting unit to provide information (see Discussion). Triage resumes once it is received.",
-          "Tạm dừng — chờ đơn vị bổ sung hồ sơ (xem bước Trao đổi). Phân loại tiếp sau khi nhận đủ.",
-        )}
-      </p>
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          {L(
+            "On hold — waiting for the requesting unit to provide information (see Discussion). Triage resumes once it is received.",
+            "Tạm dừng — chờ đơn vị bổ sung hồ sơ (xem bước Trao đổi). Phân loại tiếp sau khi nhận đủ.",
+          )}
+        </p>
+        {hasPermission(role, "law:approve") && <DeclineAction request={request} />}
+      </div>
     );
   }
 
@@ -313,7 +357,203 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
         {L("Confirm & assign", "Xác nhận & phân công")}
       </Button>
     </form>
-    <RequestInfoAction request={request} />
+    <div className="flex flex-wrap gap-2">
+      <RequestInfoAction request={request} />
+      <DeclineAction request={request} />
+    </div>
+    </div>
+  );
+}
+
+const DECLINE_TYPE_LABEL: Record<LawDeclineType, Bi> = {
+  rejected: ["Reject", "Từ chối"],
+  transferred: ["Transfer to another unit", "Chuyển đơn vị khác"],
+  duplicate: ["Duplicate", "Trùng"],
+};
+const REJECT_REASON_LABEL: Record<LawRejectReason, Bi> = {
+  not_legal: ["Not a legal question", "Không phải vấn đề pháp lý"],
+  out_of_scope: ["Outside legal's remit", "Ngoài phạm vi pháp chế"],
+  other: ["Other", "Khác"],
+};
+
+function DeclineAction({ request }: { request: AdviceRequest }) {
+  const L = useL();
+  const decline = useDeclineLawRequest(request.id);
+  const orgUnits = useOrgUnits();
+  const kb = useKnowledgeBaseList();
+  const closed = useLawRequestList({ status: "completed" }, 1, 200);
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<LawDeclineType>("rejected");
+  const [reason, setReason] = useState<LawRejectReason>("not_legal");
+  const [unitId, setUnitId] = useState("");
+  const [dupRef, setDupRef] = useState("");
+  const [note, setNote] = useState("");
+
+  if (!open) {
+    return (
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <Ban className="size-3.5" aria-hidden="true" />
+        {L("Close without opinion…", "Không tiếp nhận…")}
+      </Button>
+    );
+  }
+
+  const units = (orgUnits.data?.hoDepartments ?? []).filter((u) => u.id !== request.requestingUnitId);
+  const text = `${request.title} ${request.description ?? ""}`;
+  const kbRanked = rankKnowledgeEntries(text, kb.data ?? [], 5);
+  const kbRest = (kb.data ?? []).filter((e) => !kbRanked.includes(e));
+  const closedRequests = (closed.data?.items ?? []).filter((r) => r.id !== request.id && !r.confidential);
+  const valid =
+    note.trim() &&
+    (type === "rejected" || (type === "transferred" && unitId) || (type === "duplicate" && dupRef));
+
+  return (
+    <form
+      className="w-full space-y-2 rounded-lg border border-destructive/30 p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const [kind, id] = dupRef.split(":") as ["kb" | "request", string];
+        decline.mutate(
+          {
+            type,
+            note: note.trim(),
+            rejectReason: type === "rejected" ? reason : undefined,
+            transferredToUnitId: type === "transferred" ? unitId : undefined,
+            duplicateOf: type === "duplicate" ? { kind, id } : undefined,
+          },
+          {
+            onSuccess: () => toast.success(L("Request closed without an opinion", "Đã đóng yêu cầu — không tư vấn")),
+            onError: (err) => toast.error(err.message || L("Action failed", "Thao tác thất bại")),
+          },
+        );
+      }}
+    >
+      <p className="text-sm font-medium">{L("Close without an advisory opinion", "Đóng yêu cầu — không tư vấn")}</p>
+      <div className="flex flex-wrap gap-1.5" role="group">
+        {(Object.keys(DECLINE_TYPE_LABEL) as LawDeclineType[]).map((t) => (
+          <Button
+            key={t}
+            type="button"
+            size="sm"
+            variant={type === t ? "secondary" : "ghost"}
+            aria-pressed={type === t}
+            onClick={() => setType(t)}
+          >
+            {L(...DECLINE_TYPE_LABEL[t])}
+          </Button>
+        ))}
+      </div>
+
+      {type === "rejected" && (
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {L("Reason", "Lý do")}
+          <select value={reason} onChange={(e) => setReason(e.target.value as LawRejectReason)} className={cn(selectClass, "max-w-sm")}>
+            {(Object.keys(REJECT_REASON_LABEL) as LawRejectReason[]).map((r) => (
+              <option key={r} value={r}>
+                {L(...REJECT_REASON_LABEL[r])}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {type === "transferred" && (
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {L("Transfer to", "Chuyển tới đơn vị")}
+          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className={cn(selectClass, "max-w-sm")}>
+            <option value="">{L("Choose a unit…", "Chọn đơn vị…")}</option>
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {type === "duplicate" && (
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          {L("Already answered by", "Đã có câu trả lời tại")}
+          <select value={dupRef} onChange={(e) => setDupRef(e.target.value)} className={cn(selectClass, "max-w-xl")}>
+            <option value="">{L("Choose…", "Chọn…")}</option>
+            {kbRanked.length > 0 && (
+              <optgroup label={L("Knowledge base — best matches", "Kho tri thức — khớp nhất")}>
+                {kbRanked.map((e) => (
+                  <option key={e.id} value={`kb:${e.id}`}>
+                    {e.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label={L("Knowledge base — other entries", "Kho tri thức — mục khác")}>
+              {kbRest.map((e) => (
+                <option key={e.id} value={`kb:${e.id}`}>
+                  {e.title}
+                </option>
+              ))}
+            </optgroup>
+            {closedRequests.length > 0 && (
+              <optgroup label={L("Closed requests", "Yêu cầu đã đóng")}>
+                {closedRequests.map((r) => (
+                  <option key={r.id} value={`request:${r.id}`}>
+                    {r.code} — {r.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </label>
+      )}
+
+      <Textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder={L("Explain the decision to the requesting unit (required)", "Giải thích quyết định cho đơn vị yêu cầu (bắt buộc)")}
+        className="min-h-16"
+      />
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" variant="destructive" disabled={decline.isPending || !valid}>
+          {L("Close request", "Đóng yêu cầu")}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          {L("Cancel", "Huỷ")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function DeclineSummary({ request }: { request: AdviceRequest }) {
+  const L = useL();
+  const dateLocale = useDateLocale();
+  const d = request.declineInfo!;
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+      <p className="flex flex-wrap items-center gap-2">
+        <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
+          {L(...DECLINE_TYPE_LABEL[d.type])}
+        </span>
+        {d.type === "rejected" && d.rejectReason && <span>{L(...REJECT_REASON_LABEL[d.rejectReason])}</span>}
+        {d.type === "transferred" && (
+          <span>
+            {L("Transferred to", "Chuyển tới")} <span className="font-medium">{d.transferredToUnitName}</span>
+          </span>
+        )}
+        {d.type === "duplicate" && d.duplicateOf && (
+          <span>
+            {L("Already answered by", "Đã có câu trả lời tại")}{" "}
+            <Link
+              to={d.duplicateOf.kind === "kb" ? "/law/knowledge-base" : `/law/${d.duplicateOf.id}`}
+              className="font-medium text-primary hover:underline"
+            >
+              {d.duplicateOf.code ? `${d.duplicateOf.code} — ` : ""}
+              {d.duplicateOf.title}
+            </Link>
+          </span>
+        )}
+      </p>
+      <p>{d.note}</p>
+      <p className="text-xs text-muted-foreground">
+        {d.declinedByName} · {format(parseISO(d.declinedAt), "dd/MM/yyyy HH:mm", { locale: dateLocale })}
+      </p>
     </div>
   );
 }

@@ -47,7 +47,7 @@ import {
 import { useAuthStore } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import { ROUTES } from "@/constants/routes";
-import { LAW_PRIORITY_STYLES, LAW_STATUS_LABELS } from "@/constants/law";
+import { LAW_PRIORITY_STYLES, LAW_STATUS_LABELS, isLawRequestClosed } from "@/constants/law";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { UpdateAdviceRequestInput } from "@/types";
@@ -279,7 +279,7 @@ export default function LawDetailPage() {
                 </p>
                 <DueDateCell
                   dueDate={item.dueDate}
-                  completed={item.status === "completed"}
+                  completed={isLawRequestClosed(item.status)}
                 />
               </div>
               <Field label={L("Completed", "Ngày hoàn thành")} value={fmtD(item.completedAt)} />

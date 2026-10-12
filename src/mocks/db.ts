@@ -52,7 +52,6 @@ import {
 } from "@/constants/lm";
 import {
   LAW_PRIORITY_TIERS,
-  LAW_REQUEST_STATUSES,
   LAW_PRIORITY_SLA_DAYS,
   LAW_PRIORITY_ALERT_DAYS_BEFORE,
   LAW_DEFAULT_FOLDERS,
@@ -1232,6 +1231,15 @@ const SEED_FLOW_STATUSES = ["new", "in_progress", "pending_approval", "completed
 /** Review A1 — chỉ số yêu cầu mẫu đang "chờ bổ sung hồ sơ" → bước sẽ quay về. */
 const INFO_PAUSED: Record<number, "new" | "in_progress"> = { 8: "new", 13: "in_progress" };
 
+/** Review A2 — yêu cầu mẫu bị đóng không tư vấn ở bước phân loại. "Trùng"
+ * trỏ tới mẫu kho tri thức theo TIÊU ĐỀ — id điền sau khi tạo kho (getDb). */
+const DECLINED_SEED: Record<number, { type: "rejected" | "transferred" | "duplicate"; note: string }> = {
+  12: { type: "rejected", note: "Commercial pricing question, not a legal one — please ask Product." },
+  16: { type: "transferred", note: "Operational procedure question — belongs to Operations." },
+  20: { type: "duplicate", note: "Already covered by the standard opinion in the knowledge base." },
+};
+export const LAW_DUPLICATE_SEED_KB_TITLE = "Standard opinion: handling group-3+ bad debt";
+
 const LAW_REQUESTER_CONTACTS = [
   "Nguyễn Thu Trang",
   "Trần Minh Quân",
@@ -1482,6 +1490,9 @@ function generateAdviceRequests(
     // ngày trước ngày demo → "Đã nhận bổ sung" sẽ cộng 3 ngày vào hạn.
     const pausedFrom = INFO_PAUSED[i];
     const infoAt = subDays(today, 3);
+    const declinedSeed = DECLINED_SEED[i];
+    const declinedAt = addDays(submittedAt, 1);
+    const transferUnit = requestingDepts[(i + 3) % requestingDepts.length];
     requests.push({
       id: requestId,
       code,
@@ -1489,7 +1500,7 @@ function generateAdviceRequests(
       description: undefined,
       priorityTier,
       initialPriorityTier,
-      status: pausedFrom ? "awaiting_info" : status,
+      status: pausedFrom ? "awaiting_info" : declinedSeed ? "declined" : status,
       requestingUnitId: dept.id,
       requestingUnitName: dept.name,
       requestingUnitType: "ho_department",
@@ -1518,6 +1529,22 @@ function generateAdviceRequests(
       fileIds,
       folders: [...LAW_DEFAULT_FOLDERS],
       slaPausedDays: 0,
+      declineInfo: declinedSeed
+        ? {
+            type: declinedSeed.type,
+            note: declinedSeed.note,
+            rejectReason: declinedSeed.type === "rejected" ? "not_legal" : undefined,
+            transferredToUnitId: declinedSeed.type === "transferred" ? transferUnit.id : undefined,
+            transferredToUnitName: declinedSeed.type === "transferred" ? transferUnit.name : undefined,
+            duplicateOf:
+              declinedSeed.type === "duplicate"
+                ? { kind: "kb", id: "", title: LAW_DUPLICATE_SEED_KB_TITLE }
+                : undefined,
+            declinedById: manager.id,
+            declinedByName: manager.name,
+            declinedAt: iso(declinedAt),
+          }
+        : undefined,
       infoRequest: pausedFrom
         ? {
             note: pausedFrom === "new"
@@ -1541,6 +1568,17 @@ function generateAdviceRequests(
       createdAt: iso(submittedAt),
       updatedAt: iso(updatedAt),
     });
+    if (declinedSeed) {
+      const req = requests[requests.length - 1];
+      req.alertStatus = "resolved";
+      req.resolvedAt = iso(declinedAt);
+      req.resolvedById = manager.id;
+      event(requestId, "declined", managerWho, declinedAt, `Closed without an opinion (${declinedSeed.type}): ${declinedSeed.note}`, {
+        fromValue: "new",
+        toValue: declinedSeed.type,
+        subject: declinedSeed.note,
+      });
+    }
     if (pausedFrom) {
       const who = pausedFrom === "new" ? managerWho : ownerWho;
       const req = requests[requests.length - 1];
@@ -2158,6 +2196,13 @@ export function getDb(): MockDb {
   const law = generateAdviceRequests(organizationSettings, users);
   const slaRules = generateDefaultSlaRules();
   const knowledgeBase = generateKnowledgeBase(users);
+  // Review A2 — seed "Trùng" trỏ mục kho theo tiêu đề; điền id thật ở đây.
+  for (const r of law.requests) {
+    const dup = r.declineInfo?.duplicateOf;
+    if (dup?.kind === "kb" && !dup.id) {
+      dup.id = knowledgeBase.find((e) => e.title === dup.title)?.id ?? "";
+    }
+  }
   const assignments = generateAssignments(
     regulations,
     users,

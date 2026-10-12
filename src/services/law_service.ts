@@ -10,6 +10,7 @@ import type {
   SaveOpinionToKnowledgeBaseInput,
   SetLawConfidentialityInput,
   RequestLawInfoInput,
+  DeclineLawRequestInput,
   KnowledgeBaseKind,
   AdviceRequest,
   LawRequestFilter,
@@ -81,6 +82,9 @@ export const LawService = {
   },
   requestInfo(id: string, data: RequestLawInfoInput) {
     return apiPost<AdviceRequest>(API_ENDPOINTS.LAW_REQUEST_INFO(id), data);
+  },
+  decline(id: string, data: DeclineLawRequestInput) {
+    return apiPost<AdviceRequest>(API_ENDPOINTS.LAW_DECLINE(id), data);
   },
   infoReceived(id: string) {
     return apiPost<AdviceRequest>(API_ENDPOINTS.LAW_INFO_RECEIVED(id), {});

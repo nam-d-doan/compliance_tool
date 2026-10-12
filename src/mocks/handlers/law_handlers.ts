@@ -37,7 +37,7 @@ import {
   LAW_PRIORITY_WORKLOAD_WEIGHT,
   LAW_PRIORITY_TIERS,
 } from "@/constants/law";
-import { LAW_REQUEST_STATUSES } from "@/constants/law";
+import { LAW_REQUEST_STATUSES, isLawRequestClosed } from "@/constants/law";
 import { nextAlertStatus, alertSeverity } from "@/lib/deadline-alerts";
 import { DEMO_TODAY } from "@/mocks/db";
 import type {
@@ -53,6 +53,8 @@ import type {
   SaveOpinionToKnowledgeBaseInput,
   SetLawConfidentialityInput,
   RequestLawInfoInput,
+  DeclineLawRequestInput,
+  LawDeclineInfo,
   AdvisoryOpinion,
   LawMessage,
   AssessLawRequestInput,
@@ -114,7 +116,7 @@ function evaluateLawAlerts(db: MockDb): void {
   db.adviceRequests.forEach((r) => {
     if (r.alertStatus !== "pending") return;
     // SLA đang dừng (chờ đơn vị bổ sung) — không bật cờ.
-    if (r.status === "awaiting_info") return;
+    if (r.status === "awaiting_info" || r.status === "declined") return;
     const rule = db.slaRules.find((sr) => sr.priorityTier === r.priorityTier);
     const daysBefore = rule?.alertDaysBefore ?? 3;
     const next = nextAlertStatus(
@@ -482,7 +484,7 @@ export async function handleGetLawRequestEvents({ params, request }: MockResolve
  * trọng số theo mức ưu tiên LAW. */
 function computeOwnerWorkloadForLaw(db: MockDb): LawWorkloadEntry[] {
   const owners = db.users.filter((u) => u.role === "owner");
-  const openRequests = db.adviceRequests.filter((r) => r.status !== "completed");
+  const openRequests = db.adviceRequests.filter((r) => !isLawRequestClosed(r.status));
 
   const entries: LawWorkloadEntry[] = owners.map((u) => {
     const mine = openRequests.filter((r) => r.ownerId === u.id);
@@ -781,7 +783,7 @@ export async function handleGetLawDashboard({ request }: { request: Request }) {
   const scoped =
     scope === "specialist" ? db.adviceRequests.filter((r) => r.ownerId === user!.id) : db.adviceRequests;
 
-  const openRequests = scoped.filter((r) => r.status !== "completed");
+  const openRequests = scoped.filter((r) => !isLawRequestClosed(r.status));
   const completedRequests = scoped.filter((r) => r.status === "completed");
 
   const everFlagged = scoped.filter((r) => r.alertStatus !== "pending");
@@ -854,6 +856,7 @@ export async function handleGetLawDashboard({ request }: { request: Request }) {
     awaitingApproval: openRequests.filter((r) => r.status === "pending_approval").length,
     returnedForRevision: queueAll.filter((q) => q.returned).length,
     awaitingInfo: openRequests.filter((r) => r.status === "awaiting_info").length,
+    totalDeclined: scoped.filter((r) => r.status === "declined").length,
     onTimeCompletionRate: rate(completedRequests.filter(isOnTime).length, completedRequests.length),
     qualityRate: rate(completedRequests.filter((r) => r.revisedCount === 0).length, completedRequests.length),
     alertResolutionRate: rate(resolved.length, everFlagged.length),
@@ -1242,6 +1245,86 @@ export async function handleReceiveLawInfo({ params, request }: MockResolverCont
   return jsonResponse(item);
 }
 
+/**
+ * PSEUDO CODE — review A2: đóng không tư vấn ở bước phân loại
+ * 1. Chỉ Manager (law:approve); chỉ khi chờ đánh giá, hoặc đang chờ bổ sung
+ *    mà dừng từ bước phân loại (vd đơn vị không bao giờ gửi bổ sung).
+ * 2. 3 kiểu, đều bắt buộc ghi chú: từ chối (kèm lý do), chuyển đơn vị khác
+ *    (kèm đơn vị nhận — chỉ ghi nhận, không tự tạo yêu cầu ở module khác),
+ *    trùng (trỏ tới mục kho tri thức hoặc yêu cầu đã đóng, không Mật).
+ * 3. Cảnh báo SLA coi như đã xử lý; không tính vào KPI đúng hạn/chất lượng.
+ */
+export async function handleDeclineLawRequest({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  const user = currentUser(db, request);
+  if (!user || !hasPermission(user.role, "law:approve")) {
+    return forbidden("Only a manager can close a request without an opinion");
+  }
+  const atTriage =
+    item.status === "new" || (item.status === "awaiting_info" && item.infoRequest?.resumeStatus === "new");
+  if (!atTriage) return badRequest("A request can only be closed without an opinion at triage");
+
+  const body = (await request.json()) as DeclineLawRequestInput;
+  const note = body.note?.trim();
+  if (!note) return badRequest("Please explain the decision");
+
+  const now = new Date().toISOString();
+  const info: LawDeclineInfo = {
+    type: body.type,
+    note,
+    declinedById: user.id,
+    declinedByName: user.name,
+    declinedAt: now,
+  };
+  if (body.type === "rejected") {
+    if (!["not_legal", "out_of_scope", "other"].includes(body.rejectReason ?? "")) {
+      return badRequest("Please choose a reject reason");
+    }
+    info.rejectReason = body.rejectReason;
+  } else if (body.type === "transferred") {
+    const orgs = [...db.organizationSettings.hoDepartments, ...db.organizationSettings.branches];
+    const unit = orgs.find((u) => u.id === body.transferredToUnitId);
+    if (!unit) return badRequest("Please choose the unit to transfer to");
+    if (unit.id === item.requestingUnitId) return badRequest("Cannot transfer back to the requesting unit");
+    info.transferredToUnitId = unit.id;
+    info.transferredToUnitName = unit.name;
+  } else if (body.type === "duplicate") {
+    const ref = body.duplicateOf;
+    if (ref?.kind === "kb") {
+      const kb = findById(db.knowledgeBase, ref.id);
+      if (!kb) return badRequest("Knowledge base entry not found");
+      info.duplicateOf = { kind: "kb", id: kb.id, title: kb.title };
+    } else if (ref?.kind === "request") {
+      const prev = findById(db.adviceRequests, ref.id);
+      if (!prev || prev.status !== "completed" || prev.confidential || prev.id === item.id) {
+        return badRequest("Pick a closed, non-confidential request");
+      }
+      info.duplicateOf = { kind: "request", id: prev.id, title: prev.title, code: prev.code };
+    } else {
+      return badRequest("Please point to the existing opinion");
+    }
+  } else {
+    return badRequest("type must be rejected, transferred or duplicate");
+  }
+
+  const prevStatus = item.status;
+  item.status = "declined";
+  item.declineInfo = info;
+  item.infoRequest = undefined;
+  if (item.alertStatus !== "resolved") {
+    item.alertStatus = "resolved";
+    item.resolvedAt = now;
+    item.resolvedById = user.id;
+  }
+  item.updatedAt = now;
+  recordEvent(db, item.id, "declined", user.id, user.name,
+    `Closed without an opinion (${body.type}): ${note}`, prevStatus, body.type, note);
+  return jsonResponse(item);
+}
+
 export const lawHandlers = [
   http.get("/api/law/requests", handleGetLawRequestList),
   http.post("/api/law/requests", handleCreateLawRequest),
@@ -1256,6 +1339,7 @@ export const lawHandlers = [
   http.put("/api/law/requests/:id/confidentiality", handleSetLawConfidentiality),
   http.post("/api/law/requests/:id/request-info", handleRequestLawInfo),
   http.post("/api/law/requests/:id/info-received", handleReceiveLawInfo),
+  http.post("/api/law/requests/:id/decline", handleDeclineLawRequest),
   http.put("/api/law/requests/:id/alert", handleUpdateLawAlert),
   http.get("/api/law/requests/:id", handleGetLawRequestDetail),
   http.put("/api/law/requests/:id", handleUpdateLawRequest),
