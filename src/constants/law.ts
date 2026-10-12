@@ -63,9 +63,11 @@ export const LAW_PRIORITY_WORKLOAD_WEIGHT: Record<LawPriorityTier, number> = {
 
 /** Review GĐ1 — 4 trạng thái bám flow tư vấn: new = chờ đánh giá ưu tiên,
  * in_progress = đang trao đổi, pending_approval = đã nộp ý kiến chờ Manager
- * duyệt, completed = đã đóng. */
+ * duyệt, completed = đã đóng. Review A1: awaiting_info = chờ đơn vị bổ sung
+ * hồ sơ (SLA dừng), quay lại đúng bước trước đó khi nhận đủ. */
 export const LAW_REQUEST_STATUSES = [
   "new",
+  "awaiting_info",
   "in_progress",
   "pending_approval",
   "completed",
@@ -75,6 +77,7 @@ export type LawRequestStatus = (typeof LAW_REQUEST_STATUSES)[number];
 
 export const LAW_STATUS_LABELS: Record<LawRequestStatus, string> = {
   new: "Awaiting Assessment",
+  awaiting_info: "Awaiting Information",
   in_progress: "In Discussion",
   pending_approval: "Pending Approval",
   completed: "Closed",

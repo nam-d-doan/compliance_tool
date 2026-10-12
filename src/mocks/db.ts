@@ -1227,6 +1227,11 @@ const LAW_REQUEST_TOPICS = [
   "Clarify issues on debt assignment/transfer",
 ] as const;
 
+const SEED_FLOW_STATUSES = ["new", "in_progress", "pending_approval", "completed"] as const;
+
+/** Review A1 — chỉ số yêu cầu mẫu đang "chờ bổ sung hồ sơ" → bước sẽ quay về. */
+const INFO_PAUSED: Record<number, "new" | "in_progress"> = { 8: "new", 13: "in_progress" };
+
 const LAW_REQUESTER_CONTACTS = [
   "Nguyễn Thu Trang",
   "Trần Minh Quân",
@@ -1329,7 +1334,9 @@ function generateAdviceRequests(
   const COUNT = 24;
   for (let i = 0; i < COUNT; i++) {
     const priorityTier = LAW_PRIORITY_TIERS[i % LAW_PRIORITY_TIERS.length];
-    const status = LAW_REQUEST_STATUSES[i % LAW_REQUEST_STATUSES.length];
+    // Vòng xoay 4 trạng thái gốc của flow (không gồm awaiting_info — 2 yêu
+    // cầu chờ bổ sung được chuyển riêng ở cuối vòng lặp, xem INFO_PAUSED).
+    const status = SEED_FLOW_STATUSES[i % SEED_FLOW_STATUSES.length];
     const dept = requestingDepts[i % requestingDepts.length];
     const owner = ownerPool[i % ownerPool.length];
     const manager = pickManager();
@@ -1470,6 +1477,11 @@ function generateAdviceRequests(
     }
 
     const updatedAt = completedAt ?? assessedAt ?? submittedAt;
+    // Review A1 — 2 yêu cầu đang chờ đơn vị bổ sung hồ sơ: 1 dừng lúc phân
+    // loại (chưa phân công), 1 dừng giữa lúc trao đổi. Yêu cầu bổ sung gửi 3
+    // ngày trước ngày demo → "Đã nhận bổ sung" sẽ cộng 3 ngày vào hạn.
+    const pausedFrom = INFO_PAUSED[i];
+    const infoAt = subDays(today, 3);
     requests.push({
       id: requestId,
       code,
@@ -1477,7 +1489,7 @@ function generateAdviceRequests(
       description: undefined,
       priorityTier,
       initialPriorityTier,
-      status,
+      status: pausedFrom ? "awaiting_info" : status,
       requestingUnitId: dept.id,
       requestingUnitName: dept.name,
       requestingUnitType: "ho_department",
@@ -1505,6 +1517,18 @@ function generateAdviceRequests(
       resolvedById: completedAt ? manager.id : undefined,
       fileIds,
       folders: [...LAW_DEFAULT_FOLDERS],
+      slaPausedDays: 0,
+      infoRequest: pausedFrom
+        ? {
+            note: pausedFrom === "new"
+              ? "Please send the signed draft contract and the customer's latest financial statements."
+              : "Please send the collateral valuation report referenced in your last message.",
+            requestedById: pausedFrom === "new" ? manager.id : owner.id,
+            requestedByName: pausedFrom === "new" ? manager.name : owner.name,
+            requestedAt: iso(infoAt),
+            resumeStatus: pausedFrom,
+          }
+        : undefined,
       // Review GĐ5 — yêu cầu Mật (xem confidentialSeed).
       confidential: confidentialSeed,
       confidentialReason: confidentialSeed
@@ -1517,6 +1541,18 @@ function generateAdviceRequests(
       createdAt: iso(submittedAt),
       updatedAt: iso(updatedAt),
     });
+    if (pausedFrom) {
+      const who = pausedFrom === "new" ? managerWho : ownerWho;
+      const req = requests[requests.length - 1];
+      event(requestId, "info_requested", who, infoAt, `Requested additional information: ${req.infoRequest!.note}`, {
+        subject: req.infoRequest!.note,
+      });
+      messages.push({
+        id: uid("lmsg"), requestId, side: "legal", authorId: who.id, authorName: who.name,
+        content: `Additional information needed: ${req.infoRequest!.note}`,
+        fileIds: [], createdAt: iso(infoAt), updatedAt: iso(infoAt),
+      });
+    }
     if (confidentialSeed) {
       event(requestId, "confidentiality_changed", managerWho, addDays(submittedAt, 1),
         "Marked request as confidential", { fromValue: "false", toValue: "true", subject: requests[requests.length - 1].confidentialReason });

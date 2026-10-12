@@ -13,6 +13,7 @@ import type {
   ReviewAdvisoryOpinionInput,
   SaveOpinionToKnowledgeBaseInput,
   SetLawConfidentialityInput,
+  RequestLawInfoInput,
 } from "@/types";
 
 /** Mọi bước của flow tư vấn đổi status/ghi lịch sử — làm mới đủ các nơi hiển thị. */
@@ -118,6 +119,24 @@ export function useUpdateLawAlert(requestId: string) {
 }
 
 /** GĐ3 — thêm 1 mục vào kho tri thức. */
+/** Review A1 — yêu cầu đơn vị bổ sung hồ sơ (SLA dừng). */
+export function useRequestLawInfo(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: RequestLawInfoInput) => LawService.requestInfo(requestId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: lawKeys.all }),
+  });
+}
+
+/** Review A1 — đã nhận đủ bổ sung: SLA chạy lại, quay về bước trước. */
+export function useReceiveLawInfo(requestId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => LawService.infoReceived(requestId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: lawKeys.all }),
+  });
+}
+
 /** Review GĐ5 — gắn / gỡ cờ Mật. */
 export function useSetLawConfidentiality(requestId: string) {
   const queryClient = useQueryClient();

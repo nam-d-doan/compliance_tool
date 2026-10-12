@@ -8,7 +8,8 @@
 import { AlertTriangle, Briefcase, FileText, MessageSquare, Route } from "lucide-react";
 import { AuditTimeline, type TimelineGroup } from "@/components/common/AuditTimeline";
 import { LAW_PRIORITY_STYLES, LAW_STATUS_LABELS, type LawPriorityTier, type LawRequestStatus } from "@/constants/law";
-import { useL, useTerm } from "@/lib/i18n";
+import { useL, useTerm, useDateLocale } from "@/lib/i18n";
+import { format, parseISO } from "date-fns";
 import type { LawEvent } from "@/types";
 
 type Group = "request" | "flow" | "discussion" | "alert" | "docs";
@@ -20,6 +21,8 @@ const GROUP_OF: Record<LawEvent["type"], Group> = {
   reminded: "request",
   priority_assessed: "flow",
   assigned: "flow",
+  info_requested: "discussion",
+  info_received: "discussion",
   status_changed: "flow",
   opinion_issued: "flow",
   revision_requested: "flow",
@@ -59,9 +62,11 @@ const isStatus = (v?: string): v is LawRequestStatus => !!v && v in LAW_STATUS_L
 export function LawHistory({ events }: { events: LawEvent[] }) {
   const L = useL();
   const term = useTerm();
+  const dateLocale = useDateLocale();
   const tier = (v?: string) => (isTier(v) ? term(LAW_PRIORITY_STYLES[v].label) : v);
   const status = (v?: string) => (isStatus(v) ? term(LAW_STATUS_LABELS[v]) : v);
   const folder = (v?: string) => v || L("Unfiled", "Chưa phân loại");
+  const dateOf = (v?: string) => (v ? format(parseISO(v), "dd/MM/yyyy", { locale: dateLocale }) : undefined);
 
   const describe = (e: LawEvent): { text: string; from?: string; to?: string } => {
     const s = e.subject ?? "";
@@ -81,6 +86,17 @@ export function LawHistory({ events }: { events: LawEvent[] }) {
         return { text: L(`Sent a progress reminder to ${s}`, `Đôn đốc tiến độ tới ${s}`) };
       case "priority_assessed":
         return { text: L("Assessed priority", "Đánh giá mức ưu tiên"), from: tier(e.fromValue), to: tier(e.toValue) };
+      case "info_requested":
+        return { text: s ? L(`Requested more information: ${s}`, `Yêu cầu bổ sung hồ sơ: ${s}`) : L("Requested more information", "Yêu cầu bổ sung hồ sơ") };
+      case "info_received":
+        return {
+          text: L(
+            `Information received — SLA paused ${s || "0"} day(s), due date moved`,
+            `Đã nhận bổ sung — SLA dừng ${s || "0"} ngày, dời hạn`,
+          ),
+          from: dateOf(e.fromValue),
+          to: dateOf(e.toValue),
+        };
       case "assigned":
         return { text: s ? L(`Assigned to ${s}`, `Phân công cho ${s}`) : L("Assigned a specialist", "Phân công chuyên viên") };
       case "status_changed":

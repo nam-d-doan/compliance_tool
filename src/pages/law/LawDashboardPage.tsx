@@ -56,6 +56,7 @@ const SLA_CHIP: Record<LawQueueItem["slaState"], { label: Bi; className: string 
   overdue: { label: ["Overdue", "Quá hạn"], className: "bg-destructive/10 text-destructive" },
   due_soon: { label: ["Due soon", "Sắp đến hạn"], className: "bg-warning-bg text-warning" },
   upcoming: { label: ["On track", "Còn hạn"], className: "bg-muted text-muted-foreground" },
+  paused: { label: ["SLA paused", "Tạm dừng SLA"], className: "bg-info-bg text-info" },
 };
 
 export default function LawDashboardPage() {
@@ -308,8 +309,9 @@ function QueueCard({ data, showOwner, className }: { data: LawDashboardSummary; 
     overdue: data.queueCounts.overdue,
     due_soon: data.queueCounts.dueSoon,
     upcoming: data.queueCounts.upcoming,
+    paused: data.queueCounts.paused,
   };
-  const total = counts.overdue + counts.due_soon + counts.upcoming;
+  const total = counts.overdue + counts.due_soon + counts.upcoming + counts.paused;
   return (
     <div className={cn("rounded-xl bg-card p-4 ring-1 ring-foreground/10", className)}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -320,7 +322,7 @@ function QueueCard({ data, showOwner, className }: { data: LawDashboardSummary; 
           </h3>
         </div>
         <div className="flex flex-wrap gap-1.5 text-xs">
-          {(["overdue", "due_soon", "upcoming"] as const).map((k) => (
+          {(["overdue", "due_soon", "upcoming", "paused"] as const).map((k) => (
             <span key={k} className={cn("rounded-md px-1.5 py-0.5", SLA_CHIP[k].className)}>
               {L(...SLA_CHIP[k].label)} {counts[k]}
             </span>
@@ -364,7 +366,11 @@ function QueueCard({ data, showOwner, className }: { data: LawDashboardSummary; 
                         {q.returned
                           ? L("Returned — revise opinion", "Bị trả lại — cần sửa")
                           : `${term(LAW_STATUS_LABELS[q.status])} · ${
-                              q.nextActor === "manager" ? L("Manager acts", "Manager xử lý") : L("Specialist acts", "Chuyên viên xử lý")
+                              q.nextActor === "manager"
+                                ? L("Manager acts", "Manager xử lý")
+                                : q.nextActor === "requester"
+                                  ? L("Requesting unit acts", "Đơn vị bổ sung")
+                                  : L("Specialist acts", "Chuyên viên xử lý")
                             }`}
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -390,9 +396,11 @@ function QueueCard({ data, showOwner, className }: { data: LawDashboardSummary; 
 /** "Yêu cầu đang dừng ở đâu": việc đang mở theo bước flow và ai cần xử lý. */
 function HoldersCard({ data }: { data: LawDashboardSummary }) {
   const L = useL();
-  const discussing = data.totalOpen - data.awaitingAssessment - data.awaitingApproval - data.returnedForRevision;
+  const discussing =
+    data.totalOpen - data.awaitingAssessment - data.awaitingApproval - data.returnedForRevision - data.awaitingInfo;
   const rows: { key: string; label: string; who: string; value: number; bar: string }[] = [
     { key: "assess", label: L("Awaiting priority assessment", "Chờ đánh giá ưu tiên"), who: "Manager", value: data.awaitingAssessment, bar: "bg-info" },
+    { key: "info", label: L("Awaiting information", "Chờ đơn vị bổ sung"), who: L("Requesting unit", "Đơn vị yêu cầu"), value: data.awaitingInfo, bar: "bg-muted-foreground" },
     { key: "discuss", label: L("In discussion", "Đang trao đổi"), who: L("Specialist", "Chuyên viên"), value: discussing, bar: "bg-primary" },
     { key: "returned", label: L("Returned — revising", "Bị trả lại — đang sửa"), who: L("Specialist", "Chuyên viên"), value: data.returnedForRevision, bar: "bg-destructive" },
     { key: "approve", label: L("Awaiting approval", "Chờ phê duyệt ý kiến"), who: "Manager", value: data.awaitingApproval, bar: "bg-warning" },

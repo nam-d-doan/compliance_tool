@@ -16,6 +16,7 @@
  *    ở server 1 lần — khuôn y hệt handleGetLMDashboard.
  */
 import { http } from "msw";
+import { differenceInCalendarDays } from "date-fns";
 import { getDb, findById, paginate, filterByText } from "@/mocks/db";
 import {
   getDelay,
@@ -51,6 +52,7 @@ import type {
   CreateKnowledgeBaseEntryInput,
   SaveOpinionToKnowledgeBaseInput,
   SetLawConfidentialityInput,
+  RequestLawInfoInput,
   AdvisoryOpinion,
   LawMessage,
   AssessLawRequestInput,
@@ -111,6 +113,8 @@ export function recordEvent(
 function evaluateLawAlerts(db: MockDb): void {
   db.adviceRequests.forEach((r) => {
     if (r.alertStatus !== "pending") return;
+    // SLA đang dừng (chờ đơn vị bổ sung) — không bật cờ.
+    if (r.status === "awaiting_info") return;
     const rule = db.slaRules.find((sr) => sr.priorityTier === r.priorityTier);
     const daysBefore = rule?.alertDaysBefore ?? 3;
     const next = nextAlertStatus(
@@ -319,6 +323,7 @@ export async function handleCreateLawRequest({
     fileIds: [],
     folders: [...LAW_DEFAULT_FOLDERS],
     confidential: false,
+    slaPausedDays: 0,
     tags: body.tags ?? [],
     createdAt: now,
     updatedAt: now,
@@ -753,9 +758,10 @@ export async function handleSaveOpinionToKnowledgeBase({ params, request }: Mock
  *    SlaRule.alertDaysBefore (sắp hạn) / còn hạn.
  */
 const TIER_RANK: Record<string, number> = { law_mandatory: 0, sbv_regulation: 1, internal: 2 };
-const SLA_RANK = { overdue: 0, due_soon: 1, upcoming: 2 } as const;
+const SLA_RANK = { overdue: 0, due_soon: 1, upcoming: 2, paused: 3 } as const;
 
 function slaStateOf(db: MockDb, r: AdviceRequest): LawQueueItem["slaState"] {
+  if (r.status === "awaiting_info") return "paused";
   const days = (new Date(r.dueDate).getTime() - DEMO_TODAY.getTime()) / 86_400_000;
   if (days < 0) return "overdue";
   const rule = db.slaRules.find((sr) => sr.priorityTier === r.priorityTier);
@@ -794,7 +800,11 @@ export async function handleGetLawDashboard({ request }: { request: Request }) {
       priorityTier: r.priorityTier,
       dueDate: r.dueDate,
       slaState: slaStateOf(db, r),
-      nextActor: (r.status === "in_progress" ? "specialist" : "manager") as LawQueueItem["nextActor"],
+      nextActor: (r.status === "awaiting_info"
+        ? "requester"
+        : r.status === "in_progress"
+          ? "specialist"
+          : "manager") as LawQueueItem["nextActor"],
       returned: r.status === "in_progress" && lastOpinion(r.id)?.status === "returned",
     }))
     .sort(
@@ -843,6 +853,7 @@ export async function handleGetLawDashboard({ request }: { request: Request }) {
     awaitingAssessment: openRequests.filter((r) => r.status === "new").length,
     awaitingApproval: openRequests.filter((r) => r.status === "pending_approval").length,
     returnedForRevision: queueAll.filter((q) => q.returned).length,
+    awaitingInfo: openRequests.filter((r) => r.status === "awaiting_info").length,
     onTimeCompletionRate: rate(completedRequests.filter(isOnTime).length, completedRequests.length),
     qualityRate: rate(completedRequests.filter((r) => r.revisedCount === 0).length, completedRequests.length),
     alertResolutionRate: rate(resolved.length, everFlagged.length),
@@ -864,6 +875,7 @@ export async function handleGetLawDashboard({ request }: { request: Request }) {
       overdue: queueAll.filter((q) => q.slaState === "overdue").length,
       dueSoon: queueAll.filter((q) => q.slaState === "due_soon").length,
       upcoming: queueAll.filter((q) => q.slaState === "upcoming").length,
+      paused: queueAll.filter((q) => q.slaState === "paused").length,
     },
     slaTrend,
     slaStatus: {
@@ -961,7 +973,7 @@ export async function handlePostLawMessage({ params, request }: MockResolverCont
   if (!item) return notFound("Request not found");
   const user = currentUser(db, request);
   if (!user || !hasPermission(user.role, "law:read")) return forbidden("Not allowed");
-  if (item.status !== "in_progress" && item.status !== "pending_approval") {
+  if (item.status !== "in_progress" && item.status !== "pending_approval" && item.status !== "awaiting_info") {
     return badRequest("Messages are only open while the request is in discussion");
   }
   const body = (await request.json()) as CreateLawMessageInput;
@@ -1137,6 +1149,99 @@ export async function handleSetLawConfidentiality({ params, request }: MockResol
   return jsonResponse(item);
 }
 
+/**
+ * PSEUDO CODE — review A1: yêu cầu bổ sung hồ sơ + dừng SLA
+ * 1. Yêu cầu bổ sung: lúc chờ đánh giá (chỉ Manager) hoặc đang trao đổi
+ *    (Manager hoặc chuyên viên phụ trách). Bắt buộc ghi cần bổ sung gì.
+ *    → status "awaiting_info", nhớ bước để quay về; ghi kèm 1 tin nhắn phía
+ *    pháp chế để đơn vị thấy ngay trong luồng trao đổi.
+ * 2. Đã nhận bổ sung: cùng nhóm người. Số ngày dừng đo theo NGÀY DEMO
+ *    (DEMO_TODAY, như mọi phép tính SLA khác) — không đo theo đồng hồ máy,
+ *    nếu không yêu cầu mẫu từ tháng 7 sẽ bị cộng hàng chục ngày. Cộng vào
+ *    dueDate + slaPausedDays, quay về đúng bước trước đó.
+ */
+function canHandleInfo(db: MockDb, user: UserProfile | undefined, item: AdviceRequest): boolean {
+  if (!user) return false;
+  if (hasPermission(user.role, "law:approve")) return true;
+  const resume = item.status === "awaiting_info" ? item.infoRequest?.resumeStatus : item.status;
+  return resume === "in_progress" && user.id === item.ownerId;
+}
+
+export async function handleRequestLawInfo({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  if (item.status !== "new" && item.status !== "in_progress") {
+    return badRequest("Information can only be requested at triage or during discussion");
+  }
+  const user = currentUser(db, request);
+  if (!canHandleInfo(db, user, item)) {
+    return forbidden("Only a manager (or the assigned specialist during discussion) can request information");
+  }
+  const body = (await request.json()) as RequestLawInfoInput;
+  const note = body.note?.trim();
+  if (!note) return badRequest("Please describe what the requesting unit must provide");
+
+  const now = new Date().toISOString();
+  item.infoRequest = {
+    note,
+    requestedById: user!.id,
+    requestedByName: user!.name,
+    requestedAt: now,
+    resumeStatus: item.status as "new" | "in_progress",
+  };
+  item.status = "awaiting_info";
+  item.updatedAt = now;
+  db.lawMessages.push({
+    id: `lmsg-${crypto.randomUUID()}`,
+    requestId: item.id,
+    side: "legal",
+    authorId: user!.id,
+    authorName: user!.name,
+    content: `Additional information needed: ${note}`,
+    fileIds: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+  recordEvent(db, item.id, "info_requested", user!.id, user!.name,
+    `Requested additional information: ${note}`, undefined, undefined, note);
+  return jsonResponse(item);
+}
+
+export async function handleReceiveLawInfo({ params, request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const item = findById(db.adviceRequests, params.id as string);
+  if (!item) return notFound("Request not found");
+  if (item.status !== "awaiting_info" || !item.infoRequest) {
+    return badRequest("This request is not waiting for information");
+  }
+  const user = currentUser(db, request);
+  if (!canHandleInfo(db, user, item)) return forbidden("Not allowed");
+
+  const pausedDays = Math.max(
+    0,
+    differenceInCalendarDays(DEMO_TODAY, new Date(item.infoRequest.requestedAt)),
+  );
+  const prevDue = item.dueDate;
+  if (pausedDays > 0) {
+    const due = new Date(item.dueDate);
+    due.setDate(due.getDate() + pausedDays);
+    item.dueDate = due.toISOString();
+  }
+  item.slaPausedDays += pausedDays;
+  item.status = item.infoRequest.resumeStatus;
+  item.infoRequest = undefined;
+  // Hạn mới có thể chưa tới ngưỡng — cho engine đánh giá lại.
+  if (item.alertStatus === "flagged") item.alertStatus = "pending";
+  const now = new Date().toISOString();
+  item.updatedAt = now;
+  recordEvent(db, item.id, "info_received", user!.id, user!.name,
+    `Information received — SLA paused ${pausedDays} day(s)`, prevDue, item.dueDate, String(pausedDays));
+  return jsonResponse(item);
+}
+
 export const lawHandlers = [
   http.get("/api/law/requests", handleGetLawRequestList),
   http.post("/api/law/requests", handleCreateLawRequest),
@@ -1149,6 +1254,8 @@ export const lawHandlers = [
   http.post("/api/law/opinions/:id/review", handleReviewLawOpinion),
   http.post("/api/law/requests/:id/save-to-kb", handleSaveOpinionToKnowledgeBase),
   http.put("/api/law/requests/:id/confidentiality", handleSetLawConfidentiality),
+  http.post("/api/law/requests/:id/request-info", handleRequestLawInfo),
+  http.post("/api/law/requests/:id/info-received", handleReceiveLawInfo),
   http.put("/api/law/requests/:id/alert", handleUpdateLawAlert),
   http.get("/api/law/requests/:id", handleGetLawRequestDetail),
   http.put("/api/law/requests/:id", handleUpdateLawRequest),

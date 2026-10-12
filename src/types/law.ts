@@ -56,6 +56,11 @@ export interface AdviceRequest extends BaseEntity {
 
   /** Mức ưu tiên đơn vị đề xuất lúc gửi — giữ lại để thấy Manager có đổi không. */
   initialPriorityTier: LawPriorityTier;
+  /** Review A1 — yêu cầu bổ sung hồ sơ đang mở (status "awaiting_info"). */
+  infoRequest?: LawInfoRequest;
+  /** Tổng số ngày SLA đã dừng vì chờ bổ sung — đã cộng vào dueDate. */
+  slaPausedDays: number;
+
   /** Bước 2 "Đánh giá ưu tiên" — có khi Manager đã chốt mức ưu tiên. */
   assessedAt?: string;
   assessedById?: string;
@@ -154,7 +159,9 @@ export interface LawEvent extends BaseEntity {
     | "file_deleted"
     | "folder_created"
     | "saved_to_knowledge_base"
-    | "confidentiality_changed";
+    | "confidentiality_changed"
+    | "info_requested"
+    | "info_received";
   userId: string;
   userName: string;
   description: string;
@@ -163,6 +170,20 @@ export interface LawEvent extends BaseEntity {
   /** Đối tượng của thao tác (mức ưu tiên, phiên bản ý kiến...) — để UI dựng
    * câu song ngữ, giống CaseEvent.subject của LM. */
   subject?: string;
+}
+
+/** Review A1 — 1 lần yêu cầu đơn vị bổ sung hồ sơ. */
+export interface LawInfoRequest {
+  note: string;
+  requestedById: string;
+  requestedByName: string;
+  requestedAt: string;
+  /** Bước để quay về khi đã nhận đủ: chờ đánh giá hoặc đang trao đổi. */
+  resumeStatus: "new" | "in_progress";
+}
+
+export interface RequestLawInfoInput {
+  note: string;
 }
 
 /** Review GĐ5 — gắn / gỡ cờ Mật. Gắn bắt buộc lý do. */
@@ -294,6 +315,8 @@ export interface LawDashboardSummary {
   awaitingApproval: number;
   /** Đang trao đổi và ý kiến gần nhất bị trả lại — chuyên viên cần sửa. */
   returnedForRevision: number;
+  /** Đang chờ đơn vị bổ sung hồ sơ (SLA dừng). */
+  awaitingInfo: number;
   onTimeCompletionRate: number;
   qualityRate: number;
   alertResolutionRate: number;
@@ -303,7 +326,7 @@ export interface LawDashboardSummary {
   ownerWorkload: LawWorkloadEntry[];
   /** Yêu cầu đang mở, đã sort: quá hạn → sắp hạn → còn hạn, rồi ưu tiên, rồi hạn gần. */
   queue: LawQueueItem[];
-  queueCounts: { overdue: number; dueSoon: number; upcoming: number };
+  queueCounts: { overdue: number; dueSoon: number; upcoming: number; paused: number };
   /** SLA theo tháng đóng yêu cầu (6 tháng gần nhất): đóng đúng hạn / trễ. */
   slaTrend: { month: string; onTime: number; late: number }[];
   slaStatus: { closedOnTime: number; closedLate: number; openWithinSla: number; openBreached: number };
@@ -319,9 +342,10 @@ export interface LawQueueItem {
   status: LawRequestStatus;
   priorityTier: LawPriorityTier;
   dueDate: string;
-  slaState: "overdue" | "due_soon" | "upcoming";
+  /** "paused" = đang chờ đơn vị bổ sung hồ sơ, SLA dừng. */
+  slaState: "overdue" | "due_soon" | "upcoming" | "paused";
   /** Bước tiếp theo do ai làm: Manager (đánh giá / duyệt) hay chuyên viên (trao đổi, soạn ý kiến). */
-  nextActor: "manager" | "specialist";
+  nextActor: "manager" | "specialist" | "requester";
   /** Ý kiến gần nhất bị trả lại — chuyên viên cần sửa. */
   returned: boolean;
 }

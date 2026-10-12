@@ -283,6 +283,10 @@ export default function LawDetailPage() {
                 />
               </div>
               <Field label={L("Completed", "Ngày hoàn thành")} value={fmtD(item.completedAt)} />
+              <Field
+                label={L("SLA paused (waiting for info)", "SLA đã dừng (chờ bổ sung)")}
+                value={L(`${item.slaPausedDays} day(s)`, `${item.slaPausedDays} ngày`)}
+              />
               <Field label={L("Last Updated", "Cập nhật lần cuối")} value={fmtD(item.updatedAt)} />
             </CardContent>
           </Card>

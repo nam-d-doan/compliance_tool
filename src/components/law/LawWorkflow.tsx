@@ -4,6 +4,10 @@
  * 2. Phân loại & phân công: đã xong → mức đề xuất → mức chốt, chuyên viên
  *    được giao, ghi chú, hạn SLA; chưa xong → Manager (law:approve) chọn mức
  *    ưu tiên + chuyên viên (gợi ý người tải thấp nhất) + ghi chú.
+ * 2b/3b. Review A1 — "Yêu cầu bổ sung hồ sơ" ở bước 2 (Manager) hoặc 3
+ *    (Manager / chuyên viên phụ trách): SLA dừng, banner ở bước Trao đổi,
+ *    đơn vị gửi bổ sung trong luồng tin nhắn, bấm "Đã nhận bổ sung" để quay
+ *    về đúng bước trước đó (hạn SLA cộng thêm số ngày đã dừng).
  * 3. Trao đổi: luồng tin nhắn 2 bên, đính kèm file. Ô soạn chọn "gửi với tư
  *    cách" Pháp chế hoặc Đơn vị yêu cầu (MÔ PHỎNG — chưa có vai trò đơn vị).
  * 4. Đóng: các phiên bản ý kiến tư vấn (mới nhất trên). Chuyên viên phụ
@@ -18,6 +22,9 @@ import { format, parseISO } from "date-fns";
 import {
   ArrowRight,
   BookOpen,
+  FileQuestion,
+  PauseCircle,
+  PlayCircle,
   Check,
   Download,
   FileText,
@@ -40,6 +47,8 @@ import {
   useSubmitLawOpinion,
   useReviewLawOpinion,
   useSaveOpinionToKnowledgeBase,
+  useRequestLawInfo,
+  useReceiveLawInfo,
 } from "@/hooks/mutations";
 import { useUploadFile } from "@/hooks/mutations/useFileMutations";
 import { useAuthStore } from "@/stores";
@@ -49,7 +58,7 @@ import { useL, useTerm, useDateLocale } from "@/lib/i18n";
 import { makeDemoPdf, isMockFileUrl } from "@/lib/demo-pdf";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { AdviceRequest, AdvisoryOpinion, FileAttachment, KnowledgeBaseKind, LawMessage } from "@/types";
+import type { AdviceRequest, AdvisoryOpinion, FileAttachment, KnowledgeBaseKind, LawMessage, Role } from "@/types";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -58,8 +67,13 @@ const selectClass =
 
 type StepState = "done" | "active" | "upcoming";
 
-function stepStates(status: AdviceRequest["status"]): [StepState, StepState, StepState, StepState] {
-  switch (status) {
+function stepStates(request: AdviceRequest): [StepState, StepState, StepState, StepState] {
+  switch (request.status) {
+    // Chờ bổ sung: việc trao đổi diễn ra ở bước 3; bước 2 vẫn mở nếu dừng ngay lúc phân loại.
+    case "awaiting_info":
+      return request.infoRequest?.resumeStatus === "new"
+        ? ["done", "active", "active", "upcoming"]
+        : ["done", "done", "active", "upcoming"];
     case "new":
       return ["done", "active", "upcoming", "upcoming"];
     case "in_progress":
@@ -90,7 +104,7 @@ function downloadFile(file: FileAttachment, requestCode: string) {
 
 export function LawWorkflow({ request }: { request: AdviceRequest }) {
   const L = useL();
-  const [s1, s2, s3, s4] = stepStates(request.status);
+  const [s1, s2, s3, s4] = stepStates(request);
   return (
     <ol className="space-y-4">
       <Step n={1} state={s1} title={L("Request received", "Tiếp nhận yêu cầu")}>
@@ -219,6 +233,17 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
     );
   }
 
+  if (request.status === "awaiting_info") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {L(
+          "On hold — waiting for the requesting unit to provide information (see Discussion). Triage resumes once it is received.",
+          "Tạm dừng — chờ đơn vị bổ sung hồ sơ (xem bước Trao đổi). Phân loại tiếp sau khi nhận đủ.",
+        )}
+      </p>
+    );
+  }
+
   if (!hasPermission(role, "law:approve")) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -231,6 +256,7 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
   }
 
   return (
+    <div className="space-y-3">
     <form
       className="space-y-3"
       onSubmit={(e) => {
@@ -287,6 +313,116 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
         {L("Confirm & assign", "Xác nhận & phân công")}
       </Button>
     </form>
+    <RequestInfoAction request={request} />
+    </div>
+  );
+}
+
+/** Client chỉ để ẩn/hiện nút — server kiểm lại (canHandleInfo). */
+function canHandleInfo(request: AdviceRequest, role: Role | null, userId?: string): boolean {
+  if (hasPermission(role, "law:approve")) return true;
+  const resume = request.status === "awaiting_info" ? request.infoRequest?.resumeStatus : request.status;
+  return resume === "in_progress" && userId === request.ownerId;
+}
+
+function RequestInfoAction({ request }: { request: AdviceRequest }) {
+  const L = useL();
+  const { role, user } = useAuthStore();
+  const ask = useRequestLawInfo(request.id);
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  if (!canHandleInfo(request, role, user?.id)) return null;
+  if (!open) {
+    return (
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <FileQuestion className="size-3.5" aria-hidden="true" />
+        {L("Request more information", "Yêu cầu bổ sung hồ sơ")}
+      </Button>
+    );
+  }
+  return (
+    <form
+      className="space-y-2 rounded-lg border border-warning/40 bg-warning-bg/40 p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        ask.mutate(
+          { note: note.trim() },
+          {
+            onSuccess: () => {
+              toast.success(L("Information requested — SLA paused", "Đã yêu cầu bổ sung — SLA tạm dừng"));
+              setOpen(false);
+              setNote("");
+            },
+            onError: (err) => toast.error(err.message || L("Action failed", "Thao tác thất bại")),
+          },
+        );
+      }}
+    >
+      <p className="text-sm font-medium">{L("What must the requesting unit provide?", "Đơn vị cần bổ sung gì?")}</p>
+      <Textarea
+        autoFocus
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder={L("e.g. Signed loan agreement and collateral valuation report", "VD: Hợp đồng tín dụng đã ký và biên bản định giá TSBĐ")}
+        className="min-h-16"
+      />
+      <p className="text-xs text-muted-foreground">
+        {L(
+          "The SLA clock stops until the information is received; the paused days are added to the due date.",
+          "SLA dừng cho tới khi nhận đủ; số ngày dừng được cộng vào hạn.",
+        )}
+      </p>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={ask.isPending || !note.trim()}>
+          {L("Send request", "Gửi yêu cầu")}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          {L("Cancel", "Huỷ")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function InfoBanner({ request }: { request: AdviceRequest }) {
+  const L = useL();
+  const dateLocale = useDateLocale();
+  const { role, user } = useAuthStore();
+  const receive = useReceiveLawInfo(request.id);
+  const info = request.infoRequest;
+  if (!info) return null;
+  return (
+    <div className="space-y-2 rounded-lg border border-warning/40 bg-warning-bg p-3 text-sm">
+      <p className="flex items-center gap-1.5 font-medium text-warning">
+        <PauseCircle className="size-4" aria-hidden="true" />
+        {L("Waiting for the requesting unit — SLA paused", "Chờ đơn vị bổ sung hồ sơ — SLA tạm dừng")}
+      </p>
+      <p>{info.note}</p>
+      <p className="text-xs text-muted-foreground">
+        {info.requestedByName} · {format(parseISO(info.requestedAt), "dd/MM/yyyy HH:mm", { locale: dateLocale })}
+      </p>
+      {canHandleInfo(request, role, user?.id) && (
+        <Button
+          size="sm"
+          disabled={receive.isPending}
+          onClick={() =>
+            receive.mutate(undefined, {
+              onSuccess: (r) =>
+                toast.success(
+                  L(
+                    `Information received — SLA resumed, ${r.slaPausedDays} paused day(s) in total`,
+                    `Đã nhận bổ sung — SLA chạy lại, tổng ${r.slaPausedDays} ngày đã dừng`,
+                  ),
+                ),
+              onError: (err) => toast.error(err.message || L("Action failed", "Thao tác thất bại")),
+            })
+          }
+        >
+          <PlayCircle className="size-3.5" aria-hidden="true" />
+          {L("Information received — resume", "Đã nhận bổ sung — tiếp tục")}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -386,7 +522,8 @@ function DiscussionStep({ request, active }: { request: AdviceRequest; active: b
   const files = useFilesByIds(request.fileIds);
   const post = usePostLawMessage(request.id);
   const [content, setContent] = useState("");
-  const [side, setSide] = useState<LawMessage["side"]>("legal");
+  // Đang chờ bổ sung → mặc định mô phỏng đơn vị gửi tài liệu.
+  const [side, setSide] = useState<LawMessage["side"]>(request.status === "awaiting_info" ? "requester" : "legal");
   const att = useAttachments(request.id, "02. Trao đổi");
   const canPost = active && hasPermission(role, "law:read");
 
@@ -396,6 +533,8 @@ function DiscussionStep({ request, active }: { request: AdviceRequest; active: b
 
   return (
     <div className="space-y-3">
+      {request.status === "awaiting_info" && <InfoBanner request={request} />}
+      {request.status === "in_progress" && <RequestInfoAction request={request} />}
       {list.length === 0 ? (
         <p className="text-sm text-muted-foreground">{L("No messages yet.", "Chưa có tin nhắn.")}</p>
       ) : (
