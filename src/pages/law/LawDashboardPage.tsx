@@ -351,7 +351,7 @@ function QueueCard({ data, showOwner, className }: { data: LawDashboardSummary; 
                       <span className="font-medium">{q.title}</span>
                       <span className="block text-xs text-muted-foreground">
                         {q.code} · {term(LAW_PRIORITY_STYLES[q.priorityTier].label)}
-                        {showOwner && ` · ${q.ownerName}`}
+                        {showOwner && ` · ${q.ownerName || L("Not assigned", "Chưa phân công")}`}
                       </span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-0.5">

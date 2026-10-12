@@ -137,10 +137,7 @@ export default function LawDetailPage() {
     const payload: UpdateAdviceRequestInput = {
       title: values.title,
       description: values.description || undefined,
-      priorityTier: values.priorityTier as UpdateAdviceRequestInput["priorityTier"],
       requestingUnitId: values.requestingUnitId,
-      ownerId: values.ownerId,
-      managerId: values.managerId,
       tags:
         values.tags
           ?.split(",")
@@ -273,8 +270,8 @@ export default function LawDetailPage() {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <Field label={L("Description", "Mô tả")} value={item.description || "—"} />
               <Field label={L("Requesting Unit", "Đơn vị yêu cầu")} value={item.requestingUnitName} />
-              <Field label={L("Assigned Specialist", "Chuyên viên phụ trách")} value={item.ownerName} />
-              <Field label={L("Manager", "Quản lý")} value={item.managerName || "—"} />
+              <Field label={L("Assigned Specialist", "Chuyên viên phụ trách")} value={item.ownerName || L("Not assigned yet", "Chưa phân công")} />
+              <Field label={L("Manager", "Quản lý")} value={item.managerName || L("Not assigned yet", "Chưa phân công")} />
               <Field label={L("Submitted", "Ngày gửi")} value={fmtD(item.submittedAt)} />
               <div>
                 <p className="text-xs font-medium text-muted-foreground">
@@ -380,10 +377,9 @@ export default function LawDetailPage() {
                 description: item.description,
                 priorityTier: item.priorityTier,
                 requestingUnitId: item.requestingUnitId,
-                ownerId: item.ownerId,
-                managerId: item.managerId,
                 tags: item.tags.join(", "),
               }}
+              mode="edit"
               onSubmit={handleEditSubmit}
               onCancel={() => setEditOpen(false)}
               isSubmitting={update.isPending}

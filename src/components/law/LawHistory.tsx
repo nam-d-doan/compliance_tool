@@ -19,6 +19,7 @@ const GROUP_OF: Record<LawEvent["type"], Group> = {
   reassigned: "request",
   reminded: "request",
   priority_assessed: "flow",
+  assigned: "flow",
   status_changed: "flow",
   opinion_issued: "flow",
   revision_requested: "flow",
@@ -80,6 +81,8 @@ export function LawHistory({ events }: { events: LawEvent[] }) {
         return { text: L(`Sent a progress reminder to ${s}`, `Đôn đốc tiến độ tới ${s}`) };
       case "priority_assessed":
         return { text: L("Assessed priority", "Đánh giá mức ưu tiên"), from: tier(e.fromValue), to: tier(e.toValue) };
+      case "assigned":
+        return { text: s ? L(`Assigned to ${s}`, `Phân công cho ${s}`) : L("Assigned a specialist", "Phân công chuyên viên") };
       case "status_changed":
         return { text: L("Status changed", "Đổi trạng thái"), from: status(e.fromValue), to: status(e.toValue) };
       case "opinion_issued":

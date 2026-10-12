@@ -38,10 +38,11 @@ export interface AdviceRequest extends BaseEntity {
   requestingUnitType: "ho_department" | "branch";
   requestingUnitRegion?: string;
 
-  /** Chuyên viên phụ trách (role "owner" ở GĐ1, giống LM). */
+  /** Chuyên viên phụ trách (role "owner"). Review B: rỗng ("") khi chưa
+   * phân công — đơn vị gửi yêu cầu không tự chọn, Manager phân công ở bước 2. */
   ownerId: string;
   ownerName: string;
-  /** Cấp quản lý phê duyệt/điều phối (role "executive"). */
+  /** Manager phụ trách — gán = người đánh giá ở bước 2; rỗng trước đó. */
   managerId: string;
   managerName: string;
 
@@ -145,6 +146,7 @@ export interface LawEvent extends BaseEntity {
     | "alert_acknowledged"
     | "alert_resolved"
     | "priority_assessed"
+    | "assigned"
     | "message_posted"
     | "opinion_approved"
     | "file_attached"
@@ -172,6 +174,8 @@ export interface SetLawConfidentialityInput {
 /** Bước 2 — Manager chốt mức ưu tiên. */
 export interface AssessLawRequestInput {
   priorityTier: LawPriorityTier;
+  /** Review B — chuyên viên được phân công (role owner). */
+  ownerId: string;
   note?: string;
 }
 
@@ -217,10 +221,9 @@ export interface LawRequestFilter {
 export interface CreateAdviceRequestInput {
   title: string;
   description?: string;
+  /** Mức ưu tiên ĐỀ XUẤT của đơn vị — Manager chốt ở bước 2. */
   priorityTier: LawPriorityTier;
   requestingUnitId: string;
-  ownerId: string;
-  managerId: string;
   tags?: string[];
 }
 

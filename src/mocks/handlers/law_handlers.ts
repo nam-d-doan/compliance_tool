@@ -131,6 +131,8 @@ function evaluateLawAlerts(db: MockDb): void {
         "System",
         "System flagged this request's SLA deadline",
       );
+      // Chưa phân công thì chưa có ai nhận thông báo — vẫn ghi lịch sử ở trên.
+      if (!r.ownerId) return;
       db.notifications.unshift({
         id: `ntf-${crypto.randomUUID()}`,
         userId: r.ownerId,
@@ -271,8 +273,8 @@ export async function handleCreateLawRequest({
 }) {
   await getDelay();
   const body = (await request.json()) as Partial<CreateAdviceRequestInput>;
-  if (!body.title || !body.requestingUnitId || !body.ownerId) {
-    return badRequest("title, requestingUnitId and ownerId are required");
+  if (!body.title || !body.requestingUnitId) {
+    return badRequest("title and requestingUnitId are required");
   }
   const db = getDb();
   const now = new Date().toISOString();
@@ -283,8 +285,6 @@ export async function handleCreateLawRequest({
   const branch = db.organizationSettings.branches.find(
     (b) => b.id === body.requestingUnitId,
   );
-  const owner = findById(db.users, body.ownerId);
-  const manager = body.managerId ? findById(db.users, body.managerId) : undefined;
 
   const priorityTier = body.priorityTier ?? "internal";
   const slaRule = db.slaRules.find((r) => r.priorityTier === priorityTier);
@@ -307,10 +307,11 @@ export async function handleCreateLawRequest({
     requestingUnitName: hoDept?.name ?? branch?.name ?? "",
     requestingUnitType: branch ? "branch" : "ho_department",
     requestingUnitRegion: branch?.region,
-    ownerId: body.ownerId,
-    ownerName: owner?.name ?? "",
-    managerId: body.managerId ?? "",
-    managerName: manager?.name ?? "",
+    // Review B — chưa phân công; Manager chọn chuyên viên ở bước "Phân loại & phân công".
+    ownerId: "",
+    ownerName: "",
+    managerId: "",
+    managerName: "",
     submittedAt: now,
     dueDate,
     revisedCount: 0,
@@ -325,8 +326,8 @@ export async function handleCreateLawRequest({
 
   db.adviceRequests.unshift(newRequest);
   const creator = actorFromRequest(request, db.users) ?? {
-    id: newRequest.ownerId,
-    name: newRequest.ownerName,
+    id: `contact-${newRequest.requestingUnitId}`,
+    name: newRequest.requestingUnitName,
   };
   recordEvent(
     db,
@@ -511,6 +512,7 @@ export async function handleRemindLawRequest({
   const db = getDb();
   const req = findById(db.adviceRequests, params.id as string);
   if (!req) return notFound("Request not found");
+  if (!req.ownerId) return badRequest("This request has not been assigned to a specialist yet");
 
   const body = (await request
     .json()
@@ -908,6 +910,10 @@ export async function handleAssessLawRequest({ params, request }: MockResolverCo
   if (!LAW_PRIORITY_TIERS.includes(body.priorityTier)) {
     return badRequest("priorityTier is invalid");
   }
+  const specialist = body.ownerId ? findById(db.users, body.ownerId) : undefined;
+  if (!specialist || specialist.role !== "owner") {
+    return badRequest("Please assign an advisory specialist");
+  }
   const now = new Date().toISOString();
   const rule = db.slaRules.find((r) => r.priorityTier === body.priorityTier);
   const slaDays = rule?.slaDays ?? LAW_PRIORITY_SLA_DAYS[body.priorityTier];
@@ -919,6 +925,10 @@ export async function handleAssessLawRequest({ params, request }: MockResolverCo
   item.assessedById = user.id;
   item.assessedByName = user.name;
   item.assessmentNote = body.note?.trim() || undefined;
+  item.ownerId = specialist.id;
+  item.ownerName = specialist.name;
+  item.managerId = user.id;
+  item.managerName = user.name;
   item.status = "in_progress";
   item.updatedAt = now;
   // Hạn mới có thể chưa tới ngưỡng cảnh báo — cho engine đánh giá lại.
@@ -926,6 +936,8 @@ export async function handleAssessLawRequest({ params, request }: MockResolverCo
 
   recordEvent(db, item.id, "priority_assessed", user.id, user.name,
     `Assessed priority: ${prevTier} → ${body.priorityTier}`, prevTier, body.priorityTier);
+  recordEvent(db, item.id, "assigned", user.id, user.name,
+    `Assigned to ${specialist.name}`, undefined, specialist.name, specialist.name);
   return jsonResponse(item);
 }
 

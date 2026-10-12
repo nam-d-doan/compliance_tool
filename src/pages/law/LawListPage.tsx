@@ -260,7 +260,13 @@ export default function LawListPage() {
                   <td className="px-3 py-2 text-muted-foreground">
                     {r.requestingUnitName}
                   </td>
-                  {showOwner && <td className="px-3 py-2">{r.ownerName}</td>}
+                  {showOwner && (
+                    <td className="px-3 py-2">
+                      {r.ownerName || (
+                        <span className="text-xs text-muted-foreground">{L("Not assigned", "Chưa phân công")}</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-3 py-2 text-muted-foreground">
                     {format(parseISO(r.submittedAt), "MMM d, yyyy", { locale: dateLocale })}
                   </td>

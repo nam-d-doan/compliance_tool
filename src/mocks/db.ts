@@ -1375,6 +1375,8 @@ function generateAdviceRequests(
       event(requestId, "priority_assessed", managerWho, assessedAt,
         `Assessed priority: ${initialPriorityTier} → ${priorityTier}`,
         { fromValue: initialPriorityTier, toValue: priorityTier });
+      event(requestId, "assigned", managerWho, assessedAt, `Assigned to ${owner.name}`,
+        { toValue: owner.name, subject: owner.name });
 
       // Mốc kết thúc của giai đoạn trao đổi — mọi tin nhắn/ý kiến nằm trước nó.
       // Đã đóng: phần lớn đóng trước hạn SLA, 2/6 đóng trễ 3 ngày (KPI a có
@@ -1479,10 +1481,11 @@ function generateAdviceRequests(
       requestingUnitId: dept.id,
       requestingUnitName: dept.name,
       requestingUnitType: "ho_department",
-      ownerId: owner.id,
-      ownerName: owner.name,
-      managerId: manager.id,
-      managerName: manager.name,
+      // Review B — "Chờ đánh giá" = chưa phân công (Manager chọn ở bước 2).
+      ownerId: status === "new" ? "" : owner.id,
+      ownerName: status === "new" ? "" : owner.name,
+      managerId: status === "new" ? "" : manager.id,
+      managerName: status === "new" ? "" : manager.name,
       submittedAt: iso(submittedAt),
       dueDate: iso(dueDate),
       completedAt: completedAt ? iso(completedAt) : undefined,

@@ -55,8 +55,9 @@ export function useLawOpinions(id: string) {
 }
 
 /** GĐ2 — tải công việc từng chuyên viên, cho hộp thoại phân công. */
-export function useLawWorkload() {
+export function useLawWorkload(enabled = true) {
   return useQuery({
+    enabled,
     queryKey: lawKeys.workload(),
     queryFn: () => LawService.workload(),
     staleTime: 60 * 1000,

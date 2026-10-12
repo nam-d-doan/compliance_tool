@@ -1,8 +1,9 @@
 /**
  * PSEUDO CODE — tab "Flow tư vấn" (Nam review LAW: 4 bước)
  * 1. Tiếp nhận: ai gửi, khi nào, mức ưu tiên đề xuất, mô tả.
- * 2. Đánh giá ưu tiên: đã xong → mức đề xuất → mức chốt + ghi chú + hạn SLA;
- *    chưa xong → Manager (law:approve) chọn mức + ghi chú rồi xác nhận.
+ * 2. Phân loại & phân công: đã xong → mức đề xuất → mức chốt, chuyên viên
+ *    được giao, ghi chú, hạn SLA; chưa xong → Manager (law:approve) chọn mức
+ *    ưu tiên + chuyên viên (gợi ý người tải thấp nhất) + ghi chú.
  * 3. Trao đổi: luồng tin nhắn 2 bên, đính kèm file. Ô soạn chọn "gửi với tư
  *    cách" Pháp chế hoặc Đơn vị yêu cầu (MÔ PHỎNG — chưa có vai trò đơn vị).
  * 4. Đóng: các phiên bản ý kiến tư vấn (mới nhất trên). Chuyên viên phụ
@@ -32,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { rankKnowledgeEntries } from "@/lib/knowledge-match";
 import { DetailSkeleton } from "@/components/common";
 import { Link } from "react-router-dom";
-import { useLawMessages, useLawOpinions, useFilesByIds, useKnowledgeBaseList } from "@/hooks/queries";
+import { useLawMessages, useLawOpinions, useFilesByIds, useKnowledgeBaseList, useLawWorkload } from "@/hooks/queries";
 import {
   useAssessLawRequest,
   usePostLawMessage,
@@ -95,7 +96,7 @@ export function LawWorkflow({ request }: { request: AdviceRequest }) {
       <Step n={1} state={s1} title={L("Request received", "Tiếp nhận yêu cầu")}>
         <IntakeStep request={request} />
       </Step>
-      <Step n={2} state={s2} title={L("Priority assessment", "Đánh giá mức độ ưu tiên")}>
+      <Step n={2} state={s2} title={L("Triage & assignment", "Phân loại & phân công")}>
         <AssessmentStep request={request} />
       </Step>
       <Step n={3} state={s3} title={L("Discussion & document exchange", "Thảo luận & trao đổi tài liệu")}>
@@ -176,8 +177,14 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
   const dateLocale = useDateLocale();
   const { role } = useAuthStore();
   const assess = useAssessLawRequest(request.id);
+  const canAssess = !request.assessedAt && hasPermission(role, "law:approve");
+  // Chỉ tải khi Manager thật sự cần chọn — server đã sort tăng dần theo tải.
+  const workload = useLawWorkload(canAssess);
   const [tier, setTier] = useState<LawPriorityTier>(request.priorityTier);
+  const [ownerId, setOwnerId] = useState("");
   const [note, setNote] = useState("");
+  const suggestedOwnerId = workload.data?.[0]?.userId ?? "";
+  const pickedOwnerId = ownerId || suggestedOwnerId;
   const tierLabel = (t: LawPriorityTier) => term(LAW_PRIORITY_STYLES[t].label);
 
   if (request.assessedAt) {
@@ -195,6 +202,7 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
             tierLabel(request.priorityTier)
           )}
         </Meta>
+        <Meta label={L("Assigned specialist", "Chuyên viên phụ trách")}>{request.ownerName || "—"}</Meta>
         <Meta label={L("Assessed by", "Người đánh giá")}>
           {request.assessedByName} ·{" "}
           {format(parseISO(request.assessedAt), "dd/MM/yyyy HH:mm", { locale: dateLocale })}
@@ -227,10 +235,12 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!pickedOwnerId) return;
         assess.mutate(
-          { priorityTier: tier, note: note.trim() || undefined },
+          { priorityTier: tier, ownerId: pickedOwnerId, note: note.trim() || undefined },
           {
-            onSuccess: () => toast.success(L("Priority confirmed — discussion is open", "Đã chốt mức ưu tiên — mở bước trao đổi")),
+            onSuccess: () =>
+              toast.success(L("Assessed and assigned — discussion is open", "Đã phân loại & phân công — mở bước trao đổi")),
             onError: (err) => toast.error(err.message || L("Assessment failed", "Đánh giá thất bại")),
           },
         );
@@ -247,6 +257,22 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
           ))}
         </select>
       </label>
+      <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        {L("Assign to specialist", "Phân công chuyên viên")}
+        <select
+          value={pickedOwnerId}
+          onChange={(e) => setOwnerId(e.target.value)}
+          disabled={workload.isPending}
+          className={cn(selectClass, "max-w-sm")}
+        >
+          {(workload.data ?? []).map((w, i) => (
+            <option key={w.userId} value={w.userId}>
+              {w.userName} — {L(`${w.openRequestCount} open`, `${w.openRequestCount} yêu cầu đang mở`)}
+              {i === 0 ? L(" (lowest load)", " (tải thấp nhất)") : ""}
+            </option>
+          ))}
+        </select>
+      </label>
       <Textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
@@ -256,9 +282,9 @@ function AssessmentStep({ request }: { request: AdviceRequest }) {
       <p className="text-xs text-muted-foreground">
         {L("The SLA due date is recalculated from the received date using the confirmed priority.", "Hạn SLA sẽ tính lại từ ngày tiếp nhận theo mức ưu tiên đã chốt.")}
       </p>
-      <Button type="submit" disabled={assess.isPending}>
+      <Button type="submit" disabled={assess.isPending || !pickedOwnerId}>
         <ShieldCheck className="size-4" aria-hidden="true" />
-        {L("Confirm assessment", "Xác nhận đánh giá")}
+        {L("Confirm & assign", "Xác nhận & phân công")}
       </Button>
     </form>
   );

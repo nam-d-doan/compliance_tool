@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useOrgUnits, useAdminUsers } from "@/hooks/queries/useAdminQueries";
+import { useOrgUnits } from "@/hooks/queries/useAdminQueries";
 import { LAW_PRIORITY_TIERS, LAW_PRIORITY_STYLES } from "@/constants/law";
 import { useL, useTerm } from "@/lib/i18n";
 
@@ -25,8 +25,6 @@ const lawSchema = z.object({
   description: z.string().optional(),
   priorityTier: z.enum([...LAW_PRIORITY_TIERS] as [string, ...string[]]),
   requestingUnitId: z.string().min(1, "Requesting unit is required"),
-  ownerId: z.string().min(1, "Assigned specialist is required"),
-  managerId: z.string().min(1, "Manager is required"),
   tags: z.string().optional(),
 });
 
@@ -38,6 +36,9 @@ export interface LawFormProps {
   onCancel?: () => void;
   isSubmitting?: boolean;
   submitLabel?: string;
+  /** "edit": ẩn mức ưu tiên — đã chốt ở bước đánh giá, sửa ở đây sẽ lách
+   * bước đó và hạn SLA không được tính lại. Đổi người phụ trách: nút Phân công. */
+  mode?: "create" | "edit";
 }
 
 export function LawForm({
@@ -46,18 +47,14 @@ export function LawForm({
   onCancel,
   isSubmitting,
   submitLabel,
+  mode = "create",
 }: LawFormProps) {
   const L = useL();
   const term = useTerm();
   submitLabel ??= L("Create Request", "Tạo yêu cầu");
   const orgUnitsQuery = useOrgUnits();
-  // Không lọc status: "Active" — xem comment cùng chỗ ở LMForm.tsx.
-  const ownersQuery = useAdminUsers(1, 200, { role: "owner" });
-  const managersQuery = useAdminUsers(1, 200, { role: "executive" });
 
   const hoDepartments = orgUnitsQuery.data?.hoDepartments ?? [];
-  const owners = ownersQuery.data?.items ?? [];
-  const managers = managersQuery.data?.items ?? [];
 
   const {
     register,
@@ -98,22 +95,24 @@ export function LawForm({
           />
         </div>
 
+        {mode === "create" && (
         <div className="space-y-2">
-          <Label htmlFor="law-priorityTier">{L("Priority", "Mức ưu tiên")}</Label>
-          <Controller
-            name="priorityTier"
-            control={control}
-            render={({ field }) => (
-              <select id="law-priorityTier" {...field} className={selectClass}>
-                {LAW_PRIORITY_TIERS.map((t) => (
-                  <option key={t} value={t}>
-                    {term(LAW_PRIORITY_STYLES[t].label)}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-        </div>
+            <Label htmlFor="law-priorityTier">{L("Proposed priority", "Mức ưu tiên đề xuất")}</Label>
+            <Controller
+              name="priorityTier"
+              control={control}
+              render={({ field }) => (
+                <select id="law-priorityTier" {...field} className={selectClass}>
+                  {LAW_PRIORITY_TIERS.map((t) => (
+                    <option key={t} value={t}>
+                      {term(LAW_PRIORITY_STYLES[t].label)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="law-requestingUnitId">{L("Requesting Unit", "Đơn vị yêu cầu")}</Label>
@@ -139,60 +138,6 @@ export function LawForm({
           {errors.requestingUnitId && (
             <p className="text-xs text-destructive">
               {term(errors.requestingUnitId.message ?? "")}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="law-ownerId">{L("Assigned Specialist", "Chuyên viên phụ trách")}</Label>
-          <Controller
-            name="ownerId"
-            control={control}
-            render={({ field }) => (
-              <select
-                id="law-ownerId"
-                {...field}
-                disabled={ownersQuery.isPending}
-                className={selectClass}
-              >
-                <option value="">{L("Select specialist", "Chọn chuyên viên")}</option>
-                {owners.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          {errors.ownerId && (
-            <p className="text-xs text-destructive">{term(errors.ownerId.message ?? "")}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="law-managerId">{L("Manager", "Quản lý")}</Label>
-          <Controller
-            name="managerId"
-            control={control}
-            render={({ field }) => (
-              <select
-                id="law-managerId"
-                {...field}
-                disabled={managersQuery.isPending}
-                className={selectClass}
-              >
-                <option value="">{L("Select manager", "Chọn quản lý")}</option>
-                {managers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          {errors.managerId && (
-            <p className="text-xs text-destructive">
-              {term(errors.managerId.message ?? "")}
             </p>
           )}
         </div>

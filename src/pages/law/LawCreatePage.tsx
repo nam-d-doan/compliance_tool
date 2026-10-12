@@ -28,8 +28,6 @@ export default function LawCreatePage() {
       description: values.description || undefined,
       priorityTier: values.priorityTier as CreateAdviceRequestInput["priorityTier"],
       requestingUnitId: values.requestingUnitId,
-      ownerId: values.ownerId,
-      managerId: values.managerId,
       tags:
         values.tags
           ?.split(",")
