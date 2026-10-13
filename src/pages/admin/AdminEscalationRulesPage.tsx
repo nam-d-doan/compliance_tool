@@ -168,7 +168,7 @@ export default function AdminEscalationRulesPage() {
   );
 
   const renderTable = (items: EscalationRule[]) => (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <div className="overflow-x-auto rounded-xl border border-border bg-card">
       <table className="w-full text-left text-sm">
         <thead className="bg-muted/50 text-xs text-muted-foreground">
           <tr>

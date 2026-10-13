@@ -23,6 +23,7 @@ import { KPICard } from "@/components/common/KPICard";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { LoadingState } from "@/components/common/LoadingState";
 import { BarChartCard } from "@/components/charts/BarChartCard";
+import { STATUS_CHART_COLORS } from "@/components/charts/chart-theme";
 import { PieChartCard } from "@/components/charts/PieChartCard";
 import { Callout, PagePurpose, RfqChip } from "@/components/cms";
 import { buildUnitProfiles } from "@/components/ncc/IssueTrends";
@@ -216,8 +217,8 @@ export default function InternalControlDashboardPage() {
           data={byRegion}
           xKey="name"
           yKeys={[
-            { key: "Open", name: "Open", color: "#f59e0b" },
-            { key: "Closed", name: "Closed", color: "#10b981" },
+            { key: "Open", name: "Open", color: STATUS_CHART_COLORS.warning },
+            { key: "Closed", name: "Closed", color: STATUS_CHART_COLORS.success },
           ]}
           height={240}
           className="h-full"
@@ -230,7 +231,11 @@ export default function InternalControlDashboardPage() {
           }))}
           nameKey="name"
           valueKey="value"
-          colors={["#ef4444", "#f59e0b", "#10b981"]}
+          colors={[
+            STATUS_CHART_COLORS.danger,
+            STATUS_CHART_COLORS.warning,
+            STATUS_CHART_COLORS.success,
+          ]}
           height={240}
           className="h-full"
         />
@@ -239,7 +244,7 @@ export default function InternalControlDashboardPage() {
           subtitle="Where remediation is waiting"
           data={byStage}
           xKey="name"
-          yKeys={[{ key: "Issues", name: "Issues", color: "#6366f1" }]}
+          yKeys={[{ key: "Issues", name: "Issues", color: STATUS_CHART_COLORS.info }]}
           height={240}
           className="h-full"
         />
@@ -252,60 +257,62 @@ export default function InternalControlDashboardPage() {
             Sorted by compliance risk score (worst first)
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-muted-foreground">
-              <tr>
-                <th className="py-2 pr-4 font-medium">Unit</th>
-                <th className="py-2 pr-4 font-medium">Issues</th>
-                <th className="py-2 pr-4 font-medium">Open</th>
-                <th className="py-2 pr-4 font-medium">Overdue</th>
-                <th className="py-2 pr-4 font-medium">High</th>
-                <th className="w-48 py-2 pr-4 font-medium">Completion</th>
-                <th className="py-2 font-medium">Risk score</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {unitRows.map((u) => (
-                <tr key={u.unitId}>
-                  <td className="py-2 pr-4 font-medium">{u.unitName}</td>
-                  <td className="py-2 pr-4">{u.total}</td>
-                  <td className="py-2 pr-4">{u.open}</td>
-                  <td
-                    className={cn(
-                      "py-2 pr-4",
-                      u.overdue && "font-semibold text-danger",
-                    )}
-                  >
-                    {u.overdue}
-                  </td>
-                  <td className="py-2 pr-4">
-                    {u.high ? <PriorityBadge priority="high" /> : "—"}
-                  </td>
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-2">
-                      <Progress value={u.rate} className="h-1.5" />
-                      <span className="text-xs tabular-nums">{u.rate}%</span>
-                    </div>
-                  </td>
-                  <td className="py-2">
-                    <span
+        <CardContent>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-muted/50 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Unit</th>
+                  <th className="px-3 py-2 font-medium">Issues</th>
+                  <th className="px-3 py-2 font-medium">Open</th>
+                  <th className="px-3 py-2 font-medium">Overdue</th>
+                  <th className="px-3 py-2 font-medium">High</th>
+                  <th className="w-48 px-3 py-2 font-medium">Completion</th>
+                  <th className="px-3 py-2 font-medium">Risk score</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {unitRows.map((u) => (
+                  <tr key={u.unitId}>
+                    <td className="px-3 py-2 font-medium">{u.unitName}</td>
+                    <td className="px-3 py-2">{u.total}</td>
+                    <td className="px-3 py-2">{u.open}</td>
+                    <td
                       className={cn(
-                        "rounded-md px-2 py-0.5 text-xs font-bold",
-                        u.score >= 60
-                          ? "bg-danger-bg text-danger"
-                          : u.score >= 35
-                            ? "bg-warning-bg text-warning"
-                            : "bg-success-bg text-success",
+                        "px-3 py-2",
+                        u.overdue && "font-semibold text-danger",
                       )}
                     >
-                      {u.score}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      {u.overdue}
+                    </td>
+                    <td className="px-3 py-2">
+                      {u.high ? <PriorityBadge priority="high" /> : "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Progress value={u.rate} className="h-1.5" />
+                        <span className="text-xs tabular-nums">{u.rate}%</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={cn(
+                          "rounded-md px-2 py-0.5 text-xs font-bold",
+                          u.score >= 60
+                            ? "bg-danger-bg text-danger"
+                            : u.score >= 35
+                              ? "bg-warning-bg text-warning"
+                              : "bg-success-bg text-success",
+                        )}
+                      >
+                        {u.score}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 

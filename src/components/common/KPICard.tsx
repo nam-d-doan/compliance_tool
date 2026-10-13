@@ -19,9 +19,32 @@ export interface KPICardProps {
   subtitle?: string;
   loading?: boolean;
   className?: string;
-  /** Tailwind classes for the icon circle tint, e.g. "bg-blue-500/10 text-blue-600". Defaults to primary. */
+  /** Tailwind classes for the icon circle tint, e.g. "bg-danger-bg text-danger". Defaults to a tint picked from the label's meaning. */
   iconClassName?: string;
   onClick?: () => void;
+}
+
+const TONE_TINTS = {
+  danger: "bg-danger-bg text-danger",
+  warning: "bg-warning-bg text-warning",
+  success: "bg-success-bg text-success",
+  info: "bg-info-bg text-info",
+} as const;
+
+/**
+ * Icon tint that carries meaning, picked from the label when a page does not
+ * set one: red = overdue/critical, amber = due soon/at risk, green = done,
+ * blue = neutral counts.
+ */
+function kpiTintForLabel(label: string): string {
+  const l = label.toLowerCase();
+  if (/overdue|critical|breach|failed|rejected|high risk|late|violation/.test(l))
+    return TONE_TINTS.danger;
+  if (/due|risk|pending|returned|escalat|awaiting|warning|open|unread/.test(l))
+    return TONE_TINTS.warning;
+  if (/complete|closed|approved|done|resolved|compliance rate|compliant|on track|issued/.test(l))
+    return TONE_TINTS.success;
+  return TONE_TINTS.info;
 }
 
 export function KPICard({
@@ -63,8 +86,8 @@ export function KPICard({
         )}
         onClick={onClick}
       >
-        <CardHeader className="flex h-12 shrink-0 flex-row items-center justify-between pb-0">
-          <span className="truncate text-sm font-medium text-muted-foreground">
+        <CardHeader className="flex h-12 shrink-0 flex-row items-center justify-between gap-2 pb-0">
+          <span className="line-clamp-2 text-sm leading-tight font-medium text-muted-foreground">
             {label}
           </span>
           {/* Always reserve the icon slot so cards without an icon keep the
@@ -72,8 +95,8 @@ export function KPICard({
           {Icon ? (
             <div
               className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary",
-                iconClassName,
+                "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                iconClassName ?? kpiTintForLabel(label),
               )}
             >
               <Icon className="size-5" aria-hidden="true" />

@@ -39,6 +39,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { PriorityBadge } from "@/components/common/PriorityBadge";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PagePurpose } from "@/components/cms";
 import { PieChartCard } from "@/components/charts/PieChartCard";
 import { BarChartCard } from "@/components/charts/BarChartCard";
 import { AreaChartCard } from "@/components/charts/AreaChartCard";
@@ -399,6 +400,12 @@ export default function ObligationListPage() {
           )}
         </div>
       </PageHero>
+      <PagePurpose>
+        Each obligation is one duty the bank must meet under a regulation,
+        created from a review assignment. Owners submit evidence before the due
+        date and approvers sign it off; gaps are fixed through a corrective
+        action plan.
+      </PagePurpose>
 
       <SummaryCardBar cards={summaryCards} />
 
@@ -555,7 +562,7 @@ export default function ObligationListPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
                     {table.getHeaderGroups().map((headerGroup) => (
                       <tr key={headerGroup.id}>
                         {headerGroup.headers.map((header) => {

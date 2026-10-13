@@ -298,7 +298,7 @@ export default function RegulationComparisonPage() {
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3 text-left font-medium">
                         Attribute

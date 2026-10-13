@@ -13,6 +13,7 @@ import { PageHero, ChartGrid } from "@/components/common";
 import { KPICard } from "@/components/common/KPICard";
 import { LoadingState } from "@/components/common/LoadingState";
 import { BarChartCard } from "@/components/charts/BarChartCard";
+import { STATUS_CHART_COLORS } from "@/components/charts/chart-theme";
 import {
   Callout,
   PagePurpose,
@@ -285,8 +286,8 @@ export default function LateIssuancePage() {
           data={byUnit}
           xKey="name"
           yKeys={[
-            { key: "Overdue", name: "Overdue", color: "#ef4444" },
-            { key: "Late risk", name: "Late risk", color: "#f59e0b" },
+            { key: "Overdue", name: "Overdue", color: STATUS_CHART_COLORS.danger },
+            { key: "Late risk", name: "Late risk", color: STATUS_CHART_COLORS.warning },
           ]}
           height={240}
           className="h-full"
@@ -302,7 +303,7 @@ export default function LateIssuancePage() {
             }))}
           xKey="name"
           yKeys={[
-            { key: "Days", name: "Days vs effective date", color: "#6366f1" },
+            { key: "Days", name: "Days vs effective date", color: STATUS_CHART_COLORS.info },
           ]}
           height={240}
           className="h-full"

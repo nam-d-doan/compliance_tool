@@ -43,6 +43,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton, CardSkeleton } from "@/components/common/Skeletons";
 import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PagePurpose } from "@/components/cms";
 import { PieChartCard } from "@/components/charts/PieChartCard";
 import { BarChartCard } from "@/components/charts/BarChartCard";
 import { AreaChartCard } from "@/components/charts/AreaChartCard";
@@ -463,6 +464,11 @@ export default function RegulationLibraryPage() {
           </Button>
         )}
       </PageHero>
+      <PagePurpose>
+        Starting point of the compliance chain. Each regulation here is reviewed
+        through an assignment, which turns its requirements into obligations for
+        the departments.
+      </PagePurpose>
 
       <SummaryCardBar cards={summaryCards} />
 
@@ -701,7 +707,7 @@ export default function RegulationLibraryPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
                     {table.getHeaderGroups().map((headerGroup) => (
                       <tr key={headerGroup.id}>
                         {headerGroup.headers.map((header) => {

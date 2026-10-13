@@ -227,6 +227,28 @@ export const PAGES2: Record<string, string> = {
     "Tệp PDF hoặc ảnh scan. OCR đọc văn bản, AI trích xuất nội dung cốt lõi và tác động tuân thủ (RFQ 5.2).",
   Relevance: "Mức liên quan",
   "Search number, title, field…": "Tìm số hiệu, tiêu đề, lĩnh vực…",
+  "Each obligation is one duty the bank must meet under a regulation, created from a review assignment. Owners submit evidence before the due date and approvers sign it off; gaps are fixed through a corrective action plan.":
+    "Mỗi nghĩa vụ là một yêu cầu ngân hàng phải đáp ứng theo một văn bản quy định, được tạo từ phân công rà soát. Người phụ trách nộp bằng chứng trước hạn và người phê duyệt xác nhận; các thiếu sót được khắc phục qua kế hoạch hành động khắc phục.",
+  "A corrective action plan (CAP) fixes a gap found in an obligation. Track each plan from creation through its action items to closure.":
+    "Kế hoạch hành động khắc phục (CAP) xử lý thiếu sót phát hiện ở một nghĩa vụ. Theo dõi từng kế hoạch từ khi tạo, qua các hạng mục hành động, đến khi đóng.",
+  "Overview of every corrective action plan. Use the cards and charts to spot overdue or high-risk plans, then open the list to act on them.":
+    "Tổng quan toàn bộ kế hoạch hành động khắc phục. Dùng các thẻ và biểu đồ để nhận diện kế hoạch quá hạn hoặc rủi ro cao, sau đó mở danh sách để xử lý.",
+  "Each task comes from a legal update that needs an internal regulation changed. Departments update progress here; the CMS flags tasks at risk of finishing after the law takes effect.":
+    "Mỗi nhiệm vụ phát sinh từ một văn bản pháp luật mới cần sửa đổi quy định nội bộ. Các đơn vị cập nhật tiến độ tại đây; CMS cảnh báo nhiệm vụ có nguy cơ hoàn thành sau ngày luật có hiệu lực.",
+  "Starting point of the compliance chain. Each regulation here is reviewed through an assignment, which turns its requirements into obligations for the departments.":
+    "Điểm khởi đầu của chuỗi tuân thủ. Mỗi văn bản tại đây được rà soát qua một phân công, từ đó chuyển các yêu cầu thành nghĩa vụ cho các đơn vị.",
+  "An assignment routes a regulation to the departments that must review it. Once reviewed, it produces the obligations each department has to meet.":
+    "Phân công chuyển một văn bản quy định đến các đơn vị cần rà soát. Sau khi rà soát, phân công tạo ra các nghĩa vụ mà mỗi đơn vị phải đáp ứng.",
+  "Pick a report to see live figures from obligations, corrective action plans and deadlines. Every report can be filtered and exported.":
+    "Chọn một báo cáo để xem số liệu trực tiếp từ nghĩa vụ, kế hoạch hành động khắc phục và các thời hạn. Mọi báo cáo đều có thể lọc và xuất file.",
+  "How corrective action plans are progressing: how many are open, how long they take to close, and which ones are overdue.":
+    "Tình hình thực hiện kế hoạch hành động khắc phục: số kế hoạch đang mở, thời gian đóng trung bình và các kế hoạch quá hạn.",
+  "Where every obligation stands today, by status and department, with the trend over time. Use it to find units falling behind.":
+    "Tình trạng hiện tại của mọi nghĩa vụ theo trạng thái và đơn vị, kèm xu hướng theo thời gian. Dùng để nhận diện đơn vị đang chậm tiến độ.",
+  "Upcoming obligation due dates and CAP deadlines on one calendar, so nothing reaches its date unnoticed.":
+    "Các hạn nghĩa vụ và hạn kế hoạch hành động khắc phục sắp tới trên cùng một lịch, để không thời hạn nào bị bỏ sót.",
+  "One-page view for senior management: overall compliance health, top risks and the AI summary of what needs attention.":
+    "Báo cáo một trang cho Ban lãnh đạo: tình hình tuân thủ tổng thể, các rủi ro hàng đầu và tóm tắt AI về những vấn đề cần chú ý.",
   "Step 1 of the legal update workflow. Open a document to check whether it applies to Nam A Bank, see the AI impact summary, map it to internal regulations and assign the revision work.":
     "Bước 1 của quy trình cập nhật pháp lý. Mở văn bản để xác định có áp dụng cho Nam A Bank không, xem tóm tắt tác động của AI, liên kết với quy định nội bộ và giao việc điều chỉnh.",
   "Taking effect soon": "Sắp có hiệu lực",

@@ -26,6 +26,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { TableSkeleton } from "@/components/common/Skeletons";
 import { PageHero, SummaryCardBar, ChartGrid } from "@/components/common";
+import { PagePurpose } from "@/components/cms";
 import { PieChartCard } from "@/components/charts/PieChartCard";
 import { BarChartCard } from "@/components/charts/BarChartCard";
 import { AreaChartCard } from "@/components/charts/AreaChartCard";
@@ -285,6 +286,10 @@ export default function CAPListPage() {
           </Button>
         )}
       </PageHero>
+      <PagePurpose>
+        A corrective action plan (CAP) fixes a gap found in an obligation. Track
+        each plan from creation through its action items to closure.
+      </PagePurpose>
 
       <SummaryCardBar cards={summaryCards} />
 
@@ -452,7 +457,7 @@ export default function CAPListPage() {
         >
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-muted/50 text-muted-foreground">
+              <thead className="bg-muted/50 text-xs text-muted-foreground">
                 <tr>
                   <SortableTh
                     label="CAP ID"

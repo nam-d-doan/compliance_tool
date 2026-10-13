@@ -17,6 +17,7 @@ import type { ChartDataPoint } from "@/components/charts/chart-theme";
 import { PageHero } from "@/components/common";
 import { ReportFilterBar } from "./components/ReportFilterBar";
 import { ReportKPIs } from "./components/ReportKPIs";
+import { PagePurpose } from "@/components/cms";
 
 function chartToDataPoints(chart: ReportChart): ChartDataPoint[] {
   return chart.labels.map((label, index) => {
@@ -202,6 +203,10 @@ export default function ReportsCAPPage() {
         title="CAP Report"
         subtitle="Corrective action plan performance and remediation tracking."
       />
+      <PagePurpose>
+        How corrective action plans are progressing: how many are open, how long
+        they take to close, and which ones are overdue.
+      </PagePurpose>
 
       <ReportFilterBar
         startDate={startDate}
@@ -250,32 +255,32 @@ export default function ReportsCAPPage() {
                 className="border-0 bg-transparent"
               />
             ) : (
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/50">
+              <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         ID
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         Title
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         Priority
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         Status
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         Owner
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         Due
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         Cost
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">
                         Progress
                       </th>
                     </tr>
@@ -283,7 +288,7 @@ export default function ReportsCAPPage() {
                   <tbody className="divide-y">
                     {tableData.map((row, idx) => (
                       <tr key={idx} className="hover:bg-muted/30">
-                        <td className="px-3 py-2.5 font-medium text-foreground">
+                        <td className="px-3 py-2.5 font-medium whitespace-nowrap text-foreground">
                           {String(row.id)}
                         </td>
                         <td className="px-3 py-2.5 text-foreground">

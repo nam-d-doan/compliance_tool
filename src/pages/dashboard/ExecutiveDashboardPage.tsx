@@ -45,6 +45,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import {
   CHART_COLORS,
   RISK_CHART_COLORS,
+  STATUS_CHART_COLORS,
 } from "@/components/charts/chart-theme";
 import { DEMO_TODAY } from "@/mocks/db";
 
@@ -107,7 +108,7 @@ export default function ExecutiveDashboardPage() {
     return Array.from(counts.entries()).map(([name, value]) => ({
       name,
       value,
-      color: RISK_CHART_COLORS[name] ?? "#94a3b8",
+      color: RISK_CHART_COLORS[name] ?? STATUS_CHART_COLORS.neutral,
     }));
   }, [complianceItems]);
 

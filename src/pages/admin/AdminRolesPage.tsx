@@ -143,9 +143,9 @@ function PermissionMatrix({ role }: { role: RoleEntity }) {
           </span>
         )}
       </div>
-      <div className="overflow-hidden rounded-xl border">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-muted-foreground">
+          <thead className="bg-muted/50 text-xs text-muted-foreground">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Permission</th>
               <th className="px-4 py-3 text-left font-medium">Description</th>

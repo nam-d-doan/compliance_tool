@@ -1,14 +1,13 @@
 import { motion } from "motion/react";
-import { ArrowDown, ArrowUp, Minus, type LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
+import { KPICard } from "@/components/common/KPICard";
 import type { DashboardKPI } from "@/types";
 import * as Icons from "lucide-react";
 
 interface DashboardKpiCardProps {
   kpi: DashboardKPI;
   index?: number;
-  /** Tailwind classes for the icon circle tint, e.g. "bg-blue-500/10 text-blue-600". Defaults to a cycled palette. */
+  /** Tailwind classes for the icon circle tint. Defaults to a tint picked from the KPI title's meaning. */
   iconClassName?: string;
 }
 
@@ -23,33 +22,12 @@ function resolveIcon(name?: string): LucideIcon {
   );
 }
 
-function formatPrevious(previous?: string | number): string {
-  if (previous === undefined || previous === null) return "";
-  return `vs ${previous}`;
-}
-
-// FDM tinted icon circle palette — cycled by index so KPI rows get varied accents.
-const KPI_ICON_TINTS = [
-  "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-  "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-];
-
+/** Dashboard KPI tile — the shared KPICard fed from dashboard KPI data. */
 export function DashboardKpiCard({
   kpi,
   index = 0,
   iconClassName,
 }: DashboardKpiCardProps) {
-  const Icon = resolveIcon(kpi.icon);
-  const trend = kpi.trend ?? "flat";
-  const positive = trend === "up";
-  const negative = trend === "down";
-  const TrendIcon = positive ? ArrowUp : negative ? ArrowDown : Minus;
-  const tint = iconClassName ?? KPI_ICON_TINTS[index % KPI_ICON_TINTS.length];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -57,53 +35,23 @@ export function DashboardKpiCard({
       transition={{ duration: 0.3, delay: index * 0.05 }}
       className="h-full"
     >
-      <Card
-        className={cn(
-          "h-full cursor-default transition-shadow hover:shadow-sm",
-          kpi.action && "cursor-pointer",
-        )}
+      <KPICard
+        label={kpi.title}
+        value={kpi.value}
+        icon={resolveIcon(kpi.icon)}
+        iconClassName={iconClassName}
         onClick={kpi.action}
-        role={kpi.action ? "button" : undefined}
-        tabIndex={kpi.action ? 0 : undefined}
-      >
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {kpi.title}
-          </CardTitle>
-          <div
-            className={cn(
-              "flex size-10 items-center justify-center rounded-xl",
-              tint,
-            )}
-          >
-            <Icon className="size-5" aria-hidden="true" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold tracking-tight">{kpi.value}</div>
-          {(kpi.previousPeriod !== undefined ||
-            kpi.trendPercent !== undefined) && (
-            <div className="mt-1 flex items-center gap-1.5 text-xs">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-0.5 font-medium",
-                  positive && "text-emerald-600 dark:text-emerald-400",
-                  negative && "text-red-600 dark:text-red-400",
-                  !positive && !negative && "text-muted-foreground",
-                )}
-              >
-                <TrendIcon className="size-3" aria-hidden="true" />
-                {kpi.trendPercent !== undefined ? `${kpi.trendPercent}%` : "-"}
-              </span>
-              {kpi.previousPeriod !== undefined && (
-                <span className="text-muted-foreground">
-                  {formatPrevious(kpi.previousPeriod)}
-                </span>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        trend={
+          kpi.trend && kpi.trendPercent !== undefined
+            ? { direction: kpi.trend, percent: kpi.trendPercent }
+            : undefined
+        }
+        subtitle={
+          kpi.previousPeriod !== undefined
+            ? `vs ${kpi.previousPeriod}`
+            : undefined
+        }
+      />
     </motion.div>
   );
 }

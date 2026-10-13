@@ -13,6 +13,7 @@ import {
 import { motion } from "motion/react";
 import { KPICard } from "@/components/common/KPICard";
 import { PageHero } from "@/components/common";
+import { PagePurpose } from "@/components/cms";
 import { ErrorState } from "@/components/common/ErrorState";
 import {
   CardSkeleton,
@@ -194,6 +195,10 @@ export default function CAPDashboardPage() {
         title="Corrective Action Plans"
         subtitle="Monitor, track and remediate compliance gaps."
       />
+      <PagePurpose>
+        Overview of every corrective action plan. Use the cards and charts to
+        spot overdue or high-risk plans, then open the list to act on them.
+      </PagePurpose>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-6">
         <KPICard

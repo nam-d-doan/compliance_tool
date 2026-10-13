@@ -57,6 +57,7 @@ import { statusLabel } from "@/lib/chart-labels";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DUE_DATE_COLOR_GUIDE, isOverdueDueDate } from "@/lib/due-date";
+import { PagePurpose } from "@/components/cms";
 
 const selectClass =
   "h-9 rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
@@ -277,6 +278,11 @@ export default function AssignmentListPage() {
           </Button>
         )}
       </PageHero>
+      <PagePurpose>
+        An assignment routes a regulation to the departments that must review
+        it. Once reviewed, it produces the obligations each department has to
+        meet.
+      </PagePurpose>
 
       <SummaryCardBar cards={summaryCards} />
 
@@ -520,10 +526,10 @@ export default function AssignmentListPage() {
               }
             />
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="overflow-x-auto rounded-xl border border-border bg-card">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40 text-left text-xs text-muted-foreground">
+                  <tr className="border-b border-border bg-muted/50 text-left text-xs text-muted-foreground">
                     {canUpdate && (
                       <th className="w-10 px-3 py-2.5">
                         <Checkbox

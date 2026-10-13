@@ -950,21 +950,21 @@ export default function RegulationCreatePage() {
               description="Add related regulations this one amends, repeals, supersedes, or references."
             />
           ) : (
-            <div className="-mx-1 overflow-x-auto px-1">
+            <div className="overflow-x-auto rounded-xl border border-border bg-card">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="py-2 pr-3 font-medium">
+                  <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">
                       Related Regulation
                     </th>
-                    <th className="py-2 pr-3 font-medium">Type</th>
-                    <th className="w-10 py-2"></th>
+                    <th className="px-3 py-2 font-medium">Type</th>
+                    <th className="w-10 px-3 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {depFields.map((field, index) => (
                     <tr key={field.id} className="border-b last:border-0">
-                      <td className="py-2 pr-3">
+                      <td className="px-3 py-2">
                         <Controller
                           name={`dependencies.${index}.toRegulationId`}
                           control={control}
@@ -980,7 +980,7 @@ export default function RegulationCreatePage() {
                           )}
                         />
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="px-3 py-2">
                         <Controller
                           name={`dependencies.${index}.type`}
                           control={control}
@@ -995,7 +995,7 @@ export default function RegulationCreatePage() {
                           )}
                         />
                       </td>
-                      <td className="py-2">
+                      <td className="px-3 py-2">
                         <Button
                           type="button"
                           size="sm"

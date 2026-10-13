@@ -34,6 +34,7 @@ import type { ChartDataPoint } from "@/components/charts/chart-theme";
 import { PageHero } from "@/components/common";
 import { ReportKPIs } from "./components/ReportKPIs";
 import { cn } from "@/lib/utils";
+import { PagePurpose } from "@/components/cms";
 
 function chartToDataPoints(chart: ReportChart): ChartDataPoint[] {
   return chart.labels.map((label, index) => {
@@ -209,6 +210,10 @@ export default function ReportsExecutivePage() {
           </div>
         </div>
       </PageHero>
+      <PagePurpose>
+        One-page view for senior management: overall compliance health, top
+        risks and the AI summary of what needs attention.
+      </PagePurpose>
 
       {/* AI Executive Summary Callout */}
       <motion.div

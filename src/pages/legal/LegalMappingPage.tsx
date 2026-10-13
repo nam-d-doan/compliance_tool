@@ -46,22 +46,23 @@ import {
   getRevisionHealth,
   type RevisionHealth,
 } from "@/lib/cms-rules";
+import { STATUS_CHART_COLORS } from "@/components/charts/chart-theme";
 import { cn } from "@/lib/utils";
 import type { LegalMapping, LegalUpdate, MappingAction } from "@/types";
 
 const ACTION_COLOR: Record<MappingAction, string> = {
-  amend: "#d97706",
-  supplement: "#2563eb",
-  replace: "#dc2626",
-  repeal: "#6b7280",
-  new: "#16a34a",
+  amend: STATUS_CHART_COLORS.warning,
+  supplement: STATUS_CHART_COLORS.info,
+  replace: STATUS_CHART_COLORS.danger,
+  repeal: STATUS_CHART_COLORS.neutral,
+  new: STATUS_CHART_COLORS.success,
 };
 
 const HEALTH_DOT: Record<RevisionHealth, string> = {
-  on_track: "#16a34a",
-  late_risk: "#d97706",
-  overdue: "#dc2626",
-  issued: "#64748b",
+  on_track: STATUS_CHART_COLORS.success,
+  late_risk: STATUS_CHART_COLORS.warning,
+  overdue: STATUS_CHART_COLORS.danger,
+  issued: STATUS_CHART_COLORS.neutral,
 };
 
 interface Edge {
@@ -562,15 +563,15 @@ export default function LegalMappingPage() {
                   AI suggestion
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="size-2 rounded-full bg-[#dc2626]" /> revision
+                  <span className="size-2 rounded-full bg-danger" /> revision
                   overdue
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="size-2 rounded-full bg-[#d97706]" /> late
+                  <span className="size-2 rounded-full bg-warning" /> late
                   risk
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <span className="size-2 rounded-full bg-[#16a34a]" /> on track
+                  <span className="size-2 rounded-full bg-success" /> on track
                 </span>
               </div>
             </CardContent>

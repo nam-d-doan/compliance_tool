@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/common";
 import { ReportKPIs } from "./components/ReportKPIs";
 import { cn } from "@/lib/utils";
+import { PagePurpose } from "@/components/cms";
 
 type EventType = "compliance" | "cap";
 
@@ -161,6 +162,10 @@ export default function ReportsCalendarPage() {
         title="Calendar Report"
         subtitle="Compliance due dates and CAP deadlines in one view."
       />
+      <PagePurpose>
+        Upcoming obligation due dates and CAP deadlines on one calendar, so
+        nothing reaches its date unnoticed.
+      </PagePurpose>
 
       {report && <ReportKPIs kpis={report.kpis} columns={4} />}
 

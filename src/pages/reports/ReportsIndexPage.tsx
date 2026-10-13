@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/common";
 import { subMonths, format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PagePurpose } from "@/components/cms";
 
 interface ReportTypeCard {
   id: string;
@@ -105,6 +106,10 @@ export default function ReportsIndexPage() {
           </div>
         </div>
       </PageHero>
+      <PagePurpose>
+        Pick a report to see live figures from obligations, corrective action
+        plans and deadlines. Every report can be filtered and exported.
+      </PagePurpose>
 
       <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {REPORT_TYPES.map((report, index) => {

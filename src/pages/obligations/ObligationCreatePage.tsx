@@ -596,29 +596,29 @@ export default function ObligationCreatePage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-left">
-                <th className="w-10 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border bg-muted/50 text-left">
+                <th className="w-10 px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   <span className="sr-only">Drag</span>
                 </th>
-                <th className="w-28 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="w-28 px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   Article Ref <span className="text-destructive">*</span>
                 </th>
-                <th className="min-w-[12rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="min-w-[12rem] px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   Title <span className="text-destructive">*</span>
                 </th>
-                <th className="min-w-[16rem] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="min-w-[16rem] px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   Description
                 </th>
-                <th className="w-44 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="w-44 px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   Owner (Dept)
                 </th>
-                <th className="w-40 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="w-40 px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   Due Date
                 </th>
-                <th className="w-32 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="w-32 px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   Risk Level
                 </th>
-                <th className="w-12 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <th className="w-12 px-3 py-2.5 text-xs font-medium text-muted-foreground">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>

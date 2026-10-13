@@ -97,48 +97,50 @@ export function CmsAccessMatrix() {
           Ma trận phân quyền — demo roles mapped to Nam A Bank functions.
         </CardDescription>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="text-xs text-muted-foreground">
-            <tr>
-              <th className="py-2 pr-4 font-medium">Module</th>
-              <th className="py-2 pr-4 font-medium">Action</th>
-              {ROLES.map((r) => (
-                <th key={r.role} className="py-2 pr-2 text-center font-medium">
-                  <span className="block text-foreground">{r.title}</span>
-                  <span className="block text-[10px] font-normal">
-                    {r.namA}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {ROWS.map((row) => (
-              <tr key={row.permission}>
-                <td className="py-2 pr-4 font-medium">{row.module}</td>
-                <td className="py-2 pr-4 text-muted-foreground">
-                  {row.action}
-                </td>
+      <CardContent>
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="bg-muted/50 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Module</th>
+                <th className="px-3 py-2 font-medium">Action</th>
                 {ROLES.map((r) => (
-                  <td key={r.role} className="py-2 pr-2 text-center">
-                    {hasPermission(r.role, row.permission) ? (
-                      <Check
-                        className="mx-auto size-4 text-success"
-                        aria-label="Allowed"
-                      />
-                    ) : (
-                      <Minus
-                        className="mx-auto size-4 text-muted-foreground/40"
-                        aria-label="Not allowed"
-                      />
-                    )}
-                  </td>
+                  <th key={r.role} className="px-3 py-2 text-center font-medium">
+                    <span className="block text-foreground">{r.title}</span>
+                    <span className="block text-[10px] font-normal">
+                      {r.namA}
+                    </span>
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {ROWS.map((row) => (
+                <tr key={row.permission}>
+                  <td className="px-3 py-2 font-medium">{row.module}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {row.action}
+                  </td>
+                  {ROLES.map((r) => (
+                    <td key={r.role} className="px-3 py-2 text-center">
+                      {hasPermission(r.role, row.permission) ? (
+                        <Check
+                          className="mx-auto size-4 text-success"
+                          aria-label="Allowed"
+                        />
+                      ) : (
+                        <Minus
+                          className="mx-auto size-4 text-muted-foreground/40"
+                          aria-label="Not allowed"
+                        />
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </CardContent>
     </Card>
   );

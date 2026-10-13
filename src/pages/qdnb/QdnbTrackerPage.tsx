@@ -31,6 +31,7 @@ import { PageHero, ChartGrid } from "@/components/common";
 import { KPICard } from "@/components/common/KPICard";
 import { LoadingState } from "@/components/common/LoadingState";
 import { BarChartCard } from "@/components/charts/BarChartCard";
+import { STATUS_CHART_COLORS } from "@/components/charts/chart-theme";
 import {
   PagePurpose,
   RevisionHealthBadge,
@@ -506,9 +507,9 @@ export default function QdnbTrackerPage() {
           data={byUnit}
           xKey="name"
           yKeys={[
-            { key: "Open", name: "Open", color: "#3b82f6" },
-            { key: "Overdue", name: "Overdue", color: "#ef4444" },
-            { key: "Issued", name: "Issued", color: "#10b981" },
+            { key: "Open", name: "Open", color: STATUS_CHART_COLORS.info },
+            { key: "Overdue", name: "Overdue", color: STATUS_CHART_COLORS.danger },
+            { key: "Issued", name: "Issued", color: STATUS_CHART_COLORS.success },
           ]}
           height={240}
           className="h-full xl:col-span-2"

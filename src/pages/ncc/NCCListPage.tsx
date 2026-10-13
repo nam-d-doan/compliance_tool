@@ -497,7 +497,7 @@ export default function NCCListPage() {
             >
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-muted/50 text-muted-foreground">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr>
                       <SortableTh
                         label="NCC ID"

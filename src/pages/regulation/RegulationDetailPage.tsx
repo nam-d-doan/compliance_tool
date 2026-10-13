@@ -520,9 +520,9 @@ export default function RegulationDetailPage() {
                         No articles defined for this regulation.
                       </p>
                     ) : (
-                      <div className="overflow-x-auto rounded-lg border border-border">
+                      <div className="overflow-x-auto rounded-xl border border-border bg-card">
                         <table className="w-full text-left text-sm">
-                          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                          <thead className="bg-muted/50 text-xs text-muted-foreground">
                             <tr>
                               <th className="w-16 px-3 py-2 font-medium">
                                 No.
@@ -932,9 +932,9 @@ function DependenciesSection({
             No dependencies in this direction.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
             <table className="w-full text-left text-sm">
-              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted/50 text-xs text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 font-medium">Related Regulation</th>
                   <th className="px-3 py-2 font-medium">Type</th>
