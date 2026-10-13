@@ -55,6 +55,14 @@ export function useRevisions() {
   });
 }
 
+export function useTaskWorkflow() {
+  return useQuery({
+    queryKey: cmsKeys.taskWorkflow(),
+    queryFn: () => CMSService.taskWorkflow(),
+    staleTime: CMS_STALE,
+  });
+}
+
 export function useIcisFindings() {
   return useQuery({
     queryKey: cmsKeys.icis(),

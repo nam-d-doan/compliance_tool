@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { AuroraBackground } from "./AuroraBackground";
 import { TopNav } from "./TopNav";
+import { SideNav } from "./SideNav";
 import { AICopilot } from "@/components/ai";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -23,13 +24,18 @@ export function MainLayout() {
   return (
     <>
       <AuroraBackground />
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1640px] flex-col">
-        <TopNav />
-        <main className="min-w-0 flex-1 px-4 pt-4 pb-24 sm:px-6">
-          <Suspense fallback={<PageSkeleton />}>
-            <Outlet />
-          </Suspense>
-        </main>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1760px]">
+        <div className="sticky top-0 hidden h-screen shrink-0 py-4 pl-4 lg:block">
+          <SideNav className="h-full" />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TopNav />
+          <main className="min-w-0 flex-1 px-4 pt-4 pb-24 sm:px-6">
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          </main>
+        </div>
       </div>
       <AICopilot />
     </>

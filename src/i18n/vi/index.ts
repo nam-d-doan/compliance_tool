@@ -11,9 +11,11 @@ import { PAGES2 } from "./pages2";
 import { PAGES3 } from "./pages3";
 import { MIXED } from "./mixed";
 import { RUNTIME } from "./runtime";
+import { MODULES } from "./modules";
 
 export const VI_DICTIONARY: Record<string, string> = {
   ...DATA,
+  ...MODULES,
   ...COMPONENTS,
   ...SHELL,
   ...PAGES1,

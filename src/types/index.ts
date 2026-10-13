@@ -57,6 +57,7 @@ export type {
 } from "./admin";
 export type {
   NonComplianceCase,
+  IssueAction,
   NCCStatus,
   NCCSeverity,
   NCCFilter,

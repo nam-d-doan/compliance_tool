@@ -69,6 +69,15 @@ export const ROUTES = {
     CREATE: "/regulation/create",
   },
 
+  // CMS module 1 — one library for laws and internal regulations
+  LIBRARY: "/library",
+
+  // CMS module 2 — tasks given to departments (QĐNB update workflow)
+  TASKS: {
+    LIST: "/tasks",
+    DETAIL: "/tasks/:id",
+  },
+
   // CMS — Legal Update Workflow (RFQ group 1)
   LEGAL: {
     LIST: "/legal-updates",
@@ -111,6 +120,7 @@ export const ROUTES = {
     AI_CONFIG: "/admin/ai-config",
     RISK_MATRIX: "/admin/risk-matrix",
     ESCALATION_RULES: "/admin/escalation-rules",
+    TASK_WORKFLOW: "/admin/task-workflow",
   },
 
   // User routes
@@ -153,6 +163,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   [ROUTES.ADMIN.AI_CONFIG]: ["admin"],
   [ROUTES.ADMIN.RISK_MATRIX]: ["admin"],
   [ROUTES.ADMIN.ESCALATION_RULES]: ["admin"],
+  [ROUTES.ADMIN.TASK_WORKFLOW]: ["admin"],
 
   [ROUTES.REPORTS.PERIODIC]: ["approver", "owner", "executive", "admin"],
   [ROUTES.REPORTS.INTERNAL_CONTROL]: [

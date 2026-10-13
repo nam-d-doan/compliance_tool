@@ -467,7 +467,7 @@ const OCR_STEPS = [
   "AI: suggesting affected internal regulations",
 ];
 
-function OcrSheet({
+export function OcrSheet({
   open,
   onOpenChange,
   onDone,

@@ -96,7 +96,7 @@ export const REVISION_STATUSES: RevisionStatus[] = [
 ];
 
 export const ISSUE_STAGE_LABELS: Record<IssueStage, string> = {
-  check: "Check",
+  check: "Receive",
   evidence: "Submit evidence",
   review: "Compliance review",
   approval: "Approve closure",

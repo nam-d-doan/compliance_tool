@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   Grid3x3,
   Siren,
+  Workflow,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { SubNav, type SubNavItem } from "@/components/layout/SubNav";
@@ -19,6 +20,11 @@ const ITEMS: SubNavItem[] = [
     label: "Escalation Rules",
     icon: Siren,
     path: ROUTES.ADMIN.ESCALATION_RULES,
+  },
+  {
+    label: "Task Workflow",
+    icon: Workflow,
+    path: ROUTES.ADMIN.TASK_WORKFLOW,
   },
   { label: "Audit Logs", icon: ScrollText, path: ROUTES.ADMIN.AUDIT_LOGS },
   { label: "AI Config", icon: BrainCircuit, path: ROUTES.ADMIN.AI_CONFIG },

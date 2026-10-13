@@ -27,6 +27,7 @@ import type {
   LegalUpdate,
   InternalRegulation,
   RevisionTask,
+  TaskWorkflowStep,
   IcisFinding,
   RiskMatrix,
   EscalationRule,
@@ -45,6 +46,11 @@ import {
   generateReportTemplates,
   generateScheduledReports,
 } from "@/mocks/cms-seed";
+import {
+  defaultTaskWorkflow,
+  enrichTaskWorkflow,
+  seedIssueActionPlans,
+} from "@/mocks/task-workflow";
 import {
   generateCmsAuditLogs,
   generateCmsNotifications,
@@ -963,6 +969,7 @@ export interface MockDb {
   incomingLegalQueue: LegalUpdate[];
   internalRegulations: InternalRegulation[];
   revisionTasks: RevisionTask[];
+  taskWorkflow: TaskWorkflowStep[];
   icisFindings: IcisFinding[];
   /** ICIS findings waiting upstream; "Sync now" pulls them in. */
   incomingIcisQueue: IcisFinding[];
@@ -993,6 +1000,7 @@ export function getDb(): MockDb {
     activeMatrix,
     escalationRules,
   );
+  seedIssueActionPlans(nccs);
   const internalRegulations = generateInternalRegulations(organizationSettings);
   const legalUpdates = generateLegalUpdates();
   const incomingLegalQueue = generateIncomingLegalQueue();
@@ -1007,6 +1015,8 @@ export function getDb(): MockDb {
       const q = internalRegulations.find((r) => r.id === t.qdnbId);
       if (q) q.activeRevisionId = t.id;
     });
+  enrichTaskWorkflow(revisionTasks, internalRegulations, new Date());
+  const taskWorkflow = defaultTaskWorkflow();
   const allIcis = generateIcisFindings(organizationSettings);
   const incomingIcisQueue = allIcis
     .filter((f) => f.status === "pending")
@@ -1059,6 +1069,7 @@ export function getDb(): MockDb {
     incomingLegalQueue,
     internalRegulations,
     revisionTasks,
+    taskWorkflow,
     icisFindings,
     incomingIcisQueue,
     riskMatrices,

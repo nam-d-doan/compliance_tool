@@ -1,20 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import { format, parseISO } from "date-fns";
 import {
   ArrowLeft,
-  BellRing,
   Building2,
   CalendarCheck,
   CalendarClock,
   CheckCircle2,
+  Download,
+  FileText,
+  ListChecks,
   FileCheck2,
   GitCompare,
-  Play,
-  RotateCcw,
   Scale,
-  Send,
   ShieldCheck,
   User,
   Users,
@@ -33,7 +32,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -48,49 +46,49 @@ import {
   Callout,
   DiffView,
   EntityHistory,
-  EscalationPanel,
   Fact,
   FileNamePicker,
   RevisionHealthBadge,
-  RfqChip,
-  StepBar,
   ToneBadge,
-  type StepItem,
 } from "@/components/cms";
 import { useQdnb } from "@/hooks/queries";
-import {
-  useAdvanceRevision,
-  useIssueRevision,
-  useUpdateRevision,
-} from "@/hooks/mutations";
-import { useAuthStore, demoNow } from "@/stores";
-import { hasPermission } from "@/constants/rbac";
+import { useClientAudit, useIssueRevision } from "@/hooks/mutations";
+import { demoNow } from "@/stores";
 import {
   MAPPING_ACTION_LABELS,
   REVISION_STATUS_LABELS,
-  REVISION_STATUS_VI,
-  REVISION_STATUSES,
-  daysUntil,
   getRevisionHealth,
 } from "@/lib/cms-rules";
-import { cn } from "@/lib/utils";
 import type { RevisionTask } from "@/types";
 
 export default function QdnbDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isPending, isError, refetch } = useQdnb(id);
-  const [tab, setTab] = useState("revision");
+  const audit = useClientAudit();
+  const [tab, setTab] = useState("basic");
 
   if (isPending) return <DetailSkeleton />;
   if (isError || !data) return <ErrorState onRetry={() => refetch()} />;
 
   const { regulation: q, revisions, legalUpdates } = data;
   const active = revisions.find((r) => r.id === q.activeRevisionId);
-  const latestDone = [...revisions]
-    .filter((r) => r.status === "issued")
-    .sort((a, b) => (b.issuedAt ?? "").localeCompare(a.issuedAt ?? ""))[0];
-  const shown = active ?? latestDone;
+  const latest = q.versions[q.versions.length - 1];
+  const units = Array.from(
+    new Set(revisions.flatMap((r) => r.supportUnitNames)),
+  );
+
+  const download = () => {
+    audit.mutate({
+      action: "export",
+      module: "qdnb",
+      object: q.code,
+      details: `Downloaded ${q.code} v${q.currentVersion}`,
+    });
+    toast.success(
+      `${q.code.replace(/[ /]/g, "_")}_v${q.currentVersion}.pdf downloaded (demo file)`,
+    );
+  };
 
   return (
     <motion.div
@@ -102,10 +100,10 @@ export default function QdnbDetailPage() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate("/qdnb")}
+        onClick={() => navigate("/library?type=qdnb")}
         className="-ml-2 text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="size-4" /> Back to Internal Regulations
+        <ArrowLeft className="size-4" /> Back to the Document Library
       </Button>
 
       <PageHero
@@ -120,7 +118,16 @@ export default function QdnbDetailPage() {
               Current — no revision pending
             </ToneBadge>
           )}
-          <RfqChip code="2.2" />
+          <Button variant="outline" size="sm" onClick={download}>
+            <Download className="size-4" /> Download
+          </Button>
+          {active && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/tasks/${active.id}`}>
+                <ListChecks className="size-4" /> Open revision task
+              </Link>
+            </Button>
+          )}
         </div>
       </PageHero>
 
@@ -130,10 +137,7 @@ export default function QdnbDetailPage() {
         <Fact
           icon={CalendarCheck}
           label="Current version issued"
-          value={format(
-            parseISO(q.versions[q.versions.length - 1].issuedAt),
-            "dd/MM/yyyy",
-          )}
+          value={format(parseISO(latest.issuedAt), "dd/MM/yyyy")}
         />
         <Fact
           icon={Scale}
@@ -144,26 +148,116 @@ export default function QdnbDetailPage() {
         />
       </dl>
 
-      <Tabs value={tab} onValueChange={setTab} defaultValue="revision">
+      <Tabs value={tab} onValueChange={setTab} defaultValue="basic">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="revision">
-            Revision {active ? "in progress" : ""}
-          </TabsTrigger>
+          <TabsTrigger value="basic">Basic info</TabsTrigger>
+          <TabsTrigger value="scope">Scope</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="mapping">Mapping (laws)</TabsTrigger>
-          <TabsTrigger value="versions">Versions & compare</TabsTrigger>
+          <TabsTrigger value="mapping">
+            Legal mapping ({legalUpdates.length})
+          </TabsTrigger>
+          <TabsTrigger value="versions">
+            Versions ({q.versions.length})
+          </TabsTrigger>
+          <TabsTrigger value="tasks">Tasks ({revisions.length})</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="revision" className="pt-2">
-          {shown ? (
-            <RevisionWorkspace task={shown} />
-          ) : (
-            <Callout tone="success" title="No revision required">
-              No new law currently requires this regulation to change. When a
-              legal update is mapped to it, the revision will appear here.
+        <TabsContent value="basic" className="space-y-4 pt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic information</CardTitle>
+              <CardDescription>
+                Internal regulation of Nam A Bank
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Fact icon={FileText} label="Number" value={q.code} />
+                <Fact icon={FileText} label="Type" value={q.docType} />
+                <Fact icon={User} label="Signed by" value={q.issuingLevel} />
+                <Fact
+                  icon={CalendarCheck}
+                  label="Issued"
+                  value={format(parseISO(latest.issuedAt), "dd/MM/yyyy")}
+                />
+                <Fact
+                  icon={CalendarClock}
+                  label="Effective"
+                  value={format(parseISO(latest.effectiveAt), "dd/MM/yyyy")}
+                />
+                <Fact
+                  icon={GitCompare}
+                  label="Current version"
+                  value={`v${q.currentVersion} · ${latest.decisionNo}`}
+                />
+              </dl>
+              <p className="mt-4 text-sm text-muted-foreground">
+                Latest change: {latest.changeSummary}
+              </p>
+            </CardContent>
+          </Card>
+          {active && (
+            <Callout
+              tone="warning"
+              title={`Being revised — ${active.code}`}
+              action={
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={`/tasks/${active.id}`}>Open task</Link>
+                </Button>
+              }
+            >
+              {MAPPING_ACTION_LABELS[active.action]} because of{" "}
+              {active.sources.map((s) => s.docNumber).join(", ")}. Lead:{" "}
+              {active.leadUnitName}, deadline{" "}
+              {format(parseISO(active.committedDate), "dd/MM/yyyy")}.
             </Callout>
           )}
+        </TabsContent>
+
+        <TabsContent value="scope" className="pt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Scope</CardTitle>
+              <CardDescription>
+                Who and what this regulation covers
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Fact
+                  icon={Building2}
+                  label="Owner unit"
+                  value={q.ownerUnitName}
+                />
+                <Fact
+                  icon={ShieldCheck}
+                  label="Business field"
+                  value={q.field}
+                />
+                <Fact
+                  icon={Users}
+                  label="Units involved in revisions"
+                  value={units.join(", ") || "—"}
+                />
+                <Fact
+                  icon={Scale}
+                  label="Laws implemented"
+                  value={q.basedOn.length}
+                />
+                <Fact
+                  icon={FileText}
+                  label="Articles"
+                  value={latest.articles.length}
+                />
+                <Fact
+                  icon={User}
+                  label="Applies to"
+                  value="Head office and all branches"
+                />
+              </dl>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="content" className="pt-2">
@@ -172,12 +266,15 @@ export default function QdnbDetailPage() {
               <CardTitle>
                 Current content — version {q.currentVersion}
               </CardTitle>
-              <CardDescription>
-                {q.versions[q.versions.length - 1].decisionNo}
-              </CardDescription>
+              <CardDescription>{latest.decisionNo}</CardDescription>
+              <CardAction>
+                <Button variant="outline" size="sm" onClick={download}>
+                  <Download className="size-4" /> Download
+                </Button>
+              </CardAction>
             </CardHeader>
             <CardContent className="space-y-3">
-              {q.versions[q.versions.length - 1].articles.map((a) => (
+              {latest.articles.map((a) => (
                 <div
                   key={a.number}
                   className="rounded-lg border border-border p-3"
@@ -197,8 +294,8 @@ export default function QdnbDetailPage() {
         <TabsContent value="mapping" className="pt-2">
           <Card>
             <CardHeader>
-              <CardTitle>Laws that affect this regulation</CardTitle>
-              <CardDescription>From Legal Mapping (RFQ 1.2)</CardDescription>
+              <CardTitle>Laws mapped to this regulation</CardTitle>
+              <CardDescription>Only the links of this document</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {legalUpdates.length === 0 && (
@@ -261,12 +358,48 @@ export default function QdnbDetailPage() {
           />
         </TabsContent>
 
+        <TabsContent value="tasks" className="pt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tasks that changed this regulation</CardTitle>
+              <CardDescription>Open a task to see its workflow</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {revisions.length === 0 && (
+                <p className="text-sm text-muted-foreground">No task yet.</p>
+              )}
+              {revisions.map((r) => (
+                <Link
+                  key={r.id}
+                  to={`/tasks/${r.id}`}
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3 text-sm hover:bg-muted/50"
+                >
+                  <span className="font-mono text-xs font-semibold">
+                    {r.code}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {MAPPING_ACTION_LABELS[r.action]} ·{" "}
+                    {r.sources.map((s) => s.docNumber).join(", ")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {r.leadUnitName}
+                  </span>
+                  <span className="text-xs">
+                    {REVISION_STATUS_LABELS[r.status]}
+                  </span>
+                  <RevisionHealthBadge health={getRevisionHealth(r)} />
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="history" className="pt-2">
           <Card>
             <CardHeader>
               <CardTitle>Audit trail</CardTitle>
               <CardDescription>
-                Every action on this regulation's revisions
+                Every action on this regulation and its revisions
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -291,444 +424,7 @@ export default function QdnbDetailPage() {
   );
 }
 
-function RevisionWorkspace({ task }: { task: RevisionTask }) {
-  const { role } = useAuthStore();
-  const canUpdate = hasPermission(role, "qdnb:update");
-  const canApprove = hasPermission(role, "qdnb:approve");
-  const isCompliance = role === "owner" || role === "admin";
-  const advance = useAdvanceRevision();
-  const update = useUpdateRevision();
-  const [comment, setComment] = useState("");
-  const [issueOpen, setIssueOpen] = useState(false);
-  const [progress, setProgress] = useState(task.progress);
-  const [forecast, setForecast] = useState(task.expectedIssueDate.slice(0, 10));
-
-  useEffect(() => {
-    setProgress(task.progress);
-    setForecast(task.expectedIssueDate.slice(0, 10));
-  }, [task.progress, task.expectedIssueDate]);
-
-  const now = demoNow();
-  const health = getRevisionHealth(task, now);
-  const daysToDeadline = daysUntil(task.committedDate, now);
-  const daysToLaw = daysUntil(task.lawEffectiveDate, now);
-  const statusIdx = REVISION_STATUSES.indexOf(task.status);
-  const steps: StepItem[] = REVISION_STATUSES.map((s, i) => ({
-    key: s,
-    label: REVISION_STATUS_LABELS[s],
-    hint: REVISION_STATUS_VI[s],
-    state:
-      task.status === "issued" || i < statusIdx
-        ? "done"
-        : i === statusIdx
-          ? task.approvalSteps.some((a) => a.state === "returned") &&
-            s === "in_revision"
-            ? "returned"
-            : "current"
-          : "pending",
-  }));
-  const reviewStep = task.approvalSteps.find(
-    (s) => s.key === "compliance_review",
-  );
-  const approvalStep = task.approvalSteps.find((s) => s.key === "approval");
-  const issuedStep = task.approvalSteps.find((s) => s.key === "issued");
-
-  const act = (
-    action: "start" | "submit" | "approve" | "return",
-    msg: string,
-  ) =>
-    advance.mutate(
-      { id: task.id, action, comment: comment.trim() || undefined },
-      {
-        onSuccess: () => {
-          toast.success(msg);
-          setComment("");
-        },
-      },
-    );
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center gap-2">
-            {task.code} · {MAPPING_ACTION_LABELS[task.action]}
-            <RevisionHealthBadge health={health} />
-          </CardTitle>
-          <CardDescription>
-            Because of {task.sources.map((s) => `${s.docNumber}`).join(", ")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <StepBar steps={steps} />
-
-          {health === "overdue" && (
-            <Callout
-              tone="danger"
-              title={`Overdue by ${-daysToDeadline} day(s)`}
-            >
-              The committed date{" "}
-              {format(parseISO(task.committedDate), "dd/MM/yyyy")} has passed.
-              {daysToLaw < 0 &&
-                ` The law has been in force for ${-daysToLaw} day(s) — the bank is exposed until the regulation is issued.`}{" "}
-              Escalation follows the overdue rules.
-            </Callout>
-          )}
-          {health === "late_risk" && (
-            <Callout tone="warning" title="Risk of late issuance">
-              Forecast issue date{" "}
-              {format(parseISO(task.expectedIssueDate), "dd/MM/yyyy")} is after
-              {parseISO(task.expectedIssueDate) >
-              parseISO(task.lawEffectiveDate)
-                ? ` the law's effective date (${format(parseISO(task.lawEffectiveDate), "dd/MM/yyyy")})`
-                : ` the committed date (${format(parseISO(task.committedDate), "dd/MM/yyyy")})`}
-              {task.progress < 60 && daysToDeadline <= 14
-                ? `, and only ${task.progress}% is done with ${daysToDeadline} day(s) left`
-                : ""}
-              .
-            </Callout>
-          )}
-
-          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Fact
-              icon={Building2}
-              label="Lead unit (chủ trì)"
-              value={task.leadUnitName}
-            />
-            <Fact
-              icon={Users}
-              label="Supporting units (phối hợp)"
-              value={task.supportUnitNames.join(", ") || "—"}
-            />
-            <Fact
-              icon={User}
-              label="Responsible officer"
-              value={task.ownerName}
-            />
-            <Fact
-              icon={CalendarClock}
-              label="Committed date"
-              value={`${format(parseISO(task.committedDate), "dd/MM/yyyy")}${task.status !== "issued" ? ` (${daysToDeadline < 0 ? `${-daysToDeadline}d late` : `${daysToDeadline}d left`})` : ""}`}
-              alert={health === "overdue"}
-            />
-            <Fact
-              icon={Scale}
-              label="Law effective date"
-              value={`${format(parseISO(task.lawEffectiveDate), "dd/MM/yyyy")} (${daysToLaw < 0 ? `in force ${-daysToLaw}d` : `in ${daysToLaw}d`})`}
-            />
-            <Fact
-              icon={CalendarCheck}
-              label="Forecast issue date"
-              value={format(parseISO(task.expectedIssueDate), "dd/MM/yyyy")}
-              alert={health === "late_risk"}
-            />
-            <Fact
-              icon={CheckCircle2}
-              label="Progress"
-              value={`${task.progress}%`}
-            />
-            <Fact
-              icon={BellRing}
-              label="Reminders sent"
-              value={task.reminders.length}
-            />
-          </dl>
-
-          {task.status !== "issued" && canUpdate && (
-            <div className="grid gap-3 rounded-xl border border-border bg-muted/20 p-3 md:grid-cols-[1fr_auto_auto]">
-              <div className="space-y-1">
-                <Label className="text-xs">Progress: {progress}%</Label>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={progress}
-                  onChange={(e) => setProgress(Number(e.target.value))}
-                  className="w-full accent-primary"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs" htmlFor="forecast">
-                  Forecast issue date
-                </Label>
-                <Input
-                  id="forecast"
-                  type="date"
-                  value={forecast}
-                  onChange={(e) => setForecast(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  variant="outline"
-                  disabled={
-                    update.isPending ||
-                    (progress === task.progress &&
-                      forecast === task.expectedIssueDate.slice(0, 10))
-                  }
-                  onClick={() =>
-                    update.mutate(
-                      {
-                        id: task.id,
-                        patch: {
-                          progress,
-                          expectedIssueDate: new Date(forecast).toISOString(),
-                        },
-                      },
-                      {
-                        onSuccess: () =>
-                          toast.success(
-                            "Progress updated — dashboard refreshed",
-                          ),
-                      },
-                    )
-                  }
-                >
-                  Update progress
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Approval flow</CardTitle>
-            <CardDescription>
-              Draft → Compliance review → Approval → Issued with proof
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ol className="space-y-2">
-              {task.approvalSteps.map((s) => (
-                <li
-                  key={s.key}
-                  className={cn(
-                    "flex items-start gap-3 rounded-lg border p-3",
-                    s.state === "done" && "border-success/30 bg-success-bg/40",
-                    s.state === "current" &&
-                      "border-primary/40 bg-primary/[0.05]",
-                    s.state === "returned" &&
-                      "border-warning/40 bg-warning-bg/40",
-                    s.state === "pending" && "border-border",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "mt-0.5 size-2.5 shrink-0 rounded-full",
-                      s.state === "done"
-                        ? "bg-success"
-                        : s.state === "current"
-                          ? "bg-primary"
-                          : s.state === "returned"
-                            ? "bg-warning"
-                            : "bg-muted-foreground/30",
-                    )}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{s.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {s.state === "done" &&
-                        `Done${s.by ? ` by ${s.by}` : ""}${s.at ? ` · ${format(parseISO(s.at), "dd/MM/yyyy HH:mm")}` : ""}`}
-                      {s.state === "current" && "In progress"}
-                      {s.state === "returned" &&
-                        `Returned${s.by ? ` by ${s.by}` : ""}`}
-                      {s.state === "pending" && "Waiting"}
-                    </p>
-                    {s.comment && (
-                      <p className="mt-1 text-xs italic">“{s.comment}”</p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
-
-            {task.status !== "issued" && (
-              <div className="space-y-2 border-t border-border pt-4">
-                <Textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Comment (optional) — recorded in the audit trail"
-                  className="min-h-14"
-                />
-                <div className="flex flex-wrap gap-2">
-                  {task.status === "not_started" && canUpdate && (
-                    <Button
-                      onClick={() => act("start", "Revision started")}
-                      disabled={advance.isPending}
-                    >
-                      <Play className="size-4" /> Start revision
-                    </Button>
-                  )}
-                  {task.status === "in_revision" && canUpdate && (
-                    <Button
-                      onClick={() =>
-                        act(
-                          "submit",
-                          "Draft submitted to Compliance for review",
-                        )
-                      }
-                      disabled={advance.isPending}
-                    >
-                      <Send className="size-4" /> Submit draft for review
-                    </Button>
-                  )}
-                  {task.status === "pending_approval" &&
-                    reviewStep?.state === "current" &&
-                    isCompliance && (
-                      <>
-                        <Button
-                          onClick={() =>
-                            act(
-                              "approve",
-                              "Compliance review passed — sent for approval",
-                            )
-                          }
-                          disabled={advance.isPending}
-                        >
-                          <CheckCircle2 className="size-4" /> Compliance: OK,
-                          send for approval
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            act("return", "Draft returned to the lead unit")
-                          }
-                          disabled={advance.isPending}
-                        >
-                          <RotateCcw className="size-4" /> Return for changes
-                        </Button>
-                      </>
-                    )}
-                  {task.status === "pending_approval" &&
-                    approvalStep?.state === "current" &&
-                    canApprove && (
-                      <Button
-                        onClick={() =>
-                          act(
-                            "approve",
-                            "Approved — record the issuance to close the revision",
-                          )
-                        }
-                        disabled={advance.isPending}
-                      >
-                        <CheckCircle2 className="size-4" /> Approve
-                      </Button>
-                    )}
-                  {task.status === "pending_approval" &&
-                    issuedStep?.state === "current" &&
-                    canUpdate && (
-                      <Button onClick={() => setIssueOpen(true)}>
-                        <FileCheck2 className="size-4" /> Record issuance
-                        (proof)
-                      </Button>
-                    )}
-                  {task.status === "pending_approval" &&
-                    reviewStep?.state === "current" &&
-                    !isCompliance && (
-                      <p className="text-xs text-muted-foreground">
-                        Waiting for Compliance review (Khối Tuân thủ).
-                      </p>
-                    )}
-                  {task.status === "pending_approval" &&
-                    approvalStep?.state === "current" &&
-                    !canApprove && (
-                      <p className="text-xs text-muted-foreground">
-                        Waiting for approval. Switch to the Approver or
-                        Executive role to approve.
-                      </p>
-                    )}
-                </div>
-              </div>
-            )}
-
-            {task.evidence && (
-              <Callout
-                tone="success"
-                icon={FileCheck2}
-                title={`Issued as ${task.evidence.decisionNo}`}
-              >
-                Signed on{" "}
-                {format(parseISO(task.evidence.issueDate), "dd/MM/yyyy")},
-                effective{" "}
-                {format(parseISO(task.evidence.effectiveDate), "dd/MM/yyyy")}.
-                Proof:{" "}
-                <span className="font-medium text-foreground">
-                  {task.evidence.fileName}
-                </span>{" "}
-                · recorded by {task.evidence.recordedBy}.
-              </Callout>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Escalations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <EscalationPanel
-                escalations={task.escalations}
-                entityType="revision"
-                entityId={task.id}
-              />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Reminders</CardTitle>
-              <CardAction>
-                <Badge variant="secondary">{task.reminders.length}</Badge>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-2 text-xs text-muted-foreground">
-                Schedule: 30, 14, 7 and 1 day(s) before the deadline, then daily
-                when overdue.
-              </p>
-              <ol className="space-y-1.5">
-                {[...task.reminders].reverse().map((r) => (
-                  <li key={r.id} className="flex items-center gap-2 text-xs">
-                    <span
-                      className={cn(
-                        "rounded px-1.5 py-0.5 font-semibold",
-                        r.kind.startsWith("Overdue")
-                          ? "bg-danger-bg text-danger"
-                          : r.kind === "Late risk"
-                            ? "bg-warning-bg text-warning"
-                            : "bg-muted",
-                      )}
-                    >
-                      {r.kind}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {format(parseISO(r.at), "dd/MM/yyyy")}
-                    </span>
-                    <span className="truncate">→ {r.to}</span>
-                  </li>
-                ))}
-                {task.reminders.length === 0 && (
-                  <li className="text-xs text-muted-foreground">
-                    No reminder sent yet.
-                  </li>
-                )}
-              </ol>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <IssueSheet task={task} open={issueOpen} onOpenChange={setIssueOpen} />
-    </div>
-  );
-}
-
-function IssueSheet({
+export function IssueSheet({
   task,
   open,
   onOpenChange,

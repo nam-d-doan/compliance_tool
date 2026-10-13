@@ -72,6 +72,17 @@ export interface NonComplianceCase extends BaseEntity {
   workflow: IssueWorkflow;
   /** Linked action plan (CAP). */
   capId?: string;
+  /** Remediation actions kept on the issue itself (action plan). */
+  actionPlan?: IssueAction[];
+}
+
+export interface IssueAction {
+  id: string;
+  action: string;
+  owner: string;
+  dueDate: string;
+  done: boolean;
+  doneAt?: string;
 }
 
 export interface NCCFilter {

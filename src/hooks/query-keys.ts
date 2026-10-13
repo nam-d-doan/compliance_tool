@@ -101,6 +101,7 @@ export const cmsKeys = {
   qdnbList: () => [...cmsKeys.all, "qdnb"] as const,
   qdnb: (id: string) => [...cmsKeys.qdnbList(), id] as const,
   revisions: () => [...cmsKeys.all, "revisions"] as const,
+  taskWorkflow: () => [...cmsKeys.all, "task-workflow"] as const,
   icis: () => [...cmsKeys.all, "icis"] as const,
   icisSuggestion: (id: string) =>
     [...cmsKeys.icis(), "suggestion", id] as const,

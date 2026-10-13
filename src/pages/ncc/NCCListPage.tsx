@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Inbox,
   LineChart,
   List,
   PlusCircle,
@@ -36,8 +35,8 @@ import { AreaChartCard } from "@/components/charts/AreaChartCard";
 import { SortableTh, type SortDirection } from "@/components/common/SortableTh";
 import { DueDateCell } from "@/components/common/DueDateCell";
 import { useAuthStore } from "@/stores";
-import { useCmsOverview, useNCCList } from "@/hooks/queries";
-import { IcisInbox } from "@/components/ncc/IcisInbox";
+import { useNCCList } from "@/hooks/queries";
+import { DEPARTMENT_USER_UNIT } from "@/constants/sideNav";
 import { IssueTrends } from "@/components/ncc/IssueTrends";
 import { PagePurpose, RfqChip, SourceBadge } from "@/components/cms";
 import {
@@ -96,7 +95,7 @@ function monthlyTrend<T>(items: T[], dateKey: keyof T) {
     .map(([name, value]) => ({ name, value }));
 }
 
-type IssueTab = "register" | "icis" | "trends";
+type IssueTab = "register" | "trends";
 
 export default function NCCListPage() {
   const navigate = useNavigate();
@@ -107,20 +106,26 @@ export default function NCCListPage() {
     else params.set("tab", t);
     setParams(params, { replace: true });
   };
-  const { data: cms } = useCmsOverview();
   const { role } = useAuthStore();
   const canCreate = hasPermission(role, "ncc:create");
   const canDelete = hasPermission(role, "ncc:delete");
   const summaryCards = useNCCsSummary();
 
-  const [filters, setFilters] = useState<NCCFilter>({});
+  // The Department login only sees issues assigned to its own unit.
+  const [filters, setFilters] = useState<NCCFilter>(() =>
+    role === "approver" ? { ownerUnitId: DEPARTMENT_USER_UNIT.id } : {},
+  );
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{
     field: SortField;
     direction: SortDirection;
   } | null>(null);
 
-  const allNccQuery = useNCCList({}, 1, 500);
+  const allNccQuery = useNCCList(
+    role === "approver" ? { ownerUnitId: DEPARTMENT_USER_UNIT.id } : {},
+    1,
+    500,
+  );
   const allNcc = useMemo(
     () => allNccQuery.data?.items ?? [],
     [allNccQuery.data],
@@ -238,8 +243,8 @@ export default function NCCListPage() {
     return (
       <div className="space-y-6">
         <PageHero
-          title="Compliance Issues (NCC)"
-          subtitle="Central register of compliance issues from every source."
+          title="Compliance Issues"
+          subtitle="Issues that have been reported or assigned."
         />
         <ErrorState
           title="Could not load cases"
@@ -256,8 +261,8 @@ export default function NCCListPage() {
   return (
     <div className="space-y-6">
       <PageHero
-        title="Compliance Issues (NCC)"
-        subtitle="Kho lưu trữ vấn đề tuân thủ tập trung — issues from ICIS (P.KTKSNB), SBV inspections, audits, self-checks and monitoring, rated with the bank's risk matrix."
+        title="Compliance Issues"
+        subtitle="Every compliance issue that has been reported or assigned — from inspections, audits (incl. P.KTKSNB), self-checks and monitoring — rated with the bank's risk matrix."
       >
         <div className="flex flex-wrap items-center gap-2">
           <RfqChip code="3.1" />
@@ -274,16 +279,15 @@ export default function NCCListPage() {
         </div>
       </PageHero>
       <PagePurpose>
-        Every issue follows the same path: check → submit evidence → Compliance
-        review → approve closure. High-risk and overdue issues escalate
-        automatically.
+        Every issue follows one path: Record → Receive → Submit evidence →
+        Compliance review → Approve closure. High-risk and overdue issues
+        escalate automatically.
       </PagePurpose>
 
       <div className="inline-flex flex-wrap items-center gap-1 rounded-lg bg-muted p-1">
         {(
           [
             ["register", "Issue register", List, allNcc.length],
-            ["icis", "ICIS Inbox", Inbox, cms?.icis.pending ?? 0],
             ["trends", "Trends & unit profile", LineChart, null],
           ] as const
         ).map(([key, label, Icon, n]) => (
@@ -301,9 +305,7 @@ export default function NCCListPage() {
               <span
                 className={cn(
                   "rounded-full px-1.5 text-[10px]",
-                  key === "icis" && n > 0
-                    ? "bg-danger text-white"
-                    : "bg-muted-foreground/10",
+                  "bg-muted-foreground/10",
                 )}
               >
                 {n}
@@ -313,7 +315,6 @@ export default function NCCListPage() {
         ))}
       </div>
 
-      {tab === "icis" && <IcisInbox />}
       {tab === "trends" && <IssueTrends issues={allNcc} />}
 
       {tab === "register" && (

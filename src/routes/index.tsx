@@ -6,14 +6,6 @@ import {
 import { lazy } from "react";
 import { ROUTES } from "@/constants/routes";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { SubNavLayout } from "@/components/layout/SubNav";
-import {
-  ISSUES_SUBNAV,
-  LEGAL_SUBNAV,
-  QDNB_SUBNAV,
-  REGULATION_SUBNAV,
-  REPORTS_SUBNAV,
-} from "@/constants/subNavs";
 import { ProtectedRoute } from "@/components/navigation/ProtectedRoute";
 import {
   AuthRouteGuard,
@@ -61,9 +53,6 @@ const CAPCreatePage = lazy(() => import("@/pages/cap/CAPCreatePage"));
 const NCCListPage = lazy(() => import("@/pages/ncc/NCCListPage"));
 const NCCDetailPage = lazy(() => import("@/pages/ncc/NCCDetailPage"));
 const NCCCreatePage = lazy(() => import("@/pages/ncc/NCCCreatePage"));
-const RegulationLibraryPage = lazy(
-  () => import("@/pages/regulation/RegulationLibraryPage"),
-);
 const RegulationDetailPage = lazy(
   () => import("@/pages/regulation/RegulationDetailPage"),
 );
@@ -78,9 +67,6 @@ const RegulationCreatePage = lazy(
 );
 const RegulationEditPage = lazy(
   () => import("@/pages/regulation/RegulationEditPage"),
-);
-const AssignmentListPage = lazy(
-  () => import("@/pages/assignment/AssignmentListPage"),
 );
 const AssignmentCreatePage = lazy(
   () => import("@/pages/assignment/AssignmentCreatePage"),
@@ -117,11 +103,9 @@ const UnauthorizedPage = lazy(
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
 // CMS modules (Nam A Bank RFQ Phụ lục 1)
-const LegalUpdatesPage = lazy(() => import("@/pages/legal/LegalUpdatesPage"));
 const LegalUpdateDetailPage = lazy(
   () => import("@/pages/legal/LegalUpdateDetailPage"),
 );
-const QdnbTrackerPage = lazy(() => import("@/pages/qdnb/QdnbTrackerPage"));
 const QdnbDetailPage = lazy(() => import("@/pages/qdnb/QdnbDetailPage"));
 const AdminRiskMatrixPage = lazy(
   () => import("@/pages/admin/AdminRiskMatrixPage"),
@@ -136,8 +120,14 @@ const InternalControlDashboardPage = lazy(
   () => import("@/pages/reports/InternalControlDashboardPage"),
 );
 const LateIssuancePage = lazy(() => import("@/pages/reports/LateIssuancePage"));
-const LegalMappingPage = lazy(() => import("@/pages/legal/LegalMappingPage"));
 const EscalationsPage = lazy(() => import("@/pages/ncc/EscalationsPage"));
+// CMS modules after the 3-module restructure (09/10/2026)
+const LibraryPage = lazy(() => import("@/pages/library/LibraryPage"));
+const TaskListPage = lazy(() => import("@/pages/tasks/TaskListPage"));
+const TaskDetailPage = lazy(() => import("@/pages/tasks/TaskDetailPage"));
+const AdminTaskWorkflowPage = lazy(
+  () => import("@/pages/admin/AdminTaskWorkflowPage"),
+);
 
 const route = (
   path: string,
@@ -182,108 +172,78 @@ export const router = createBrowserRouter([
           route("/dashboard/approver", <ApproverDashboardPage />, "Approver"),
           route("/dashboard/admin", <AdminDashboardPage />, "Admin"),
 
-          // Grouped areas: list pages get their area's sub-menu (same frosted
-          // sub-navigation as Administration); detail/create pages keep
-          // their breadcrumbs only. Addresses are unchanged.
-
-          // Legal Updates — RFQ group 1
-          {
-            element: <SubNavLayout items={LEGAL_SUBNAV} />,
-            children: [
-              route("/legal-updates", <LegalUpdatesPage />, "Legal Updates"),
-              route("/legal-mapping", <LegalMappingPage />, "Legal Mapping"),
-              route("/assignment", <AssignmentListPage />, "Assignments"),
-            ],
-          },
+          // Module 1 — Document Library (laws + internal regulations)
+          route("/library", <LibraryPage />, "Document Library"),
           route("/legal-updates/:id", <LegalUpdateDetailPage />, "Detail"),
+          route("/qdnb/:id", <QdnbDetailPage />, "Detail"),
+          route("/obligations", <ObligationListPage />, "Obligations"),
+          route("/obligations/create", <ObligationCreatePage />, "Create"),
+          route("/obligations/:id", <ObligationDetailPage />, "Detail"),
+          route("/regulation/compare", <RegulationComparisonPage />, "Compare"),
+          route("/regulation/create", <RegulationCreatePage />, "Create"),
+          route("/regulation/:id/edit", <RegulationEditPage />, "Edit"),
+          route("/regulation/:id/impact", <RegulationImpactPage />, "Impact"),
+          route("/regulation/:id", <RegulationDetailPage />, "Detail"),
+          // Old list addresses now open the library.
+          {
+            path: "/legal-updates",
+            element: <Navigate to="/library?type=law" replace />,
+          },
+          {
+            path: "/qdnb",
+            element: <Navigate to="/library?type=qdnb" replace />,
+          },
+          { path: "/regulation", element: <Navigate to="/library" replace /> },
+          {
+            path: "/legal-mapping",
+            element: <Navigate to="/library" replace />,
+          },
+          // Module 2 — Task Management
+          route("/tasks", <TaskListPage />, "Task Management"),
+          route("/tasks/:id", <TaskDetailPage />, "Task"),
+          route(
+            "/reports/late-issuance",
+            <LateIssuancePage />,
+            "Late Issuance Alerts",
+          ),
+          { path: "/assignment", element: <Navigate to="/tasks" replace /> },
           route(
             "/assignment/create",
             <AssignmentCreatePage />,
             "Create Assignment",
           ),
           route("/assignment/:id", <AssignmentDetailPage />, "Detail"),
-
-          // Regulations — library and the obligations it creates
-          {
-            element: <SubNavLayout items={REGULATION_SUBNAV} />,
-            children: [
-              route("/regulation", <RegulationLibraryPage />, "Regulations"),
-              route("/obligations", <ObligationListPage />, "Obligations"),
-              route(
-                "/regulation/compare",
-                <RegulationComparisonPage />,
-                "Compare",
-              ),
-            ],
-          },
-          route("/regulation/create", <RegulationCreatePage />, "Create"),
-          route("/regulation/:id/edit", <RegulationEditPage />, "Edit"),
-          route("/regulation/:id/impact", <RegulationImpactPage />, "Impact"),
-          route("/regulation/:id", <RegulationDetailPage />, "Detail"),
-          route("/obligations/create", <ObligationCreatePage />, "Create"),
-          route("/obligations/:id", <ObligationDetailPage />, "Detail"),
-
-          // Internal Regs (QĐNB) — RFQ group 2
-          {
-            element: <SubNavLayout items={QDNB_SUBNAV} />,
-            children: [
-              route("/qdnb", <QdnbTrackerPage />, "Internal Regulations"),
-              route(
-                "/reports/late-issuance",
-                <LateIssuancePage />,
-                "Late Issuance Alerts",
-              ),
-            ],
-          },
-          route("/qdnb/:id", <QdnbDetailPage />, "Detail"),
-
-          // Issues & CAPs — RFQ group 3 + escalations (4.3)
-          {
-            element: <SubNavLayout items={ISSUES_SUBNAV} />,
-            children: [
-              route("/ncc/list", <NCCListPage />, "All NCCs"),
-              route("/ncc/escalations", <EscalationsPage />, "Escalations"),
-              route("/cap", <CAPDashboardPage />, "Corrective Actions"),
-              route("/cap/list", <CAPListPage />, "All CAPs"),
-            ],
-          },
-          route("/ncc/create", <NCCCreatePage />, "Create NCC"),
-          route("/ncc/:id", <NCCDetailPage />, "NCC Detail"),
+          // Module 3 — Compliance Issues
+          route("/ncc/list", <NCCListPage />, "Compliance Issues"),
+          route("/ncc/escalations", <EscalationsPage />, "Escalations"),
+          route("/ncc/create", <NCCCreatePage />, "Create Issue"),
+          route("/ncc/:id", <NCCDetailPage />, "Issue Detail"),
+          route("/cap", <CAPDashboardPage />, "Corrective Actions"),
+          route("/cap/list", <CAPListPage />, "All CAPs"),
           route("/cap/create", <CAPCreatePage />, "Create CAP"),
           route("/cap/:id", <CAPDetailPage />, "Detail"),
-
-          // Reports — RFQ group 5
+          // Reports
           route("/reports", <ReportsIndexPage />, "Reports"),
-          {
-            element: <SubNavLayout items={REPORTS_SUBNAV} />,
-            children: [
-              route("/reports/status", <ReportsStatusPage />, "Status"),
-              route("/reports/calendar", <ReportsCalendarPage />, "Calendar"),
-              route("/reports/cap", <ReportsCAPPage />, "CAP Reports"),
-              route(
-                "/reports/executive",
-                <ReportsExecutivePage />,
-                "Executive Reports",
-              ),
-              route("/reports/ews", <EWSReportPage />, "Early Warning System"),
-              route(
-                "/reports/periodic",
-                <PeriodicReportsPage />,
-                "Periodic Reports",
-              ),
-              route(
-                "/reports/internal-control",
-                <InternalControlDashboardPage />,
-                "Internal Control Issues",
-              ),
-              route(
-                "/reports/audit-trail",
-                <AdminAuditLogsPage />,
-                "Audit Trail",
-              ),
-            ],
-          },
-
+          route("/reports/status", <ReportsStatusPage />, "Status"),
+          route("/reports/calendar", <ReportsCalendarPage />, "Calendar"),
+          route("/reports/cap", <ReportsCAPPage />, "CAP Reports"),
+          route(
+            "/reports/executive",
+            <ReportsExecutivePage />,
+            "Executive Reports",
+          ),
+          route("/reports/ews", <EWSReportPage />, "Early Warning System"),
+          route(
+            "/reports/periodic",
+            <PeriodicReportsPage />,
+            "Periodic Reports",
+          ),
+          route(
+            "/reports/internal-control",
+            <InternalControlDashboardPage />,
+            "Internal Control Issues",
+          ),
+          route("/reports/audit-trail", <AdminAuditLogsPage />, "Audit Trail"),
           route("/admin/users", <AdminUsersPage />, "Users"),
           route("/admin/roles", <AdminRolesPage />, "Roles"),
           route(
@@ -298,6 +258,11 @@ export const router = createBrowserRouter([
             "/admin/escalation-rules",
             <AdminEscalationRulesPage />,
             "Escalation Rules",
+          ),
+          route(
+            "/admin/task-workflow",
+            <AdminTaskWorkflowPage />,
+            "Task Workflow",
           ),
 
           route("/profile", <ProfilePage />, "Profile"),

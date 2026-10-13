@@ -3,8 +3,9 @@ import { useAuthStore } from "@/stores";
 import type { Role } from "@/types";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { UserCircle, Check } from "lucide-react";
+import { ROLE_DISPLAY } from "@/constants/sideNav";
 
-const ROLES: Role[] = ["admin", "executive", "owner", "approver"];
+const ROLES: Role[] = ["owner", "approver", "admin", "executive"];
 
 // Mirrors src/pages/dashboard/DashboardRedirect so a role switch immediately
 // routes the user to the dashboard that matches their new role.
@@ -33,13 +34,17 @@ export function RoleSwitch() {
   return (
     <>
       {ROLES.map((r) => (
-        <DropdownMenuItem
-          key={r}
-          onClick={() => handleRoleChange(r)}
-          className="capitalize"
-        >
+        <DropdownMenuItem key={r} onClick={() => handleRoleChange(r)}>
           <UserCircle className="size-4 text-muted-foreground" />
-          <span className="flex-1">{r}</span>
+          <span className="flex flex-1 flex-col leading-tight">
+            <span>{ROLE_DISPLAY[r].label}</span>
+            <span
+              className="text-[10.5px] text-muted-foreground"
+              data-no-translate
+            >
+              {ROLE_DISPLAY[r].hint}
+            </span>
+          </span>
           {r === currentRole && (
             <Check className="size-4 text-primary" aria-label="active role" />
           )}

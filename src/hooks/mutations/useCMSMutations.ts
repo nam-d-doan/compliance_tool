@@ -18,10 +18,12 @@ import {
 } from "@/hooks/query-keys";
 import type {
   EscalationRule,
+  IssueAction,
   LegalMapping,
   RiskLevel,
   RiskMatrix,
   RiskScores,
+  TaskWorkflowStep,
 } from "@/types";
 
 /**
@@ -138,6 +140,63 @@ export function useIssueRevision() {
         note?: string;
       };
     }) => CMSService.issueRevision(v.id, v.input),
+  );
+}
+
+export function useAcceptTask() {
+  return useCmsMutation((v: { id: string; note?: string }) =>
+    CMSService.acceptTask(v.id, v.note),
+  );
+}
+
+export function useAddDraft() {
+  return useCmsMutation((v: { id: string; fileName: string; note?: string }) =>
+    CMSService.addDraft(v.id, { fileName: v.fileName, note: v.note }),
+  );
+}
+
+export function useRequestDeadlineChange() {
+  return useCmsMutation((v: { id: string; to: string; reason: string }) =>
+    CMSService.requestDeadlineChange(v.id, { to: v.to, reason: v.reason }),
+  );
+}
+
+export function useDecideDeadlineChange() {
+  return useCmsMutation(
+    (v: {
+      id: string;
+      changeId: string;
+      decision: "approved" | "rejected";
+      note?: string;
+    }) =>
+      CMSService.decideDeadlineChange(v.id, v.changeId, {
+        decision: v.decision,
+        note: v.note,
+      }),
+  );
+}
+
+export function useCustomStepDone() {
+  return useCmsMutation((v: { id: string; key: string }) =>
+    CMSService.customStepDone(v.id, v.key),
+  );
+}
+
+export function useCompleteTask() {
+  return useCmsMutation((v: { id: string; qdnbIds: string[] }) =>
+    CMSService.completeTask(v.id, v.qdnbIds),
+  );
+}
+
+export function useSaveActionPlan(id: string) {
+  return useCmsMutation((actionPlan: IssueAction[]) =>
+    CMSService.saveActionPlan(id, actionPlan),
+  );
+}
+
+export function useSaveTaskWorkflow() {
+  return useCmsMutation((steps: TaskWorkflowStep[]) =>
+    CMSService.saveTaskWorkflow(steps),
   );
 }
 

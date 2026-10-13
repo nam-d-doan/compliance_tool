@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   Sheet,
   SheetContent,
@@ -66,7 +68,11 @@ import { useNCCDetail } from "@/hooks/queries/useNCCQueries";
 import { useAdminUsers } from "@/hooks/queries/useAdminQueries";
 import { useActiveRiskMatrix } from "@/hooks/queries";
 import { useUpdateNCC, useDeleteNCC } from "@/hooks/mutations/useNCCMutations";
-import { useIssueWorkflow, useRateIssue } from "@/hooks/mutations";
+import {
+  useIssueWorkflow,
+  useRateIssue,
+  useSaveActionPlan,
+} from "@/hooks/mutations";
 import { useAuthStore, demoNow } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
 import {
@@ -79,6 +85,7 @@ import { cn } from "@/lib/utils";
 import type {
   IssueSource,
   IssueStage,
+  IssueAction,
   NonComplianceCase,
   UpdateNCCInput,
 } from "@/types";
@@ -395,29 +402,7 @@ export default function NCCDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Action plan</CardTitle>
-              <CardDescription>Kế hoạch hành động khắc phục</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {item.capId ? (
-                <Button variant="outline" asChild>
-                  <Link to={`/cap/${item.capId}`}>Open linked CAP</Link>
-                </Button>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Create a corrective action plan when remediation needs
-                    several actions or owners.
-                  </p>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to="/cap/create">Create action plan (CAP)</Link>
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <ActionPlanCard item={item} />
 
           <Card>
             <CardHeader>
@@ -507,26 +492,35 @@ function EvidenceWorkflow({ item }: { item: NonComplianceCase }) {
   const lastRound = item.workflow.rounds[item.workflow.rounds.length - 1];
   const returned = stage === "evidence" && lastRound?.decision === "returned";
 
-  const steps: StepItem[] = STAGES.map((s, i) => ({
-    key: s,
-    label: ISSUE_STAGE_LABELS[s],
-    hint:
-      s === "check"
-        ? "Verify with the unit"
-        : s === "evidence"
-          ? "Unit uploads proof"
-          : s === "review"
-            ? "Khối Tuân thủ"
-            : "Approver closes",
-    state:
-      i < stageIdx
-        ? "done"
-        : i === stageIdx
-          ? s === "evidence" && returned
-            ? "returned"
-            : "current"
-          : "pending",
-  }));
+  const recorded: StepItem = {
+    key: "recorded",
+    label: "Record",
+    hint: format(parseISO(item.createdAt), "dd/MM/yyyy"),
+    state: "done",
+  };
+  const steps: StepItem[] = [
+    recorded,
+    ...STAGES.map((s, i): StepItem => ({
+      key: s,
+      label: ISSUE_STAGE_LABELS[s],
+      hint:
+        s === "check"
+          ? "Unit confirms the finding"
+          : s === "evidence"
+            ? "Unit uploads proof"
+            : s === "review"
+              ? "Khối Tuân thủ"
+              : "Approver closes",
+      state:
+        i < stageIdx
+          ? "done"
+          : i === stageIdx
+            ? s === "evidence" && returned
+              ? "returned"
+              : "current"
+            : "pending",
+    })),
+  ];
 
   const run = (
     action: WorkflowAction,
@@ -542,9 +536,9 @@ function EvidenceWorkflow({ item }: { item: NonComplianceCase }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Evidence submission & approval</CardTitle>
+        <CardTitle>Issue workflow</CardTitle>
         <CardDescription>
-          Kiểm tra → Nộp bằng chứng → Thẩm định → Phê duyệt đóng
+          Ghi nhận → Tiếp nhận → Nộp bằng chứng → Thẩm định → Phê duyệt đóng
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -553,7 +547,7 @@ function EvidenceWorkflow({ item }: { item: NonComplianceCase }) {
         {stage === "check" && (
           <div className="space-y-3 rounded-xl border border-border p-4">
             <p className="text-sm font-medium">
-              Step 1 — Check the finding with the unit
+              Step 2 — Receive: confirm the finding with the unit
             </p>
             <p className="text-xs text-muted-foreground">
               Confirm the facts and root cause with {item.ownerUnitName} before
@@ -599,7 +593,7 @@ function EvidenceWorkflow({ item }: { item: NonComplianceCase }) {
               </Callout>
             )}
             <p className="text-sm font-medium">
-              Step 2 — Unit submits remediation evidence
+              Step 3 — Unit submits remediation evidence
             </p>
             {canSubmit ? (
               <>
@@ -639,7 +633,7 @@ function EvidenceWorkflow({ item }: { item: NonComplianceCase }) {
         {stage === "review" && lastRound && (
           <div className="space-y-3 rounded-xl border border-border p-4">
             <p className="text-sm font-medium">
-              Step 3 — Compliance reviews round {lastRound.round}
+              Step 4 — Compliance reviews round {lastRound.round}
             </p>
             <div className="rounded-lg bg-muted/40 p-3 text-sm">
               <p>{lastRound.note}</p>
@@ -703,7 +697,7 @@ function EvidenceWorkflow({ item }: { item: NonComplianceCase }) {
 
         {stage === "approval" && (
           <div className="space-y-3 rounded-xl border border-border p-4">
-            <p className="text-sm font-medium">Step 4 — Approve closure</p>
+            <p className="text-sm font-medium">Step 5 — Approve closure</p>
             {canApprove ? (
               <>
                 <Textarea
@@ -888,6 +882,139 @@ function RiskCard({ item }: { item: NonComplianceCase }) {
             <Button variant="ghost" onClick={() => setEditing(false)}>
               Cancel
             </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActionPlanCard({ item }: { item: NonComplianceCase }) {
+  const { role } = useAuthStore();
+  const canEdit = hasPermission(role, "ncc:update") || role === "approver";
+  const save = useSaveActionPlan(item.id);
+  const plan = item.actionPlan ?? [];
+  const [adding, setAdding] = useState(false);
+  const [action, setAction] = useState("");
+  const [due, setDue] = useState(item.dueDate.slice(0, 10));
+  const done = plan.filter((a) => a.done).length;
+  const pct = plan.length ? Math.round((done / plan.length) * 100) : 0;
+
+  const persist = (next: IssueAction[], msg: string) =>
+    save.mutate(next, { onSuccess: () => toast.success(msg) });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Action plan</CardTitle>
+        <CardDescription>
+          Kế hoạch hành động khắc phục · {done}/{plan.length} done
+        </CardDescription>
+        {canEdit && item.status !== "Closed" && (
+          <CardAction>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAdding(!adding)}
+            >
+              Add action
+            </Button>
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Progress value={pct} className="h-1.5" />
+          <span className="text-xs tabular-nums">{pct}%</span>
+        </div>
+        {plan.map((a) => {
+          const late = !a.done && daysUntil(a.dueDate, demoNow()) < 0;
+          return (
+            <label
+              key={a.id}
+              className={cn(
+                "flex items-start gap-2 rounded-lg border p-2 text-xs",
+                a.done ? "border-success/30 bg-success-bg/30" : "border-border",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={a.done}
+                disabled={
+                  !canEdit || save.isPending || item.status === "Closed"
+                }
+                onChange={(e) =>
+                  persist(
+                    plan.map((x) =>
+                      x.id === a.id ? { ...x, done: e.target.checked } : x,
+                    ),
+                    e.target.checked ? "Action marked done" : "Action reopened",
+                  )
+                }
+                className="mt-0.5 accent-primary"
+              />
+              <span className="min-w-0 flex-1">
+                <span
+                  className={cn("block", a.done && "line-through opacity-70")}
+                >
+                  {a.action}
+                </span>
+                <span
+                  className={cn("text-muted-foreground", late && "text-danger")}
+                >
+                  {a.owner} · due {format(parseISO(a.dueDate), "dd/MM/yyyy")}
+                  {a.done && a.doneAt
+                    ? ` · done ${format(parseISO(a.doneAt), "dd/MM/yyyy")}`
+                    : late
+                      ? " · overdue"
+                      : ""}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+        {plan.length === 0 && (
+          <p className="text-xs text-muted-foreground">No action yet.</p>
+        )}
+        {adding && (
+          <div className="space-y-2 rounded-lg border border-dashed border-border p-2">
+            <Input
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              placeholder="Action to take"
+              className="h-8 text-xs"
+            />
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={due}
+                onChange={(e) => setDue(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <Button
+                size="sm"
+                disabled={!action.trim() || save.isPending}
+                onClick={() => {
+                  persist(
+                    [
+                      ...plan,
+                      {
+                        id: `${item.id}-ap-${Date.now().toString(36)}`,
+                        action: action.trim(),
+                        owner: item.ownerName,
+                        dueDate: new Date(due).toISOString(),
+                        done: false,
+                      },
+                    ],
+                    "Action added",
+                  );
+                  setAction("");
+                  setAdding(false);
+                }}
+              >
+                Save
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

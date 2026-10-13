@@ -214,6 +214,55 @@ export interface EscalationRecord {
   acknowledgedAt?: string;
 }
 
+/** One draft of the new QĐNB text uploaded by the lead unit. */
+export interface TaskDraft {
+  id: string;
+  /** Draft 1, 2, … */
+  version: number;
+  fileName: string;
+  note?: string;
+  by: string;
+  at: string;
+}
+
+/** A request to move a task's deadline, and who decided it. */
+export interface DeadlineChange {
+  id: string;
+  requestedBy: string;
+  requestedByUnit: string;
+  requestedAt: string;
+  from: string;
+  to: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  decidedBy?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+}
+
+/** Who is responsible for a workflow step. */
+export type TaskStepOwner = "compliance" | "department" | "approver";
+
+/** Built-in steps of the task workflow; custom steps use their own key. */
+export type TaskStepKey =
+  "assign" | "accept" | "draft" | "review" | "approve" | "issue" | "complete";
+
+/**
+ * One step of the task workflow template (Administration → Task workflow
+ * setup). Configured like a rule: name, owner, time allowed, evidence.
+ */
+export interface TaskWorkflowStep {
+  key: TaskStepKey | string;
+  name: string;
+  owner: TaskStepOwner;
+  /** Working days allowed for the step. */
+  days: number;
+  evidenceRequired: boolean;
+  /** Built-in steps can be renamed but not removed. */
+  builtIn: boolean;
+  description?: string;
+}
+
 export interface RevisionTask extends BaseEntity {
   code: string;
   qdnbId?: string;
@@ -245,6 +294,24 @@ export interface RevisionTask extends BaseEntity {
   reminders: ReminderRecord[];
   escalations: EscalationRecord[];
   issuedAt?: string;
+  /** Step 1 — what Compliance asks the department to do. */
+  brief?: string;
+  assignedBy?: string;
+  assignedAt?: string;
+  /** Date by which the department must accept the task. */
+  responseDeadline?: string;
+  /** Step 2 — department accepted the task. */
+  acceptedBy?: string;
+  acceptedAt?: string;
+  /** Step 3 — every draft is kept. */
+  drafts?: TaskDraft[];
+  deadlineChanges?: DeadlineChange[];
+  /** Custom workflow steps marked done, by step key. */
+  customSteps?: Record<string, { by: string; at: string }>;
+  /** Step 7 — the issued QĐNB this task produced (one or more). */
+  linkedQdnbIds?: string[];
+  completedBy?: string;
+  completedAt?: string;
 }
 
 // ---------------------------------------------------------------------------

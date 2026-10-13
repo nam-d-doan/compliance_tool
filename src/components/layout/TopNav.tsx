@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore, useThemeStore } from "@/stores";
 import { AuthService } from "@/services/auth_service";
-import { useCmsOverview, useNotifications } from "@/hooks/queries";
+import { useNotifications } from "@/hooks/queries";
 import { DemoClock, GlobalSearch } from "@/components/cms";
-import { activePillKey, getNavPillsForRole } from "@/constants/navPills";
+import { ROLE_DISPLAY } from "@/constants/sideNav";
+import { SideNav } from "./SideNav";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
@@ -22,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationDrawer } from "./NotificationDrawer";
 import { RoleSwitch } from "@/components/auth/RoleSwitch";
-import { useTabActionCounts } from "@/hooks/useTabActionCounts";
 import {
   Search,
   Bell,
@@ -34,6 +35,7 @@ import {
   Sparkles,
   Shield,
   Settings2,
+  Menu,
 } from "lucide-react";
 
 export function TopNav() {
@@ -48,10 +50,7 @@ export function TopNav() {
   const isAdmin = role === "admin";
   const isAdminRoute = location.pathname.startsWith("/admin");
 
-  const pills = getNavPillsForRole(role);
-  const activeKey = activePillKey(pills, location.pathname);
-  const tabCounts = useTabActionCounts();
-  const { data: cms } = useCmsOverview();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Ctrl/Cmd + K opens the repository search from anywhere.
   useEffect(() => {
@@ -64,22 +63,6 @@ export function TopNav() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
-  const pillCount = (key: string): number => {
-    switch (key) {
-      // Grouped tabs add up the items of every page in their sub-menu.
-      case "legal":
-        return (cms?.legalUpdates.unread ?? 0) + tabCounts.assignments;
-      case "qdnb":
-        return cms?.revisions.overdue ?? 0;
-      case "regulations":
-        return tabCounts.regulations + tabCounts.obligations;
-      case "issues":
-        return tabCounts.nccs + tabCounts.caps;
-      default:
-        return 0;
-    }
-  };
 
   const handleLogout = async () => {
     await AuthService.logout();
@@ -98,74 +81,29 @@ export function TopNav() {
   return (
     <>
       <header className="relative z-50 flex items-center gap-3.5 px-4 pt-4 sm:px-6">
-        <Link
-          to={ROUTES.DASHBOARD.ROOT}
-          className="flex shrink-0 items-center gap-2"
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open menu"
+          className="flex size-[38px] shrink-0 items-center justify-center rounded-full border bg-[var(--nav-bg)] shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] lg:hidden"
         >
-          <div className="bg-ink-chip flex size-[26px] items-center justify-center rounded-[7px]">
-            <span className="text-chart-accent font-heading text-[11px] font-extrabold">
-              EY
-            </span>
-          </div>
-          <span className="font-heading text-sm font-bold whitespace-nowrap">
-            Compliance Tool
-          </span>
-        </Link>
+          <Menu className="size-[15px]" />
+        </button>
 
-        <div className="flex min-w-0 flex-1 justify-center">
-          <nav className="relative flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[18px] border bg-[var(--nav-bg)] px-2.5 py-1.5 shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {pills.map((pill) => {
-              const isActive = pill.key === activeKey;
-              return (
-                <Link
-                  key={pill.key}
-                  to={pill.path}
-                  title={pill.label}
-                  className={cn(
-                    "flex min-w-[2rem] shrink-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 py-[7px] font-heading text-xs whitespace-nowrap transition-all",
-                    isActive
-                      ? "bg-chart-accent/85 font-bold text-black border border-white/50 backdrop-blur-md shadow-[0_8px_20px_-4px_rgb(2_0_0/0.25),0_3px_6px_-2px_rgb(0_0_0/0.15)]"
-                      : "font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent",
-                  )}
-                >
-                  <pill.icon className="size-3.5" />
-                  {/* On cramped widths, hide the label for inactive tabs; keep
-                      it for the active tab so the current location is obvious. */}
-                  <span
-                    className={isActive ? "inline" : "hidden xl:inline"}
-                    data-vi={pill.labelVi}
-                  >
-                    {pill.label}
-                  </span>
-                  {(() => {
-                    const count = pillCount(pill.key);
-                    if (count <= 0) return null;
-                    return (
-                      <span
-                        className="bg-danger flex h-[14px] min-w-[14px] shrink-0 items-center justify-center rounded-full px-[3px] text-[9px] font-bold text-white"
-                        aria-label={`${count} item${count === 1 ? "" : "s"} need${count === 1 ? "s" : ""} your attention`}
-                      >
-                        {count > 99 ? "99+" : count}
-                      </span>
-                    );
-                  })()}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="flex h-[38px] min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--nav-bg)] px-4 text-left text-xs text-muted-foreground shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)] md:max-w-md"
+        >
+          <Search className="size-[15px] shrink-0" />
+          <span className="truncate">Search laws, QĐNB, tasks and issues…</span>
+          <kbd className="ml-auto hidden rounded border border-border px-1.5 font-mono text-[10px] sm:inline">
+            Ctrl K
+          </kbd>
+        </button>
+        <div className="hidden flex-1 md:block" />
 
         <div className="flex shrink-0 flex-nowrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            aria-label="Search (Ctrl+K)"
-            title="Search laws, QĐNB and issues (Ctrl+K)"
-            className="flex size-[38px] shrink-0 items-center justify-center rounded-full border bg-[var(--nav-bg)] text-muted-foreground shadow-[var(--card-shadow)] backdrop-blur-xl [border-color:var(--nav-border)]"
-          >
-            <Search className="size-[15px]" />
-          </button>
-
           <DemoClock />
 
           <button
@@ -232,8 +170,8 @@ export function TopNav() {
                 <span className="text-xs font-bold whitespace-nowrap">
                   {user?.name ?? user?.email ?? "Guest"}
                 </span>
-                <span className="text-[10.5px] whitespace-nowrap text-muted-foreground capitalize">
-                  {role ?? "Guest"}
+                <span className="text-[10.5px] whitespace-nowrap text-muted-foreground">
+                  {role ? ROLE_DISPLAY[role].label : "Guest"}
                 </span>
               </div>
             </DropdownMenuTrigger>
@@ -295,6 +233,16 @@ export function TopNav() {
           </DropdownMenu>
         </div>
       </header>
+
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="left"
+          className="w-[276px] border-none bg-transparent p-4 shadow-none"
+        >
+          <SheetTitle className="sr-only">Menu</SheetTitle>
+          <SideNav className="h-full" onNavigate={() => setMenuOpen(false)} />
+        </SheetContent>
+      </Sheet>
 
       <NotificationDrawer
         open={notificationsOpen}

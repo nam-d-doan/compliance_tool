@@ -6,6 +6,7 @@ import type {
   EscalationRule,
   IcisFinding,
   InternalRegulation,
+  IssueAction,
   LegalMapping,
   LegalUpdate,
   NonComplianceCase,
@@ -17,6 +18,7 @@ import type {
   RiskScores,
   ScheduledReport,
   SchedulerResult,
+  TaskWorkflowStep,
 } from "@/types";
 
 export interface QdnbDetail {
@@ -26,6 +28,7 @@ export interface QdnbDetail {
 }
 
 export interface AssignRevisionInput {
+  brief?: string;
   mappingId: string;
   leadUnitId: string;
   supportUnitIds: string[];
@@ -144,6 +147,44 @@ export const CMSService = {
   ) {
     return apiPost<RevisionTask>(API_ENDPOINTS.CMS_REVISION_ISSUE(id), input);
   },
+  // Task workflow (module 2)
+  acceptTask(id: string, note?: string) {
+    return apiPost<RevisionTask>(API_ENDPOINTS.CMS_TASK_ACCEPT(id), { note });
+  },
+  addDraft(id: string, input: { fileName: string; note?: string }) {
+    return apiPost<RevisionTask>(API_ENDPOINTS.CMS_TASK_DRAFTS(id), input);
+  },
+  requestDeadlineChange(id: string, input: { to: string; reason: string }) {
+    return apiPost<RevisionTask>(API_ENDPOINTS.CMS_TASK_DEADLINE(id), input);
+  },
+  decideDeadlineChange(
+    id: string,
+    changeId: string,
+    input: { decision: "approved" | "rejected"; note?: string },
+  ) {
+    return apiPost<RevisionTask>(
+      API_ENDPOINTS.CMS_TASK_DEADLINE_DECIDE(id, changeId),
+      input,
+    );
+  },
+  customStepDone(id: string, key: string) {
+    return apiPost<RevisionTask>(API_ENDPOINTS.CMS_TASK_CUSTOM_STEP(id), {
+      key,
+    });
+  },
+  completeTask(id: string, qdnbIds: string[]) {
+    return apiPost<RevisionTask>(API_ENDPOINTS.CMS_TASK_COMPLETE(id), {
+      qdnbIds,
+    });
+  },
+  taskWorkflow() {
+    return apiGet<TaskWorkflowStep[]>(API_ENDPOINTS.CMS_TASK_WORKFLOW);
+  },
+  saveTaskWorkflow(steps: TaskWorkflowStep[]) {
+    return apiPut<TaskWorkflowStep[]>(API_ENDPOINTS.CMS_TASK_WORKFLOW, {
+      steps,
+    });
+  },
   acknowledgeEscalation(
     entityType: "ncc" | "revision",
     entityId: string,
@@ -217,6 +258,12 @@ export const CMSService = {
       API_ENDPOINTS.CMS_ISSUE_WORKFLOW(id),
       input,
     );
+  },
+
+  saveActionPlan(id: string, actionPlan: IssueAction[]) {
+    return apiPut<NonComplianceCase>(API_ENDPOINTS.CMS_ISSUE_ACTION_PLAN(id), {
+      actionPlan,
+    });
   },
 
   // Risk matrix & escalation

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import { addDays, format, parseISO, subDays } from "date-fns";
@@ -12,6 +12,8 @@ import {
   Check,
   CheckCircle2,
   CloudDownload,
+  Download,
+  ShieldCheck,
   FileText,
   GitBranch,
   Landmark,
@@ -40,6 +42,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PageHero } from "@/components/common";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DetailSkeleton } from "@/components/common/Skeletons";
 import { ErrorState } from "@/components/common/ErrorState";
 import {
@@ -47,18 +50,16 @@ import {
   EntityHistory,
   Fact,
   LEGAL_STATUS_TONE,
-  RelationshipMap,
   RevisionHealthBadge,
   RfqChip,
-  StepBar,
   ToneBadge,
-  type StepItem,
 } from "@/components/cms";
 import {
   useAdminUsers,
   useLegalUpdate,
   useOrgUnits,
   useQdnbList,
+  useObligationList,
   useRevisions,
 } from "@/hooks/queries";
 import {
@@ -67,6 +68,7 @@ import {
   useMarkLegalRead,
   useSaveMappings,
   useSetApplicability,
+  useClientAudit,
 } from "@/hooks/mutations";
 import { useAuthStore, demoNow } from "@/stores";
 import { hasPermission } from "@/constants/rbac";
@@ -82,45 +84,22 @@ import {
 import { cn } from "@/lib/utils";
 import type { LegalMapping, LegalUpdate, MappingAction } from "@/types";
 
-type StepKey =
-  | "received"
-  | "applicability"
-  | "impact"
+type TabKey =
+  | "basic"
+  | "scope"
+  | "content"
   | "mapping"
-  | "assignment"
-  | "tracking";
-
-const STEP_ORDER: StepKey[] = [
-  "received",
-  "applicability",
-  "impact",
-  "mapping",
-  "assignment",
-  "tracking",
-];
-
-function currentStep(l: LegalUpdate): StepKey {
-  switch (l.status) {
-    case "new":
-    case "under_review":
-      return "applicability";
-    case "not_applicable":
-      return "applicability";
-    case "applicable":
-      return "mapping";
-    case "mapped":
-      return "assignment";
-    default:
-      return "tracking";
-  }
-}
+  | "tasks"
+  | "obligations"
+  | "history";
 
 export default function LegalUpdateDetailPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: item, isPending, isError, refetch } = useLegalUpdate(id);
   const markRead = useMarkLegalRead();
-  const [panel, setPanel] = useState<StepKey | null>(null);
+  const audit = useClientAudit();
+  const [tab, setTab] = useState<TabKey>("basic");
   const markedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -130,81 +109,23 @@ export default function LegalUpdateDetailPage() {
     }
   }, [item]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Follow the workflow: when the status moves on, show the next step.
-  const lastStatus = useRef<string | null>(null);
-  useEffect(() => {
-    if (!item) return;
-    if (lastStatus.current && lastStatus.current !== item.status)
-      setPanel(currentStep(item));
-    lastStatus.current = item.status;
-  }, [item?.status]); // eslint-disable-line react-hooks/exhaustive-deps
-
   if (isPending) return <DetailSkeleton />;
   if (isError || !item) return <ErrorState onRetry={() => refetch()} />;
 
-  const cur = currentStep(item);
-  const active = panel ?? cur;
-  const curIdx = STEP_ORDER.indexOf(cur);
-  const notApplicable = item.status === "not_applicable";
-  const completed = item.status === "completed";
-
-  const steps: StepItem[] = [
-    {
-      key: "received",
-      label: "Received",
-      hint:
-        item.channel === "auto_feed"
-          ? "Auto intake"
-          : item.channel === "ocr"
-            ? "OCR upload"
-            : "Manual",
-    },
-    {
-      key: "applicability",
-      label: "Applicability",
-      hint: item.applicability
-        ? item.applicability.decision === "applicable"
-          ? "Applicable"
-          : "Not applicable"
-        : "To decide",
-    },
-    {
-      key: "impact",
-      label: "Impact & AI summary",
-      hint: `${item.aiSummary.confidence}% confidence`,
-    },
-    {
-      key: "mapping",
-      label: "Legal mapping",
-      hint: `${item.mappings.filter((m) => m.status === "accepted").length} QĐNB confirmed`,
-    },
-    {
-      key: "assignment",
-      label: "Assignment",
-      hint: `${item.revisionTaskIds.length} task(s)`,
-    },
-    {
-      key: "tracking",
-      label: "Tracking",
-      hint: completed ? "Completed" : "Until issuance",
-    },
-  ].map((s, i) => ({
-    ...s,
-    key: s.key,
-    state: completed
-      ? "done"
-      : notApplicable
-        ? i <= 1
-          ? "done"
-          : "pending"
-        : i < curIdx || (s.key === "impact" && curIdx >= 2)
-          ? "done"
-          : i === curIdx
-            ? "current"
-            : "pending",
-  })) as StepItem[];
-
   const effDays = daysUntil(item.effectiveDate);
+  const confirmed = item.mappings.filter((m) => m.status !== "rejected");
+
+  const download = () => {
+    audit.mutate({
+      action: "export",
+      module: "legal",
+      object: item.docNumber,
+      details: `Downloaded ${item.docType} ${item.docNumber}`,
+    });
+    toast.success(
+      `${item.docNumber.replace(/\//g, "_")}.pdf downloaded (demo file)`,
+    );
+  };
 
   return (
     <motion.div
@@ -216,10 +137,10 @@ export default function LegalUpdateDetailPage() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate("/legal-updates")}
+        onClick={() => navigate("/library")}
         className="-ml-2 text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="size-4" /> Back to Legal Updates
+        <ArrowLeft className="size-4" /> Back to the Document Library
       </Button>
 
       <PageHero
@@ -230,94 +151,108 @@ export default function LegalUpdateDetailPage() {
           <ToneBadge tone={LEGAL_STATUS_TONE[item.status]}>
             {LEGAL_STATUS_LABELS[item.status]}
           </ToneBadge>
-          <span className="font-mono text-xs text-muted-foreground">
-            {item.code}
-          </span>
-          <RfqChip code="1.1–1.3" />
+          <Button variant="outline" size="sm" onClick={download}>
+            <Download className="size-4" /> Download
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setTab("tasks")}>
+            <ListChecks className="size-4" /> Assign task
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTab("obligations")}
+          >
+            <ShieldCheck className="size-4" /> Obligations
+          </Button>
         </div>
       </PageHero>
 
-      <StepBar steps={steps} onStepClick={(k) => setPanel(k as StepKey)} />
+      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Fact icon={Landmark} label="Issuer" value={item.issuer} />
+        <Fact
+          icon={CalendarClock}
+          label="Issued"
+          value={format(parseISO(item.issueDate), "dd/MM/yyyy")}
+        />
+        <Fact
+          icon={CalendarClock}
+          label="Effective"
+          value={`${format(parseISO(item.effectiveDate), "dd/MM/yyyy")} (${effDays < 0 ? `in force ${-effDays}d` : `in ${effDays}d`})`}
+          alert={effDays >= 0 && effDays <= 30}
+        />
+        <Fact
+          icon={Network}
+          label="Internal regulations affected"
+          value={confirmed.length}
+        />
+      </dl>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="min-w-0 space-y-4">
-          {active === "received" && <ReceivedPanel item={item} />}
-          {active === "applicability" && (
-            <ApplicabilityPanel item={item} onNext={() => setPanel("impact")} />
-          )}
-          {active === "impact" && (
-            <ImpactPanel item={item} onNext={() => setPanel("mapping")} />
-          )}
-          {active === "mapping" && <MappingPanel item={item} />}
-          {active === "assignment" && <AssignmentPanel item={item} />}
-          {active === "tracking" && <TrackingPanel item={item} />}
-        </div>
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as TabKey)}
+        defaultValue="basic"
+      >
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="basic">Basic info</TabsTrigger>
+          <TabsTrigger value="scope">Scope</TabsTrigger>
+          <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="mapping">
+            Legal mapping ({confirmed.length})
+          </TabsTrigger>
+          <TabsTrigger value="tasks">
+            Tasks ({item.revisionTaskIds.length})
+          </TabsTrigger>
+          <TabsTrigger value="obligations">Obligations</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
 
-        <aside className="space-y-4">
+        <TabsContent value="basic" className="space-y-4 pt-2">
+          <BasicInfoPanel item={item} />
+          <ApplicabilityPanel item={item} onNext={() => setTab("scope")} />
+        </TabsContent>
+        <TabsContent value="scope" className="space-y-4 pt-2">
+          <ImpactPanel item={item} onNext={() => setTab("mapping")} />
+        </TabsContent>
+        <TabsContent value="content" className="space-y-4 pt-2">
+          <ContentPanel item={item} onDownload={download} />
+        </TabsContent>
+        <TabsContent value="mapping" className="space-y-4 pt-2">
+          <MappingPanel item={item} />
+        </TabsContent>
+        <TabsContent value="tasks" className="space-y-4 pt-2">
+          <AssignmentPanel item={item} />
+          <TrackingPanel item={item} />
+        </TabsContent>
+        <TabsContent value="obligations" className="space-y-4 pt-2">
+          <ObligationsPanel item={item} />
+        </TabsContent>
+        <TabsContent value="history" className="pt-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Key dates</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Issuer</span>
-                <span className="font-medium">{item.issuer}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Issued</span>
-                <span>{format(parseISO(item.issueDate), "dd/MM/yyyy")}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Effective</span>
-                <span className="font-semibold">
-                  {format(parseISO(item.effectiveDate), "dd/MM/yyyy")}
-                </span>
-              </div>
-              <div
-                className={cn(
-                  "rounded-lg p-2 text-center text-sm font-semibold",
-                  effDays < 0
-                    ? "bg-danger-bg text-danger"
-                    : effDays <= 30
-                      ? "bg-warning-bg text-warning"
-                      : "bg-muted",
-                )}
-              >
-                {effDays < 0
-                  ? `In force for ${-effDays} day(s)`
-                  : `${effDays} day(s) until it takes effect`}
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Received</span>
-                <span>
-                  {format(parseISO(item.receivedAt), "dd/MM/yyyy HH:mm")}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">History</CardTitle>
+              <CardTitle>History</CardTitle>
+              <CardDescription>
+                Every action on this document (audit trail)
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <EntityHistory entityId={item.id} />
             </CardContent>
           </Card>
-        </aside>
-      </div>
+        </TabsContent>
+      </Tabs>
     </motion.div>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-function ReceivedPanel({ item }: { item: LegalUpdate }) {
+function BasicInfoPanel({ item }: { item: LegalUpdate }) {
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CloudDownload className="size-4" /> Received document
+            <CloudDownload className="size-4" /> Basic information
           </CardTitle>
           <CardDescription>
             {item.channel === "auto_feed"
@@ -325,39 +260,40 @@ function ReceivedPanel({ item }: { item: LegalUpdate }) {
               : item.channel === "ocr"
                 ? "Extracted by OCR"
                 : "Imported manually"}{" "}
-            from {item.sourceName}
+            from {item.sourceName} on{" "}
+            {format(parseISO(item.receivedAt), "dd/MM/yyyy HH:mm")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <dl className="grid gap-3 sm:grid-cols-3">
-            <Fact icon={Landmark} label="Issuer" value={item.issuer} />
+          <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Fact icon={FileText} label="Type" value={item.docType} />
-            <Fact icon={Sparkles} label="AI field" value={item.field} />
+            <Fact
+              icon={FileText}
+              label="Number"
+              value={<span className="font-mono">{item.docNumber}</span>}
+            />
+            <Fact icon={Sparkles} label="Field (AI)" value={item.field} />
+            <Fact
+              icon={Bot}
+              label="Relevance to Nam A Bank"
+              value={`${item.relevanceScore}/100`}
+            />
           </dl>
-          <p className="text-sm text-muted-foreground">{item.summary}</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Articles ({item.articles.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {item.articles.map((a) => (
-            <div key={a.id} className="rounded-lg border border-border p-3">
-              <p className="text-sm font-semibold">
-                {a.number}. {a.title}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{a.content}</p>
-            </div>
-          ))}
+          <p className="text-sm">{item.summary}</p>
+          <p className="text-xs text-muted-foreground">
+            Why it matters: {item.relevanceReason}
+          </p>
         </CardContent>
       </Card>
       {item.relations.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <GitBranch className="size-4" /> Family tree (Lược đồ văn bản)
+              <GitBranch className="size-4" /> Related documents
             </CardTitle>
+            <CardDescription>
+              Documents this one amends, replaces or guides
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {item.relations.map((r) => (
@@ -388,6 +324,163 @@ function ReceivedPanel({ item }: { item: LegalUpdate }) {
         </Card>
       )}
     </>
+  );
+}
+
+function ContentPanel({
+  item,
+  onDownload,
+}: {
+  item: LegalUpdate;
+  onDownload: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Full text — {item.articles.length} article(s)</CardTitle>
+        <CardDescription>
+          {item.docType} {item.docNumber}
+        </CardDescription>
+        <CardAction>
+          <Button variant="outline" size="sm" onClick={onDownload}>
+            <Download className="size-4" /> Download
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {item.articles.map((a) => (
+          <div key={a.id} className="rounded-lg border border-border p-3">
+            <p className="text-sm font-semibold">
+              {a.number}. {a.title}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{a.content}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ObligationsPanel({ item }: { item: LegalUpdate }) {
+  const { role } = useAuthStore();
+  const canReview = hasPermission(role, "legal:review");
+  const importLib = useImportLegalToLibrary();
+  const obligations = useObligationList(
+    { regulationIds: [item.regulationId ?? "__none__"] },
+    1,
+    100,
+  );
+  const list = item.regulationId ? (obligations.data?.items ?? []) : [];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="size-4" /> Compliance obligations from this
+            document
+          </CardTitle>
+          <CardDescription>
+            What the bank must do to comply, tracked in the obligation register
+          </CardDescription>
+          {item.regulationId && (
+            <CardAction>
+              <Button size="sm" asChild>
+                <Link
+                  to={`/obligations/create?regulationId=${item.regulationId}`}
+                >
+                  <Plus className="size-4" /> Add obligation
+                </Link>
+              </Button>
+            </CardAction>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {!item.regulationId ? (
+            <Callout
+              tone="info"
+              title="Not in the obligation register yet"
+              action={
+                canReview ? (
+                  <Button
+                    size="sm"
+                    disabled={importLib.isPending}
+                    onClick={() =>
+                      importLib.mutate(item.id, {
+                        onSuccess: () =>
+                          toast.success(
+                            "Registered — obligations can now be added",
+                          ),
+                      })
+                    }
+                  >
+                    <BookPlus className="size-4" /> Register
+                  </Button>
+                ) : undefined
+              }
+            >
+              Register the document to create and track its obligations.
+            </Callout>
+          ) : list.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No obligation recorded yet. Use the AI suggestions below or “Add
+              obligation”.
+            </p>
+          ) : (
+            list.map((o) => (
+              <Link
+                key={o.id}
+                to={`/obligations/${o.id}`}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3 text-sm hover:bg-muted/50"
+              >
+                <span className="font-mono text-xs font-semibold">
+                  {o.code}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{o.title}</span>
+                <span className="text-xs text-muted-foreground">
+                  {o.articleRef} · {o.ownerDepartmentName}
+                </span>
+              </Link>
+            ))
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-4" /> AI-suggested obligations
+          </CardTitle>
+          <CardDescription>
+            One per article that sets a requirement — confirm before adding
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {item.articles.map((a) => (
+            <div
+              key={a.id}
+              className="flex items-start gap-3 rounded-lg border border-dashed border-border p-3"
+            >
+              <ToneBadge tone="ai">{a.number}</ToneBadge>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{a.title}</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground">
+                  {a.content}
+                </p>
+              </div>
+              {item.regulationId && (
+                <Button size="sm" variant="ghost" asChild>
+                  <Link
+                    to={`/obligations/create?regulationId=${item.regulationId}`}
+                  >
+                    <Plus className="size-3.5" /> Add
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -645,10 +738,8 @@ function MappingPanel({ item }: { item: LegalUpdate }) {
     ["applicable", "under_review", "new", "mapped"].includes(item.status);
   const save = useSaveMappings(item.id);
   const qdnbQuery = useQdnbList();
-  const unitsQuery = useOrgUnits();
   const [mappings, setMappings] = useState<LegalMapping[]>(item.mappings);
   const [focus, setFocus] = useState<string | null>(null);
-  const [showMap, setShowMap] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [newQdnb, setNewQdnb] = useState("");
   const [newAction, setNewAction] = useState<MappingAction>("amend");
@@ -656,13 +747,6 @@ function MappingPanel({ item }: { item: LegalUpdate }) {
 
   useEffect(() => setMappings(item.mappings), [item.mappings]);
 
-  const unitNames = useMemo(
-    () =>
-      Object.fromEntries(
-        (unitsQuery.data?.allUnits ?? []).map((u) => [u.id, u.name]),
-      ),
-    [unitsQuery.data],
-  );
   const focused = mappings.find((m) => m.id === focus);
   const accepted = mappings.filter((m) => m.status === "accepted").length;
   const dirty = JSON.stringify(mappings) !== JSON.stringify(item.mappings);
@@ -709,32 +793,12 @@ function MappingPanel({ item }: { item: LegalUpdate }) {
             AI links the new law to Nam A Bank's QĐNB; Compliance confirms. RFQ
             1.2
           </CardDescription>
-          <CardAction className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowMap((v) => !v)}
-            >
-              {showMap ? "Hide" : "Show"} relationship map
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link to="/legal-mapping">
-                <Network className="size-3.5" /> Open full Legal Mapping
-              </Link>
-            </Button>
-          </CardAction>
         </CardHeader>
         <CardContent className="space-y-4">
           {needsApplicability && (
             <Callout tone="warning" title="Decide applicability first">
               Mark the document Applicable before confirming the mapping.
             </Callout>
-          )}
-          {showMap && (
-            <RelationshipMap
-              update={{ ...item, mappings }}
-              unitNames={unitNames}
-            />
           )}
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -1296,13 +1360,13 @@ function TrackingPanel({ item }: { item: LegalUpdate }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tracking until issuance</CardTitle>
+        <CardTitle>Tasks created from this document</CardTitle>
         <CardDescription>
           {issued} of {tasks.length} internal regulation(s) issued
         </CardDescription>
         <CardAction>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/qdnb">Open QĐNB board</Link>
+            <Link to="/tasks">Open Task Management</Link>
           </Button>
         </CardAction>
       </CardHeader>
@@ -1316,7 +1380,7 @@ function TrackingPanel({ item }: { item: LegalUpdate }) {
           return (
             <Link
               key={t.id}
-              to={t.qdnbId ? `/qdnb/${t.qdnbId}` : "/qdnb"}
+              to={`/tasks/${t.id}`}
               className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted/50"
             >
               <span className="font-mono text-xs font-semibold">

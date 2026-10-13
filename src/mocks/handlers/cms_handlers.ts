@@ -40,6 +40,7 @@ import type {
   RiskLevel,
   RiskMatrix,
   RiskScores,
+  TaskWorkflowStep,
 } from "@/types";
 
 /**
@@ -294,6 +295,7 @@ export async function handleSaveMappings({
 
 interface AssignInput {
   tasks: {
+    brief?: string;
     mappingId: string;
     leadUnitId: string;
     supportUnitIds: string[];
@@ -393,6 +395,15 @@ export async function handleAssignRevisions({
       ),
       reminders: [],
       escalations: [],
+      brief:
+        t.brief?.trim() ||
+        `${MAPPING_ACTION_SHORT[m.action]} ${m.qdnbCode} “${m.qdnbTitle}” để phù hợp với ${item.docNumber} (${m.lawArticles.join(", ")}).`,
+      assignedBy: currentActor().name,
+      assignedAt: at,
+      responseDeadline: formatISO(addDays(demoNow(), 3)),
+      drafts: [],
+      deadlineChanges: [],
+      linkedQdnbIds: [],
       createdAt: at,
       updatedAt: at,
     };
@@ -404,7 +415,7 @@ export async function handleAssignRevisions({
       type: "deadline",
       title: `New QĐNB revision assigned: ${task.qdnbCode}`,
       description: `${MAPPING_ACTION_SHORT[task.action]} "${task.qdnbTitle}" because of ${item.docNumber}. Lead: ${leadUnitName}. Deadline ${parseISO(task.committedDate).toLocaleDateString("vi-VN")}.`,
-      actionUrl: task.qdnbId ? `/qdnb/${task.qdnbId}` : "/qdnb",
+      actionUrl: `/tasks/${task.id}`,
       entityType: "revision",
       entityId: task.id,
       channels: ["in_app", "email", "teams"],
@@ -1596,6 +1607,286 @@ export async function handleSmartSearch({ request }: MockResolverContext) {
 }
 
 // ---------------------------------------------------------------------------
+// Task workflow (module 2): accept, drafts, deadline changes, completion
+// ---------------------------------------------------------------------------
+
+function auditTask(
+  task: RevisionTask,
+  action: "update" | "submit" | "approve" | "return",
+  details: string,
+) {
+  recordAudit(getDb().auditLogs, {
+    action,
+    module: "qdnb",
+    object: task.code,
+    details,
+    entityType: "revision",
+    entityId: task.id,
+  });
+}
+
+export async function handleAcceptTask({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const task = findById(getDb().revisionTasks, params.id as string);
+  if (!task) return notFound();
+  const { note } = await body<{ note?: string }>(request);
+  const actor = currentActor();
+  const at = nowIso();
+  task.acceptedAt = at;
+  task.acceptedBy = `${actor.name} (${task.leadUnitName})`;
+  if (task.status === "not_started") {
+    task.status = "in_revision";
+    task.progress = Math.max(task.progress, 10);
+    const draft = task.approvalSteps.find((s) => s.key === "draft");
+    if (draft) draft.state = "current";
+  }
+  task.updatedAt = at;
+  auditTask(
+    task,
+    "update",
+    `Task accepted by ${task.leadUnitName}${note ? `: ${note}` : ""}`,
+  );
+  return jsonResponse(task);
+}
+
+export async function handleAddDraft({ params, request }: MockResolverContext) {
+  await getDelay();
+  const task = findById(getDb().revisionTasks, params.id as string);
+  if (!task) return notFound();
+  const { fileName, note } = await body<{ fileName?: string; note?: string }>(
+    request,
+  );
+  if (!fileName) return badRequest("A draft file is required");
+  const actor = currentActor();
+  const at = nowIso();
+  task.drafts ??= [];
+  const version = task.drafts.length + 1;
+  task.drafts.push({
+    id: `${task.id}-draft-${version}`,
+    version,
+    fileName,
+    note: note?.trim() || undefined,
+    by: actor.name,
+    at,
+  });
+  const draft = task.approvalSteps.find((s) => s.key === "draft");
+  if (draft && draft.state === "returned") draft.state = "current";
+  task.progress = Math.max(task.progress, Math.min(70, 30 + version * 15));
+  task.updatedAt = at;
+  auditTask(task, "submit", `Draft ${version} uploaded: ${fileName}`);
+  return jsonResponse(task);
+}
+
+export async function handleRequestDeadlineChange({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const task = findById(getDb().revisionTasks, params.id as string);
+  if (!task) return notFound();
+  const { to, reason } = await body<{ to?: string; reason?: string }>(request);
+  if (!to || !reason?.trim())
+    return badRequest("New date and reason are required");
+  const actor = currentActor();
+  const at = nowIso();
+  task.deadlineChanges ??= [];
+  task.deadlineChanges.push({
+    id: `${task.id}-dc-${task.deadlineChanges.length + 1}`,
+    requestedBy: actor.name,
+    requestedByUnit: task.leadUnitName,
+    requestedAt: at,
+    from: task.committedDate,
+    to,
+    reason: reason.trim(),
+    status: "pending",
+  });
+  task.updatedAt = at;
+  pushNotification(getDb().notifications, {
+    type: "deadline",
+    title: `Deadline change requested: ${task.code}`,
+    description: `${task.leadUnitName} asks to move the deadline of ${task.qdnbCode} to ${parseISO(to).toLocaleDateString("vi-VN")}.`,
+    actionUrl: `/tasks/${task.id}`,
+    entityType: "revision",
+    entityId: task.id,
+    channels: ["in_app", "email"],
+    recipient: "Khối Tuân thủ",
+  });
+  auditTask(
+    task,
+    "submit",
+    `Deadline change requested → ${parseISO(to).toLocaleDateString("vi-VN")}: ${reason.trim()}`,
+  );
+  return jsonResponse(task);
+}
+
+export async function handleDecideDeadlineChange({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const task = findById(getDb().revisionTasks, params.id as string);
+  if (!task) return notFound();
+  const change = task.deadlineChanges?.find((c) => c.id === params.changeId);
+  if (!change) return notFound("Request not found");
+  const { decision, note } = await body<{
+    decision?: "approved" | "rejected";
+    note?: string;
+  }>(request);
+  if (!decision) return badRequest("Decision is required");
+  const actor = currentActor();
+  const at = nowIso();
+  change.status = decision;
+  change.decidedBy = actor.name;
+  change.decidedAt = at;
+  change.decisionNote = note?.trim() || undefined;
+  if (decision === "approved") {
+    const before = task.committedDate;
+    task.committedDate = change.to;
+    if (task.expectedIssueDate < change.to) task.expectedIssueDate = change.to;
+    recordAudit(getDb().auditLogs, {
+      action: "approve",
+      module: "qdnb",
+      object: task.code,
+      details: `Deadline change approved${note ? `: ${note}` : ""}`,
+      entityType: "revision",
+      entityId: task.id,
+      changes: [{ field: "committedDate", before, after: change.to }],
+    });
+  } else {
+    auditTask(
+      task,
+      "return",
+      `Deadline change rejected${note ? `: ${note}` : ""}`,
+    );
+  }
+  task.updatedAt = at;
+  return jsonResponse(task);
+}
+
+export async function handleCustomStepDone({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const task = findById(db.revisionTasks, params.id as string);
+  if (!task) return notFound();
+  const { key } = await body<{ key?: string }>(request);
+  const step = db.taskWorkflow.find((s) => s.key === key);
+  if (!step) return badRequest("Unknown step");
+  task.customSteps = {
+    ...(task.customSteps ?? {}),
+    [step.key]: { by: currentActor().name, at: nowIso() },
+  };
+  task.updatedAt = nowIso();
+  auditTask(task, "update", `Step done: ${step.name}`);
+  return jsonResponse(task);
+}
+
+export async function handleCompleteTask({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const task = findById(db.revisionTasks, params.id as string);
+  if (!task) return notFound();
+  const { qdnbIds = [] } = await body<{ qdnbIds?: string[] }>(request);
+  if (task.status !== "issued")
+    return badRequest("The QĐNB must be issued before the task is completed");
+  if (!qdnbIds.length)
+    return badRequest("Link at least one issued QĐNB before completing");
+  const actor = currentActor();
+  const at = nowIso();
+  task.linkedQdnbIds = qdnbIds;
+  task.completedAt = at;
+  task.completedBy = actor.name;
+  task.progress = 100;
+  task.updatedAt = at;
+  const codes = qdnbIds
+    .map((id) => db.internalRegulations.find((q) => q.id === id)?.code ?? id)
+    .join(", ");
+  auditTask(task, "approve", `Task completed — linked to ${codes}`);
+  return jsonResponse(task);
+}
+
+export async function handleSaveActionPlan({
+  params,
+  request,
+}: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const issue = findById(db.nccs, params.id as string);
+  if (!issue) return notFound();
+  const { actionPlan } = await body<{
+    actionPlan?: NonComplianceCase["actionPlan"];
+  }>(request);
+  if (!actionPlan) return badRequest("Action plan is required");
+  const before = issue.actionPlan?.filter((a) => a.done).length ?? 0;
+  issue.actionPlan = actionPlan.map((a) => ({
+    ...a,
+    doneAt: a.done ? (a.doneAt ?? nowIso()) : undefined,
+  }));
+  issue.updatedAt = nowIso();
+  const after = issue.actionPlan.filter((a) => a.done).length;
+  recordAudit(db.auditLogs, {
+    action: "update",
+    module: "ncc",
+    object: issue.nccId,
+    details: `Action plan updated — ${after}/${issue.actionPlan.length} action(s) done`,
+    entityType: "ncc",
+    entityId: issue.id,
+    changes:
+      before !== after
+        ? [
+            {
+              field: "actions done",
+              before: String(before),
+              after: String(after),
+            },
+          ]
+        : undefined,
+  });
+  return jsonResponse(issue);
+}
+
+export async function handleGetTaskWorkflow() {
+  await getDelay(60, 120);
+  return jsonResponse(getDb().taskWorkflow);
+}
+
+const BUILT_IN_STEPS = [
+  "assign",
+  "accept",
+  "draft",
+  "review",
+  "approve",
+  "issue",
+  "complete",
+];
+
+export async function handleSaveTaskWorkflow({ request }: MockResolverContext) {
+  await getDelay();
+  const db = getDb();
+  const { steps } = await body<{ steps?: TaskWorkflowStep[] }>(request);
+  if (!steps?.length) return badRequest("Steps are required");
+  const missing = BUILT_IN_STEPS.find((k) => !steps.some((s) => s.key === k));
+  if (missing)
+    return badRequest(`Built-in step "${missing}" cannot be removed`);
+  db.taskWorkflow = steps;
+  recordAudit(db.auditLogs, {
+    action: "settings_change",
+    module: "qdnb",
+    object: "Task workflow",
+    details: `Task workflow saved: ${steps.map((s) => s.name).join(" → ")}`,
+  });
+  return jsonResponse(db.taskWorkflow);
+}
+
+// ---------------------------------------------------------------------------
 // Route table (single source for MSW + direct mode)
 // ---------------------------------------------------------------------------
 
@@ -1739,6 +2030,51 @@ export const cmsRoutes: {
   },
   { method: "post", path: "/api/cms/audit", handler: handleClientAudit },
   { method: "get", path: "/api/cms/search", handler: handleSmartSearch },
+  {
+    method: "post",
+    path: "/api/cms/revisions/:id/accept",
+    handler: handleAcceptTask,
+  },
+  {
+    method: "post",
+    path: "/api/cms/revisions/:id/drafts",
+    handler: handleAddDraft,
+  },
+  {
+    method: "post",
+    path: "/api/cms/revisions/:id/deadline-change",
+    handler: handleRequestDeadlineChange,
+  },
+  {
+    method: "post",
+    path: "/api/cms/revisions/:id/deadline-change/:changeId",
+    handler: handleDecideDeadlineChange,
+  },
+  {
+    method: "post",
+    path: "/api/cms/revisions/:id/custom-step",
+    handler: handleCustomStepDone,
+  },
+  {
+    method: "post",
+    path: "/api/cms/revisions/:id/complete",
+    handler: handleCompleteTask,
+  },
+  {
+    method: "get",
+    path: "/api/cms/task-workflow",
+    handler: handleGetTaskWorkflow,
+  },
+  {
+    method: "put",
+    path: "/api/cms/issues/:id/action-plan",
+    handler: handleSaveActionPlan,
+  },
+  {
+    method: "put",
+    path: "/api/cms/task-workflow",
+    handler: handleSaveTaskWorkflow,
+  },
 ];
 
 export const cmsHandlers = cmsRoutes.map((r) =>
